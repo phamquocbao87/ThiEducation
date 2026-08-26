@@ -9,16 +9,15 @@ import {
   DollarOutlined,
   UserOutlined,
   SwapOutlined,
-  BookOutlined,
-  CheckCircleOutlined
+  BookOutlined
 } from '@ant-design/icons';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 const { Header, Content, Sider, Footer } = Layout;
 const { Text, Title } = Typography;
 
 export const AppLayout = ({ activeTab, setActiveTab, children }) => {
-  const { currentUser, switchRole, MOCK_USERS } = useAuth();
+  const { currentUser, switchRole } = useAuth();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -30,20 +29,19 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Filter menu items based on role
   const getMenuItems = () => {
     const role = currentUser.role;
 
     const items = [
-      { key: 'dashboard', icon: <DashboardOutlined />, label: 'Tổng Quan Dashboard' },
+      { key: 'dashboard', icon: <DashboardOutlined />, label: 'Dashboard Overview' },
     ];
 
     if (role === 'admin' || role === 'teacher') {
       items.push({ key: 'contracts', icon: <FileTextOutlined />, label: 'Hợp Đồng & Tính Lương' });
     }
 
-    items.push({ key: 'timetable', icon: <CalendarOutlined />, label: 'Thời Khóa Biểu' });
-    items.push({ key: 'classes', icon: <TeamOutlined />, label: 'Lớp Học & Điểm Danh' });
+    items.push({ key: 'schedules', icon: <CalendarOutlined />, label: 'Thời Khóa Biểu' });
+    items.push({ key: 'attendance', icon: <TeamOutlined />, label: 'Lớp Học & Điểm Danh' });
 
     if (role === 'admin' || role === 'student') {
       items.push({ key: 'tuition', icon: <DollarOutlined />, label: 'Quản Lý Học Phí' });
@@ -100,7 +98,6 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
 
   return (
     <Layout style={{ minHeight: '100vh', background: '#f5f7fa' }}>
-      {/* Top Header */}
       <Header
         style={{
           position: 'sticky',
@@ -131,7 +128,6 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
           </div>
         </div>
 
-        {/* User Profile & Role Switcher */}
         <Space size={isMobile ? 8 : 16}>
           <Dropdown menu={{ items: roleMenuOptions }} trigger={['click']}>
             <Button
@@ -161,7 +157,6 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
       </Header>
 
       <Layout>
-        {/* Desktop Sidebar Navigation */}
         {!isMobile && (
           <Sider
             width={240}
@@ -173,7 +168,7 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
           >
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0' }}>
               <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase' }}>
-                DANH MỤC QUẢN LÝ
+                DANH MỤC PHÂN HỆ
               </Text>
             </div>
             <Menu
@@ -186,7 +181,6 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
           </Sider>
         )}
 
-        {/* Mobile Navigation Drawer */}
         {isMobile && (
           <Drawer
             title={
@@ -220,7 +214,6 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
           </Drawer>
         )}
 
-        {/* Main Content Area */}
         <Layout style={{ padding: isMobile ? '12px' : '24px' }}>
           <Content
             style={{
@@ -234,9 +227,8 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
             {children}
           </Content>
 
-          {/* Footer */}
           <Footer style={{ textAlign: 'center', color: '#8c8c8c', padding: '16px 0 0 0', fontSize: 13 }}>
-            ThiEducation ERP ©2026 — Quản lý 520 Học viên & 68 Cán bộ/Giáo viên
+            ThiEducation ERP ©2026 — Feature-Based Modular Architecture (520 Học viên, 68 Cán bộ/GV)
           </Footer>
         </Layout>
       </Layout>

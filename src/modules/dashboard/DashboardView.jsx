@@ -12,22 +12,18 @@ import {
   ThunderboltOutlined,
   FileDoneOutlined
 } from '@ant-design/icons';
-import { useAuth } from '../../context/AuthContext';
-import { INITIAL_STATS, MOCK_ATTENDANCES, MOCK_TIMETABLE } from '../../data/mockData';
+import { useAuth } from '../../core/context/AuthContext';
+import { INITIAL_STATS, MOCK_ATTENDANCES, MOCK_TIMETABLE } from '../../shared/data/mockData';
+import { formatCurrency } from '../../shared/utils/formatter';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 
-export const DashboardOverview = ({ setActiveTab }) => {
+export const DashboardView = ({ setActiveTab }) => {
   const { currentUser } = useAuth();
   const role = currentUser.role;
 
-  const formatCurrency = (val) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
-  };
-
   return (
     <div>
-      {/* Welcome Banner */}
       <Alert
         message={`Xin chào, ${currentUser.name}!`}
         description={
@@ -43,7 +39,6 @@ export const DashboardOverview = ({ setActiveTab }) => {
         style={{ marginBottom: 24, borderRadius: 8, background: '#e6f7ff', borderColor: '#91d5ff' }}
       />
 
-      {/* ADMIN DASHBOARD */}
       {role === 'admin' && (
         <>
           <Row gutter={[16, 16]}>
@@ -98,7 +93,6 @@ export const DashboardOverview = ({ setActiveTab }) => {
           </Row>
 
           <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-            {/* Quick Actions */}
             <Col xs={24} lg={12}>
               <Card title={<Space><ThunderboltOutlined style={{ color: '#faad14' }} /><Text strong>Thao Tác Nhanh Quản Lý</Text></Space>} style={{ height: '100%' }}>
                 <Row gutter={[12, 12]}>
@@ -108,12 +102,12 @@ export const DashboardOverview = ({ setActiveTab }) => {
                     </Button>
                   </Col>
                   <Col span={12}>
-                    <Button block icon={<CalendarOutlined />} onClick={() => setActiveTab('timetable')} style={{ height: 48, borderRadius: 6 }}>
+                    <Button block icon={<CalendarOutlined />} onClick={() => setActiveTab('schedules')} style={{ height: 48, borderRadius: 6 }}>
                       Thời Khóa Biểu
                     </Button>
                   </Col>
                   <Col span={12}>
-                    <Button block icon={<TeamOutlined />} onClick={() => setActiveTab('classes')} style={{ height: 48, borderRadius: 6 }}>
+                    <Button block icon={<TeamOutlined />} onClick={() => setActiveTab('attendance')} style={{ height: 48, borderRadius: 6 }}>
                       Điểm Danh Lớp
                     </Button>
                   </Col>
@@ -126,7 +120,6 @@ export const DashboardOverview = ({ setActiveTab }) => {
               </Card>
             </Col>
 
-            {/* Attendance & Quality Feedback Feed */}
             <Col xs={24} lg={12}>
               <Card title={<Space><BookOutlined style={{ color: '#1890ff' }} /><Text strong>Đánh Giá Chất Lượng Dạy Học Mới Nhất</Text></Space>}>
                 <List
@@ -162,7 +155,6 @@ export const DashboardOverview = ({ setActiveTab }) => {
         </>
       )}
 
-      {/* TEACHER DASHBOARD */}
       {role === 'teacher' && (
         <>
           <Row gutter={[16, 16]}>
@@ -212,7 +204,7 @@ export const DashboardOverview = ({ setActiveTab }) => {
                   renderItem={(item) => (
                     <List.Item
                       actions={[
-                        <Button type="primary" size="small" onClick={() => setActiveTab('classes')}>
+                        <Button type="primary" size="small" onClick={() => setActiveTab('attendance')}>
                           Điểm danh
                         </Button>
                       ]}
@@ -240,7 +232,6 @@ export const DashboardOverview = ({ setActiveTab }) => {
         </>
       )}
 
-      {/* STUDENT DASHBOARD */}
       {role === 'student' && (
         <>
           <Row gutter={[16, 16]}>

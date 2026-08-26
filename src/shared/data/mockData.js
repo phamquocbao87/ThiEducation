@@ -1,13 +1,11 @@
-// Mock Data for ThiEducation System (500 Students, 70 Staff/Teachers)
-
 export const INITIAL_STATS = {
   totalStudents: 520,
   totalTeachers: 68,
   totalClasses: 28,
-  monthlyTuitionCollected: 1250000000, // 1.25 tỷ VNĐ
-  monthlyTuitionPending: 180000000,   // 180 triệu VNĐ
-  monthlyPayrollTotal: 485000000,     // 485 triệu VNĐ
-  averageAttendanceRate: 96.4,        // 96.4%
+  monthlyTuitionCollected: 1250000000,
+  monthlyTuitionPending: 180000000,
+  monthlyPayrollTotal: 485000000,
+  averageAttendanceRate: 96.4,
 };
 
 export const MOCK_TEACHERS = [
@@ -18,7 +16,6 @@ export const MOCK_TEACHERS = [
   { id: 'GV005', name: 'Hoàng Anh Tuấn', subject: 'Ngữ Văn', email: 'tuan.hoang@thiedu.edu.vn', phone: '0905556677', contractType: 'Toàn thời gian', ratePerSession: 350000, status: 'Hoạt động' },
   { id: 'GV006', name: 'Đỗ Thảo Nguyên', subject: 'Sinh Học', email: 'nguyen.do@thiedu.edu.vn', phone: '0944112233', contractType: 'Bán thời gian', ratePerSession: 280000, status: 'Hoạt động' },
   { id: 'GV007', name: 'Vũ Quốc Bảo', subject: 'Tin Học / Lập Trình', email: 'bao.vu@thiedu.edu.vn', phone: '0966334455', contractType: 'Toàn thời gian', ratePerSession: 450000, status: 'Hoạt động' },
-  { id: 'GV008', name: 'Bùi Tuyết Nhi', subject: 'Lịch Sử', email: 'nhi.bui@thiedu.edu.vn', phone: '0911447788', contractType: 'Bán thời gian', ratePerSession: 270000, status: 'Hoạt động' },
 ];
 
 export const MOCK_CONTRACTS = [
@@ -74,7 +71,7 @@ export const MOCK_ATTENDANCES = [
     presentCount: 34,
     absentCount: 1,
     qualityRating: 5,
-    teacherFeedback: 'Học viên hăng hái phát biểu, 95% hoàn thành bài tập về nhà xuất sắc. Đã khen thưởng em Lê Anh Khoa.',
+    teacherFeedback: 'Học viên hăng hái phát biểu, 95% hoàn thành bài tập về nhà xuất sắc.',
   },
   {
     id: 'AT-002',
@@ -86,18 +83,6 @@ export const MOCK_ATTENDANCES = [
     presentCount: 27,
     absentCount: 1,
     qualityRating: 4,
-    teacherFeedback: 'Kỹ năng Speaking IELTS phát triển tốt, 3 em cần luyện thêm phát âm đuôi.',
-  },
-  {
-    id: 'AT-003',
-    date: '2026-08-24',
-    classId: 'LH12IT',
-    className: '12IT - Lập Trình Web',
-    teacherName: 'Vũ Quốc Bảo',
-    totalStudents: 25,
-    presentCount: 25,
-    absentCount: 0,
-    qualityRating: 5,
-    teacherFeedback: 'Lớp thực hành React + Vite thành công 100%, tất cả các em đều làm xong bài Lab 02.',
+    teacherFeedback: 'Kỹ năng Speaking IELTS phát triển tốt.',
   },
 ];

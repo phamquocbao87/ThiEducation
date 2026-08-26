@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Table, Tag, Card, Button, Space, Typography, Select, Row, Col, Modal, Form, Input, TimePicker, message } from 'antd';
-import { CalendarOutlined, PlusOutlined, ClockCircleOutlined, HomeOutlined, UserOutlined } from '@ant-design/icons';
-import { MOCK_TIMETABLE, MOCK_TEACHERS, MOCK_CLASSES } from '../../data/mockData';
-import { useAuth } from '../../context/AuthContext';
+import { Table, Tag, Card, Button, Space, Typography, Select, Row, Col, Modal, Form, Input, message } from 'antd';
+import { PlusOutlined, ClockCircleOutlined, HomeOutlined, UserOutlined } from '@ant-design/icons';
+import { MOCK_TIMETABLE, MOCK_TEACHERS } from '../../shared/data/mockData';
+import { useAuth } from '../../core/context/AuthContext';
 
 const { Title, Text } = Typography;
 
@@ -27,7 +27,7 @@ export const TimetableManager = () => {
     setTimetable([...timetable, newSlot]);
     setIsModalOpen(false);
     form.resetFields();
-    message.success('Đêm lịch dạy mới vào Thời khóa biểu thành công!');
+    message.success('Thêm lịch dạy mới thành công!');
   };
 
   const filteredData = selectedDayFilter === 'ALL'
@@ -111,7 +111,6 @@ export const TimetableManager = () => {
         )}
       </Row>
 
-      {/* Filter Bar */}
       <Card bodyStyle={{ padding: 12 }} style={{ marginBottom: 16 }}>
         <Space wrap>
           <Text strong>Lọc theo Thứ:</Text>
@@ -141,7 +140,6 @@ export const TimetableManager = () => {
         pagination={{ pageSize: 6 }}
       />
 
-      {/* Modal Add Timetable Slot */}
       <Modal
         title="Thêm Khung Giờ Học Mới"
         open={isModalOpen}

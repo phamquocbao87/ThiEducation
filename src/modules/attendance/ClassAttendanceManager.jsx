@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Table, Tag, Card, Button, Space, Typography, Row, Col, Modal, Form, Rate, Input, Switch, message, Avatar, Rate as AntRate, Statistic } from 'antd';
-import { TeamOutlined, CheckOutlined, EditOutlined, StarOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons';
-import { MOCK_CLASSES, MOCK_ATTENDANCES, MOCK_STUDENTS } from '../../data/mockData';
-import { useAuth } from '../../context/AuthContext';
+import { Table, Tag, Card, Button, Space, Typography, Row, Col, Modal, Form, Rate, Input, Switch, message, Avatar, Rate as AntRate } from 'antd';
+import { CheckOutlined, UserOutlined } from '@ant-design/icons';
+import { MOCK_CLASSES, MOCK_ATTENDANCES } from '../../shared/data/mockData';
+import { useAuth } from '../../core/context/AuthContext';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -13,7 +13,6 @@ export const ClassAttendanceManager = () => {
   const [selectedClass, setSelectedClass] = useState(MOCK_CLASSES[0]);
   const [form] = Form.useForm();
 
-  // Student Attendance States for Modal
   const [studentAttendanceList, setStudentAttendanceList] = useState([
     { id: 'HV001', name: 'Lê Anh Khoa', present: true },
     { id: 'HV002', name: 'Nguyễn Thị Ngọc Ánh', present: true },
@@ -95,7 +94,6 @@ export const ClassAttendanceManager = () => {
         </Col>
       </Row>
 
-      {/* Class Cards List */}
       <Title level={4} style={{ marginTop: 12, marginBottom: 12 }}>
         Danh Sách Lớp Học Đang Hoạt Động (28 Lớp)
       </Title>
@@ -120,7 +118,6 @@ export const ClassAttendanceManager = () => {
         ))}
       </Row>
 
-      {/* Attendance & Quality History */}
       <Title level={4} style={{ marginBottom: 12 }}>
         Nhật Ký Điểm Danh & Đánh Giá Chất Lượng Tiết Học
       </Title>
@@ -132,7 +129,6 @@ export const ClassAttendanceManager = () => {
         pagination={{ pageSize: 5 }}
       />
 
-      {/* Attendance Modal */}
       <Modal
         title={`Điểm Danh & Nhận Xét Tiết Học - ${selectedClass?.name}`}
         open={isAttendanceModalOpen}
@@ -171,7 +167,7 @@ export const ClassAttendanceManager = () => {
           </Form.Item>
 
           <Form.Item name="teacherFeedback" label="Nhận xét của Giáo viên về buổi học / học viên" rules={[{ required: true, message: 'Vui lòng nhập nhận xét' }]}>
-            <Input.TextArea rows={3} placeholder="Nhập nhận xét chi tiết (ví dụ: Lớp học sôi nổi, các em nắm bài tốt, em Khoa phát biểu xuất sắc...)" />
+            <Input.TextArea rows={3} placeholder="Nhập nhận xét chi tiết (ví dụ: Lớp học sôi nổi, các em nắm bài tốt...)" />
           </Form.Item>
 
           <Form.Item>

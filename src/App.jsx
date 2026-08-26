@@ -1,35 +1,37 @@
 import React, { useState } from 'react';
-import { AuthProvider } from './context/AuthContext';
-import { AppLayout } from './components/layout/AppLayout';
-import { DashboardOverview } from './components/dashboard/DashboardOverview';
-import { ContractPayrollManager } from './components/contracts/ContractPayrollManager';
-import { TimetableManager } from './components/schedules/TimetableManager';
-import { ClassAttendanceManager } from './components/classes/ClassAttendanceManager';
-import { TuitionManager } from './components/tuition/TuitionManager';
+import { AuthProvider } from './core/context/AuthContext';
+import { AppLayout } from './core/layout/AppLayout';
+
+// Independent Domain Modules
+import DashboardModule from './modules/dashboard';
+import ContractsModule from './modules/contracts';
+import SchedulesModule from './modules/schedules';
+import AttendanceModule from './modules/attendance';
+import TuitionModule from './modules/tuition';
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  const renderContent = () => {
+  const renderModule = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardOverview setActiveTab={setActiveTab} />;
+        return <DashboardModule setActiveTab={setActiveTab} />;
       case 'contracts':
-        return <ContractPayrollManager />;
-      case 'timetable':
-        return <TimetableManager />;
-      case 'classes':
-        return <ClassAttendanceManager />;
+        return <ContractsModule />;
+      case 'schedules':
+        return <SchedulesModule />;
+      case 'attendance':
+        return <AttendanceModule />;
       case 'tuition':
-        return <TuitionManager />;
+        return <TuitionModule />;
       default:
-        return <DashboardOverview setActiveTab={setActiveTab} />;
+        return <DashboardModule setActiveTab={setActiveTab} />;
     }
   };
 
   return (
     <AppLayout activeTab={activeTab} setActiveTab={setActiveTab}>
-      {renderContent()}
+      {renderModule()}
     </AppLayout>
   );
 }

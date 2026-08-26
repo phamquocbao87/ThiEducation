@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Table, Tag, Card, Button, Space, Typography, Tabs, Modal, Form, Input, InputNumber, Select, Row, Col, Statistic, message, Popconfirm } from 'antd';
-import { FileTextOutlined, DollarOutlined, PlusOutlined, CheckOutlined, PrinterOutlined, EditOutlined } from '@ant-design/icons';
-import { MOCK_CONTRACTS, MOCK_PAYROLLS, MOCK_TEACHERS } from '../../data/mockData';
-import { useAuth } from '../../context/AuthContext';
+import { Table, Tag, Card, Button, Space, Typography, Tabs, Modal, Form, Input, InputNumber, Select, Row, Col, Statistic, message } from 'antd';
+import { FileTextOutlined, DollarOutlined, PlusOutlined, CheckOutlined, PrinterOutlined } from '@ant-design/icons';
+import { MOCK_CONTRACTS, MOCK_PAYROLLS } from '../../shared/data/mockData';
+import { formatCurrency } from '../../shared/utils/formatter';
+import { useAuth } from '../../core/context/AuthContext';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -14,10 +15,6 @@ export const ContractPayrollManager = () => {
   const [isPaySlipModalOpen, setIsPaySlipModalOpen] = useState(false);
   const [selectedPaySlip, setSelectedPaySlip] = useState(null);
   const [form] = Form.useForm();
-
-  const formatCurrency = (val) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
-  };
 
   const handleApprovePayroll = (id) => {
     setPayrolls((prev) =>
@@ -48,7 +45,6 @@ export const ContractPayrollManager = () => {
     setIsPaySlipModalOpen(true);
   };
 
-  // Columns for Contracts Table
   const contractColumns = [
     { title: 'Mã HĐ', dataIndex: 'id', key: 'id', render: (text) => <Text strong>{text}</Text> },
     { title: 'Giáo Viên', dataIndex: 'teacherName', key: 'teacherName', render: (text) => <Text strong color="#1890ff">{text}</Text> },
@@ -79,7 +75,6 @@ export const ContractPayrollManager = () => {
     },
   ];
 
-  // Columns for Payrolls Table
   const payrollColumns = [
     { title: 'Mã Phiếu', dataIndex: 'id', key: 'id' },
     { title: 'Giáo Viên', dataIndex: 'teacherName', key: 'teacherName', render: (text) => <Text strong>{text}</Text> },
@@ -142,7 +137,6 @@ export const ContractPayrollManager = () => {
         )}
       </Row>
 
-      {/* Summary Statistics */}
       <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
         <Col xs={24} sm={8}>
           <Card bodyStyle={{ padding: 16 }}>
@@ -203,7 +197,6 @@ export const ContractPayrollManager = () => {
         ]}
       />
 
-      {/* Modal Add Contract */}
       <Modal
         title="Tạo Hợp Đồng Giáo Viên Mới"
         open={isContractModalOpen}
@@ -236,7 +229,6 @@ export const ContractPayrollManager = () => {
         </Form>
       </Modal>
 
-      {/* Modal PaySlip Preview */}
       <Modal
         title={<Space><PrinterOutlined /><Text strong>Phiếu Lương Chi Tiết Giáo Viên</Text></Space>}
         open={isPaySlipModalOpen}

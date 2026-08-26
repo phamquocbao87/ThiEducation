@@ -1,22 +1,17 @@
 import React, { useState } from 'react';
-import { Table, Tag, Card, Button, Space, Typography, Row, Col, Statistic, Input, Select, Modal, Form, message, Badge } from 'antd';
+import { Table, Tag, Card, Button, Space, Typography, Row, Col, Statistic, Input, Select, Modal, message, Badge } from 'antd';
 import { DollarOutlined, CheckCircleOutlined, BellOutlined, SearchOutlined, CreditCardOutlined, PhoneOutlined } from '@ant-design/icons';
-import { MOCK_STUDENTS, INITIAL_STATS } from '../../data/mockData';
-import { useAuth } from '../../context/AuthContext';
+import { MOCK_STUDENTS, INITIAL_STATS } from '../../shared/data/mockData';
+import { formatCurrency } from '../../shared/utils/formatter';
 
 const { Title, Text } = Typography;
 
 export const TuitionManager = () => {
-  const { currentUser } = useAuth();
   const [students, setStudents] = useState(MOCK_STUDENTS);
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
-
-  const formatCurrency = (val) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
-  };
 
   const handleConfirmPayment = (studentId) => {
     setStudents((prev) =>
@@ -106,7 +101,6 @@ export const TuitionManager = () => {
         </Col>
       </Row>
 
-      {/* Tuition Stat Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
         <Col xs={24} sm={8}>
           <Card bodyStyle={{ padding: 16 }}>
@@ -142,7 +136,6 @@ export const TuitionManager = () => {
         </Col>
       </Row>
 
-      {/* Search & Filter Controls */}
       <Card bodyStyle={{ padding: 12 }} style={{ marginBottom: 16 }}>
         <Row gutter={[12, 12]} justify="space-between">
           <Col xs={24} sm={12}>
@@ -180,7 +173,6 @@ export const TuitionManager = () => {
         pagination={{ pageSize: 5 }}
       />
 
-      {/* Payment Confirmation Modal */}
       <Modal
         title={`Xác Nhận Nộp Học Phí - ${selectedStudent?.name}`}
         open={isPaymentModalOpen}
