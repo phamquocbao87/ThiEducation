@@ -10,7 +10,10 @@ import {
   CalendarOutlined,
   SmileOutlined,
   ThunderboltOutlined,
-  FileDoneOutlined
+  FileDoneOutlined,
+  VideoCameraOutlined,
+  PlayCircleOutlined,
+  LinkOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../core/context/AuthContext';
 import { INITIAL_STATS, MOCK_ATTENDANCES, MOCK_TIMETABLE } from '../../shared/data/mockData';
@@ -28,14 +31,14 @@ export const DashboardView = ({ setActiveTab }) => {
         message={`Xin chào, ${currentUser.name}!`}
         description={
           role === 'admin'
-            ? 'Chào mừng bạn đến với Hệ thống Quản lý Giáo dục ThiEducation (Quy mô: 520 Học viên, 68 Cán bộ/GV).'
+            ? 'Chào mừng bạn đến với Hệ thống Quản lý Giáo dục Trực tuyến ThiEducation (Quy mô: 520 Học viên Online, 68 Cán bộ/GV).'
             : role === 'teacher'
-            ? 'Chào mừng thầy/cô. Bạn có 2 tiết dạy hôm nay. Hãy cập nhật điểm danh và nhận xét tiết học nhé.'
-            : 'Chào mừng bạn trở lại! Kiểm tra thời khóa biểu và lịch nộp học phí mới nhất tại đây.'
+            ? 'Chào mừng thầy/cô. Bạn có 2 lớp học Online hôm nay. Hãy sẵn sàng mở phòng Zoom/Meet và cập nhật video ghi hình bài giảng nhé.'
+            : 'Chào mừng bạn trở lại! Kiểm tra thời khóa biểu Online và bấm nút "Vào Lớp Online" để học ngay.'
         }
         type="info"
         showIcon
-        icon={<SmileOutlined />}
+        icon={<VideoCameraOutlined style={{ color: '#1890ff' }} />}
         style={{ marginBottom: 24, borderRadius: 8, background: '#e6f7ff', borderColor: '#91d5ff' }}
       />
 
@@ -45,19 +48,19 @@ export const DashboardView = ({ setActiveTab }) => {
             <Col xs={24} sm={12} lg={6}>
               <Card hoverable style={{ borderColor: '#1890ff', borderRadius: 8 }}>
                 <Statistic
-                  title="Tổng Học Viên"
+                  title="Tổng Học Viên Online"
                   value={INITIAL_STATS.totalStudents}
                   prefix={<TeamOutlined style={{ color: '#1890ff', marginRight: 8 }} />}
                   suffix="em"
                   valueStyle={{ color: '#1890ff', fontWeight: 'bold' }}
                 />
-                <Text type="secondary" style={{ fontSize: 12 }}>Đang theo học tại 28 lớp</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>Đang học tại 28 lớp trực tuyến</Text>
               </Card>
             </Col>
             <Col xs={24} sm={12} lg={6}>
               <Card hoverable style={{ borderColor: '#52c41a', borderRadius: 8 }}>
                 <Statistic
-                  title="Cán Bộ & Giáo Viên"
+                  title="Giáo Viên Giảng Dạy Online"
                   value={INITIAL_STATS.totalTeachers}
                   prefix={<UserOutlined style={{ color: '#52c41a', marginRight: 8 }} />}
                   suffix="thầy/cô"
@@ -103,12 +106,12 @@ export const DashboardView = ({ setActiveTab }) => {
                   </Col>
                   <Col span={12}>
                     <Button block icon={<CalendarOutlined />} onClick={() => setActiveTab('schedules')} style={{ height: 48, borderRadius: 6 }}>
-                      Thời Khóa Biểu
+                      Thời Khóa Biểu Online
                     </Button>
                   </Col>
                   <Col span={12}>
                     <Button block icon={<TeamOutlined />} onClick={() => setActiveTab('attendance')} style={{ height: 48, borderRadius: 6 }}>
-                      Điểm Danh Lớp
+                      Điểm Danh & Recording
                     </Button>
                   </Col>
                   <Col span={12}>
@@ -121,14 +124,22 @@ export const DashboardView = ({ setActiveTab }) => {
             </Col>
 
             <Col xs={24} lg={12}>
-              <Card title={<Space><BookOutlined style={{ color: '#1890ff' }} /><Text strong>Đánh Giá Chất Lượng Dạy Học Mới Nhất</Text></Space>}>
+              <Card title={<Space><VideoCameraOutlined style={{ color: '#1890ff' }} /><Text strong>Đánh Giá Chất Lượng Dạy Online Mới Nhất</Text></Space>}>
                 <List
                   itemLayout="horizontal"
                   dataSource={MOCK_ATTENDANCES}
                   renderItem={(item) => (
-                    <List.Item>
+                    <List.Item
+                      actions={[
+                        item.recordingUrl ? (
+                          <Button size="small" type="link" icon={<PlayCircleOutlined />} onClick={() => window.open(item.recordingUrl, '_blank')}>
+                            Xem Recording
+                          </Button>
+                        ) : null
+                      ]}
+                    >
                       <List.Item.Meta
-                        avatar={<Avatar icon={<BookOutlined />} style={{ backgroundColor: '#1890ff' }} />}
+                        avatar={<Avatar icon={<VideoCameraOutlined />} style={{ backgroundColor: '#722ed1' }} />}
                         title={
                           <Space>
                             <Text strong>{item.className}</Text>
@@ -140,7 +151,7 @@ export const DashboardView = ({ setActiveTab }) => {
                           <div>
                             <Text style={{ fontSize: 13, color: '#595959' }}>{item.teacherFeedback}</Text>
                             <div style={{ marginTop: 4 }}>
-                              <Badge status="success" text={`Hiện diện: ${item.presentCount}/${item.totalStudents}`} />
+                              <Badge status="success" text={`Hiện diện trong phòng: ${item.presentCount}/${item.totalStudents}`} />
                               <Text type="secondary" style={{ fontSize: 11, marginLeft: 12 }}>{item.date}</Text>
                             </div>
                           </div>
@@ -161,7 +172,7 @@ export const DashboardView = ({ setActiveTab }) => {
             <Col xs={24} sm={8}>
               <Card hoverable style={{ borderColor: '#1890ff', borderRadius: 8 }}>
                 <Statistic
-                  title="Số Tiết Đã Dạy (Tháng 8)"
+                  title="Số Tiết Dạy Online (Tháng 8)"
                   value={46}
                   prefix={<ClockCircleOutlined style={{ color: '#1890ff', marginRight: 8 }} />}
                   suffix="tiết"
@@ -185,7 +196,7 @@ export const DashboardView = ({ setActiveTab }) => {
             <Col xs={24} sm={8}>
               <Card hoverable style={{ borderColor: '#722ed1', borderRadius: 8 }}>
                 <Statistic
-                  title="Lớp Phụ Trách"
+                  title="Lớp Online Phụ Trách"
                   value={3}
                   prefix={<TeamOutlined style={{ color: '#722ed1', marginRight: 8 }} />}
                   suffix="lớp"
@@ -198,13 +209,16 @@ export const DashboardView = ({ setActiveTab }) => {
 
           <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
             <Col xs={24} lg={14}>
-              <Card title={<Space><CalendarOutlined /><Text strong>Lịch Dạy Hôm Nay & Điểm Danh</Text></Space>}>
+              <Card title={<Space><CalendarOutlined /><Text strong>Lịch Dạy Online Hôm Nay & Phòng Học</Text></Space>}>
                 <List
                   dataSource={MOCK_TIMETABLE.slice(0, 3)}
                   renderItem={(item) => (
                     <List.Item
                       actions={[
-                        <Button type="primary" size="small" onClick={() => setActiveTab('attendance')}>
+                        <Button type="primary" size="small" icon={<LinkOutlined />} style={{ background: '#52c41a', borderColor: '#52c41a' }} onClick={() => window.open(item.meetingLink, '_blank')}>
+                          Mở Phòng Học
+                        </Button>,
+                        <Button size="small" onClick={() => setActiveTab('attendance')}>
                           Điểm danh
                         </Button>
                       ]}
@@ -212,7 +226,7 @@ export const DashboardView = ({ setActiveTab }) => {
                       <List.Item.Meta
                         avatar={<Tag color="volcano">{item.timeSlot}</Tag>}
                         title={<Text strong>{item.className} ({item.subject})</Text>}
-                        description={`Phòng học: ${item.room} | Trạng thái: ${item.status}`}
+                        description={`Nền tảng: ${item.platform} | Trạng thái: ${item.status}`}
                       />
                     </List.Item>
                   )}
@@ -222,7 +236,7 @@ export const DashboardView = ({ setActiveTab }) => {
             <Col xs={24} lg={10}>
               <Card title={<Space><FileDoneOutlined /><Text strong>Thông Tin Hợp Đồng Cá Nhân</Text></Space>}>
                 <Paragraph><Text strong>Mã hợp đồng:</Text> HD-2025-01</Paragraph>
-                <Paragraph><Text strong>Loại HĐ:</Text> Toàn thời gian (Cố định 40 tiết/tháng)</Paragraph>
+                <Paragraph><Text strong>Loại HĐ:</Text> Toàn thời gian (Giảng dạy Trực tuyến)</Paragraph>
                 <Paragraph><Text strong>Đơn giá tiết dạy:</Text> 350.000 VNĐ / tiết</Paragraph>
                 <Paragraph><Text strong>Thưởng hiệu quả:</Text> +1.500.000 VNĐ (Tháng 8)</Paragraph>
                 <Button type="dashed" block onClick={() => setActiveTab('contracts')}>Xem chi tiết bảng lương</Button>
@@ -238,12 +252,12 @@ export const DashboardView = ({ setActiveTab }) => {
             <Col xs={24} sm={8}>
               <Card hoverable style={{ borderColor: '#1890ff', borderRadius: 8 }}>
                 <Statistic
-                  title="Lớp Đăng Ký"
+                  title="Lớp Online Đăng Ký"
                   value="10A1"
                   prefix={<BookOutlined style={{ color: '#1890ff', marginRight: 8 }} />}
                   valueStyle={{ color: '#1890ff', fontWeight: 'bold' }}
                 />
-                <Text type="secondary">Toán Chuyên nâng cao</Text>
+                <Text type="secondary">Toán Chuyên Online</Text>
               </Card>
             </Col>
             <Col xs={24} sm={8}>
@@ -255,7 +269,7 @@ export const DashboardView = ({ setActiveTab }) => {
                   prefix={<CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />}
                   valueStyle={{ color: '#52c41a', fontWeight: 'bold' }}
                 />
-                <Tag color="green" style={{ marginTop: 4 }}>Đi học đầy đủ 100%</Tag>
+                <Tag color="green" style={{ marginTop: 4 }}>Tham gia đầy đủ 100%</Tag>
               </Card>
             </Col>
             <Col xs={24} sm={8}>
@@ -274,15 +288,21 @@ export const DashboardView = ({ setActiveTab }) => {
 
           <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
             <Col xs={24} lg={12}>
-              <Card title={<Space><CalendarOutlined /><Text strong>Lịch Học Trong Tuần</Text></Space>}>
+              <Card title={<Space><CalendarOutlined /><Text strong>Lịch Học Online & Vào Phòng Học</Text></Space>}>
                 <List
                   dataSource={MOCK_TIMETABLE.filter((t) => t.className.includes('10A1'))}
                   renderItem={(item) => (
-                    <List.Item>
+                    <List.Item
+                      actions={[
+                        <Button type="primary" size="small" icon={<LinkOutlined />} style={{ background: '#52c41a', borderColor: '#52c41a' }} onClick={() => window.open(item.meetingLink, '_blank')}>
+                          Vào Lớp Online
+                        </Button>
+                      ]}
+                    >
                       <List.Item.Meta
                         avatar={<Tag color="blue">{item.day}</Tag>}
                         title={<Text strong>{item.subject} - {item.timeSlot}</Text>}
-                        description={`Giáo viên: ${item.teacherName} | Phòng: ${item.room}`}
+                        description={`Giáo viên: ${item.teacherName} | Nền tảng: ${item.platform}`}
                       />
                     </List.Item>
                   )}
@@ -290,12 +310,14 @@ export const DashboardView = ({ setActiveTab }) => {
               </Card>
             </Col>
             <Col xs={24} lg={12}>
-              <Card title={<Space><SmileOutlined /><Text strong>Nhận Xét Của Giáo Viên</Text></Space>}>
+              <Card title={<Space><SmileOutlined /><Text strong>Nhận Xét Của Giáo Viên & Video Ghi Hình</Text></Space>}>
                 <Paragraph style={{ background: '#f6ffed', padding: 12, borderRadius: 6, border: '1px solid #b7eb8f' }}>
                   <Text strong color="green">Thầy Nguyễn Văn Hùng (Môn Toán):</Text><br />
-                  "Em Khoa học rất chăm chỉ, phát biểu hăng hái và hoàn thành xuất sắc các bài toán nâng cao hình học không gian."
+                  "Em Khoa học rất chăm chỉ, phát biểu hăng hái qua Mic & Chatbox và hoàn thành xuất sắc các bài toán nâng cao."
                 </Paragraph>
-                <Button type="primary" block onClick={() => setActiveTab('tuition')}>Xem lịch sử đóng học phí</Button>
+                <Button type="primary" block icon={<PlayCircleOutlined />} onClick={() => window.open('https://drive.google.com/file/d/zoom-rec-10a1-aug25', '_blank')}>
+                  Xem Video Ghi Hình Bài Giảng Mới Nhất
+                </Button>
               </Card>
             </Col>
           </Row>

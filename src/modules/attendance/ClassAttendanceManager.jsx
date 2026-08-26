@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Table, Tag, Card, Button, Space, Typography, Row, Col, Modal, Form, Rate, Input, Switch, message, Avatar, Rate as AntRate } from 'antd';
-import { CheckOutlined, UserOutlined } from '@ant-design/icons';
+import { CheckOutlined, UserOutlined, VideoCameraOutlined, PlayCircleOutlined, LinkOutlined } from '@ant-design/icons';
 import { MOCK_CLASSES, MOCK_ATTENDANCES } from '../../shared/data/mockData';
 import { useAuth } from '../../core/context/AuthContext';
 
@@ -46,40 +46,51 @@ export const ClassAttendanceManager = () => {
       presentCount: presentCount + (selectedClass.totalStudents - studentAttendanceList.length),
       absentCount: absentCount,
       qualityRating: values.qualityRating || 5,
-      teacherFeedback: values.teacherFeedback || 'Tiết học đạt chất lượng tốt, học viên đi học đúng giờ.',
+      teacherFeedback: values.teacherFeedback || 'Tiết học Online đạt chất lượng tương tác tốt.',
+      recordingUrl: values.recordingUrl || selectedClass.recordingUrl,
     };
 
     setAttendances([newRecord, ...attendances]);
     setIsAttendanceModalOpen(false);
     form.resetFields();
-    message.success(`Đã lưu điểm danh & đánh giá chất lượng tiết học ${selectedClass.name}!`);
+    message.success(`Đã lưu điểm danh & đính kèm link video ghi hình cho ${selectedClass.name}!`);
   };
 
   const attendanceColumns = [
     { title: 'Ngày Buổi Học', dataIndex: 'date', key: 'date', render: (text) => <Text strong>{text}</Text> },
-    { title: 'Lớp Học', dataIndex: 'className', key: 'className', render: (text) => <Text strong color="#1890ff">{text}</Text> },
+    { title: 'Lớp Học Online', dataIndex: 'className', key: 'className', render: (text) => <Text strong color="#1890ff">{text}</Text> },
     { title: 'Giáo Viên Dạy', dataIndex: 'teacherName', key: 'teacherName' },
     {
-      title: 'Điểm Danh',
+      title: 'Điểm Danh Online',
       key: 'attendance',
       render: (_, record) => (
         <Space>
-          <Tag color="green">Có mặt: {record.presentCount}</Tag>
+          <Tag color="green">Tham gia: {record.presentCount}</Tag>
           <Tag color={record.absentCount > 0 ? 'volcano' : 'default'}>Vắng: {record.absentCount}</Tag>
         </Space>
       ),
     },
     {
-      title: 'Đánh Giá Chất Lượng',
+      title: 'Chất Lượng Tương Tác',
       dataIndex: 'qualityRating',
       key: 'qualityRating',
       render: (rating) => <AntRate disabled defaultValue={rating} style={{ fontSize: 14 }} />,
     },
     {
-      title: 'Nhận Xét Của Giáo Viên',
-      dataIndex: 'teacherFeedback',
-      key: 'teacherFeedback',
-      render: (text) => <Text style={{ fontSize: 13, color: '#595959' }}>{text}</Text>,
+      title: 'Video Bài Giảng (Recording)',
+      key: 'recording',
+      render: (_, record) => (
+        record.recordingUrl ? (
+          <Button
+            size="small"
+            type="dashed"
+            icon={<PlayCircleOutlined style={{ color: '#ff4d4f' }} />}
+            onClick={() => window.open(record.recordingUrl, '_blank')}
+          >
+            Xem Video Ghi Hình
+          </Button>
+        ) : <Text type="secondary">Chưa tải lên</Text>
+      ),
     },
   ];
 
@@ -88,14 +99,14 @@ export const ClassAttendanceManager = () => {
       <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
         <Col>
           <Title level={3} style={{ margin: 0 }}>
-            Quản Lý Lớp Học, Điểm Danh & Chất Lượng Dạy Học
+            Quản Lý Lớp Học Online, Điểm Danh & Video Bài Giảng
           </Title>
-          <Text type="secondary">Điểm danh học viên nhanh chóng và nhập nhận xét đánh giá tiết dạy của Giáo viên.</Text>
+          <Text type="secondary">Quản lý phòng Zoom/Meet, điểm danh trực tuyến và lưu trữ Video Ghi hình bài giảng cho 520 học viên.</Text>
         </Col>
       </Row>
 
       <Title level={4} style={{ marginTop: 12, marginBottom: 12 }}>
-        Danh Sách Lớp Học Đang Hoạt Động (28 Lớp)
+        Danh Sách Lớp Trực Tuyến Đang Hoạt Động (28 Lớp)
       </Title>
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         {MOCK_CLASSES.map((cls) => (
@@ -103,42 +114,46 @@ export const ClassAttendanceManager = () => {
             <Card
               hoverable
               title={<Text strong style={{ color: '#1890ff' }}>{cls.name}</Text>}
-              extra={<Tag color="purple">{cls.room}</Tag>}
+              extra={<Tag color="purple"><VideoCameraOutlined /> {cls.platform}</Tag>}
               actions={[
-                <Button type="primary" size="small" icon={<CheckOutlined />} onClick={() => handleOpenModal(cls)}>
-                  Điểm Danh Buổi Học
+                <Button type="primary" size="small" icon={<LinkOutlined />} style={{ background: '#52c41a', borderColor: '#52c41a' }} onClick={() => window.open(cls.meetingLink, '_blank')}>
+                  Vào Lớp Online
+                </Button>,
+                <Button size="small" icon={<CheckOutlined />} onClick={() => handleOpenModal(cls)}>
+                  Điểm Danh
                 </Button>
               ]}
             >
               <Paragraph style={{ margin: 0 }}><Text strong>Giáo viên:</Text> {cls.teacherName}</Paragraph>
-              <Paragraph style={{ margin: 0 }}><Text strong>Sĩ số:</Text> {cls.totalStudents} học viên</Paragraph>
-              <Paragraph style={{ margin: 0 }}><Text strong>Lịch học:</Text> {cls.schedule}</Paragraph>
+              <Paragraph style={{ margin: 0 }}><Text strong>Sĩ số:</Text> {cls.totalStudents} học viên online</Paragraph>
+              <Paragraph style={{ margin: 0 }}><Text strong>Meeting ID:</Text> {cls.meetingId} (Pass: {cls.passcode})</Paragraph>
+              <Paragraph style={{ margin: 0 }}><Text strong>Lịch dạy:</Text> {cls.schedule}</Paragraph>
             </Card>
           </Col>
         ))}
       </Row>
 
       <Title level={4} style={{ marginBottom: 12 }}>
-        Nhật Ký Điểm Danh & Đánh Giá Chất Lượng Tiết Học
+        Nhật Ký Điểm Danh & Link Video Ghi Hình Bài Giảng
       </Title>
       <Table
         columns={attendanceColumns}
         dataSource={attendances}
         rowKey="id"
-        scroll={{ x: 800 }}
+        scroll={{ x: 850 }}
         pagination={{ pageSize: 5 }}
       />
 
       <Modal
-        title={`Điểm Danh & Nhận Xét Tiết Học - ${selectedClass?.name}`}
+        title={`Điểm Danh & Gửi Link Recording - ${selectedClass?.name}`}
         open={isAttendanceModalOpen}
         onCancel={() => setIsAttendanceModalOpen(false)}
         footer={null}
         width={600}
       >
-        <Form form={form} layout="vertical" onFinish={handleSubmitAttendance} initialValues={{ qualityRating: 5 }}>
+        <Form form={form} layout="vertical" onFinish={handleSubmitAttendance} initialValues={{ qualityRating: 5, recordingUrl: selectedClass?.recordingUrl }}>
           <Text strong style={{ display: 'block', marginBottom: 8 }}>
-            Danh sách điểm danh nhanh 1-Touch:
+            Xác nhận học viên đã tham gia phòng Online:
           </Text>
           <div style={{ background: '#fafafa', padding: 12, borderRadius: 8, marginBottom: 16, maxHeight: 200, overflowY: 'auto' }}>
             {studentAttendanceList.map((st) => (
@@ -153,7 +168,7 @@ export const ClassAttendanceManager = () => {
                 <Col>
                   <Space>
                     <Text style={{ fontSize: 12, color: st.present ? '#52c41a' : '#ff4d4f' }}>
-                      {st.present ? 'Có mặt' : 'Vắng mặt'}
+                      {st.present ? 'Có mặt trong phòng' : 'Vắng mặt'}
                     </Text>
                     <Switch checked={st.present} onChange={() => toggleStudent(st.id)} size="small" />
                   </Space>
@@ -162,19 +177,23 @@ export const ClassAttendanceManager = () => {
             ))}
           </div>
 
-          <Form.Item name="qualityRating" label="Đánh giá chất lượng tiết học (Sao)" rules={[{ required: true }]}>
+          <Form.Item name="qualityRating" label="Đánh giá chất lượng đường truyền & tương tác (Sao)" rules={[{ required: true }]}>
             <Rate />
           </Form.Item>
 
-          <Form.Item name="teacherFeedback" label="Nhận xét của Giáo viên về buổi học / học viên" rules={[{ required: true, message: 'Vui lòng nhập nhận xét' }]}>
-            <Input.TextArea rows={3} placeholder="Nhập nhận xét chi tiết (ví dụ: Lớp học sôi nổi, các em nắm bài tốt...)" />
+          <Form.Item name="recordingUrl" label="Đường link Video bài giảng đã ghi hình (Drive/Youtube/Cloud)">
+            <Input placeholder="https://drive.google.com/..." prefix={<PlayCircleOutlined style={{ color: '#ff4d4f' }} />} />
+          </Form.Item>
+
+          <Form.Item name="teacherFeedback" label="Nhận xét của Giáo viên về buổi học Online">
+            <Input.TextArea rows={3} placeholder="Nhập nhận xét chi tiết (ví dụ: Học viên tương tác tốt qua Chat & Mic, bài tập về nhà gửi qua Drive...)" />
           </Form.Item>
 
           <Form.Item>
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
               <Button onClick={() => setIsAttendanceModalOpen(false)}>Hủy</Button>
               <Button type="primary" htmlType="submit" icon={<CheckOutlined />}>
-                Lưu Điểm Danh & Nhận Xét
+                Lưu Điểm Danh & Video Recording
               </Button>
             </Space>
           </Form.Item>

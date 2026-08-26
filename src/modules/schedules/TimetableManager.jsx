@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Table, Tag, Card, Button, Space, Typography, Select, Row, Col, Modal, Form, Input, message } from 'antd';
-import { PlusOutlined, ClockCircleOutlined, HomeOutlined, UserOutlined } from '@ant-design/icons';
+import { PlusOutlined, ClockCircleOutlined, UserOutlined, VideoCameraOutlined, LinkOutlined } from '@ant-design/icons';
 import { MOCK_TIMETABLE, MOCK_TEACHERS } from '../../shared/data/mockData';
 import { useAuth } from '../../core/context/AuthContext';
 
@@ -21,13 +21,14 @@ export const TimetableManager = () => {
       className: values.className,
       subject: values.subject,
       teacherName: values.teacherName,
-      room: values.room,
+      platform: values.platform || 'Zoom Meeting',
+      meetingLink: values.meetingLink || 'https://zoom.us/j/123456789',
       status: 'Lên kế hoạch',
     };
     setTimetable([...timetable, newSlot]);
     setIsModalOpen(false);
     form.resetFields();
-    message.success('Thêm lịch dạy mới thành công!');
+    message.success('Thêm lịch dạy Online mới thành công!');
   };
 
   const filteredData = selectedDayFilter === 'ALL'
@@ -53,7 +54,7 @@ export const TimetableManager = () => {
       ),
     },
     {
-      title: 'Lớp Học',
+      title: 'Lớp Học Online',
       dataIndex: 'className',
       key: 'className',
       render: (text) => <Text strong color="#722ed1">{text}</Text>,
@@ -71,24 +72,29 @@ export const TimetableManager = () => {
       ),
     },
     {
-      title: 'Phòng Học',
-      dataIndex: 'room',
-      key: 'room',
-      render: (room) => (
+      title: 'Nền Tảng / Phòng Học',
+      dataIndex: 'platform',
+      key: 'platform',
+      render: (platform) => (
         <Space>
-          <HomeOutlined style={{ color: '#fa8c16' }} />
-          <Tag color="volcano">{room}</Tag>
+          <VideoCameraOutlined style={{ color: '#722ed1' }} />
+          <Tag color="purple">{platform}</Tag>
         </Space>
       ),
     },
     {
-      title: 'Trạng Thái',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => (
-        <Tag color={status === 'Đã hoàn thành' ? 'green' : status === 'Sắp diễn ra' ? 'gold' : 'blue'}>
-          {status}
-        </Tag>
+      title: 'Phòng Trực Tuyến',
+      key: 'action',
+      render: (_, record) => (
+        <Button
+          type="primary"
+          size="small"
+          icon={<LinkOutlined />}
+          style={{ background: '#52c41a', borderColor: '#52c41a' }}
+          onClick={() => window.open(record.meetingLink, '_blank')}
+        >
+          Vào Lớp Online
+        </Button>
       ),
     },
   ];
@@ -98,14 +104,14 @@ export const TimetableManager = () => {
       <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
         <Col>
           <Title level={3} style={{ margin: 0 }}>
-            Quản Lý Thời Khóa Biểu Giảng Dạy
+            Quản Lý Thời Khóa Biểu Lớp Học Online
           </Title>
-          <Text type="secondary">Lịch học và xếp phòng học trực quan dành cho Giáo viên và Học viên.</Text>
+          <Text type="secondary">Lịch giảng dạy trực tuyến (Zoom, Google Meet, MS Teams) dành cho Giáo viên & Học viên.</Text>
         </Col>
         {currentUser.role === 'admin' && (
           <Col>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-              Xếp Lịch Mới
+              Xếp Lịch Online Mới
             </Button>
           </Col>
         )}
@@ -136,12 +142,12 @@ export const TimetableManager = () => {
         columns={columns}
         dataSource={filteredData}
         rowKey="id"
-        scroll={{ x: 800 }}
+        scroll={{ x: 850 }}
         pagination={{ pageSize: 6 }}
       />
 
       <Modal
-        title="Thêm Khung Giờ Học Mới"
+        title="Thêm Lớp Học Online Mới"
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
@@ -164,7 +170,7 @@ export const TimetableManager = () => {
           </Form.Item>
 
           <Form.Item name="className" label="Tên Lớp Học" rules={[{ required: true }]}>
-            <Input placeholder="Ví dụ: 10A1 - Toán Chuyên" />
+            <Input placeholder="Ví dụ: 10A1 - Toán Chuyên Online" />
           </Form.Item>
 
           <Form.Item name="subject" label="Môn Học" rules={[{ required: true }]}>
@@ -175,14 +181,23 @@ export const TimetableManager = () => {
             <Select options={MOCK_TEACHERS.map(t => ({ value: t.name, label: `${t.name} (${t.subject})` }))} />
           </Form.Item>
 
-          <Form.Item name="room" label="Phòng Học" initialValue="P.301" rules={[{ required: true }]}>
-            <Input placeholder="Ví dụ: P.301 hoặc Lab 01" />
+          <Form.Item name="platform" label="Nền tảng Online" initialValue="Zoom Meeting" rules={[{ required: true }]}>
+            <Select options={[
+              { value: 'Zoom Meeting', label: 'Zoom Meeting' },
+              { value: 'Google Meet', label: 'Google Meet' },
+              { value: 'MS Teams', label: 'Microsoft Teams' },
+              { value: 'ClassIn', label: 'ClassIn' },
+            ]} />
+          </Form.Item>
+
+          <Form.Item name="meetingLink" label="Đường link phòng học Online (Meeting URL)" initialValue="https://zoom.us/j/123456789">
+            <Input placeholder="https://zoom.us/j/..." />
           </Form.Item>
 
           <Form.Item>
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
               <Button onClick={() => setIsModalOpen(false)}>Hủy</Button>
-              <Button type="primary" htmlType="submit">Lưu Thời Khóa Biểu</Button>
+              <Button type="primary" htmlType="submit">Lưu Thời Khóa Biểu Online</Button>
             </Space>
           </Form.Item>
         </Form>
