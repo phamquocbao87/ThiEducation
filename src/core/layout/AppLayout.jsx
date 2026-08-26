@@ -228,7 +228,7 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
           </Content>
 
           <Footer style={{ textAlign: 'center', color: '#8c8c8c', padding: '16px 0 0 0', fontSize: 13 }}>
-            ThiEducation ERP ©2026 — Feature-Based Modular Architecture (520 Học viên, 68 Cán bộ/GV)
+            ThiEducation ERP ©2026
           </Footer>
         </Layout>
       </Layout>
