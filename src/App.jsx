@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './core/context/AuthContext';
 import { AppLayout } from './core/layout/AppLayout';
+import { MODULE_SLUGS, getModuleFromSlug, getSlugFromModule } from './shared/utils/slug';
 
 // Independent Domain Modules
 import DashboardModule from './modules/dashboard';
@@ -9,29 +11,30 @@ import SchedulesModule from './modules/schedules';
 import AttendanceModule from './modules/attendance';
 import TuitionModule from './modules/tuition';
 
-function AppContent() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+function AppRoutes() {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const renderModule = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <DashboardModule setActiveTab={setActiveTab} />;
-      case 'contracts':
-        return <ContractsModule />;
-      case 'schedules':
-        return <SchedulesModule />;
-      case 'attendance':
-        return <AttendanceModule />;
-      case 'tuition':
-        return <TuitionModule />;
-      default:
-        return <DashboardModule setActiveTab={setActiveTab} />;
-    }
+  // Extract current module key from URL pathname slug
+  const currentPath = location.pathname.substring(1) || MODULE_SLUGS.dashboard;
+  const activeTab = getModuleFromSlug(currentPath);
+
+  const handleTabChange = (key) => {
+    const slug = getSlugFromModule(key);
+    navigate(`/${slug}`);
   };
 
   return (
-    <AppLayout activeTab={activeTab} setActiveTab={setActiveTab}>
-      {renderModule()}
+    <AppLayout activeTab={activeTab} setActiveTab={handleTabChange}>
+      <Routes>
+        <Route path="/" element={<Navigate to={`/${MODULE_SLUGS.dashboard}`} replace />} />
+        <Route path={`/${MODULE_SLUGS.dashboard}`} element={<DashboardModule setActiveTab={handleTabChange} />} />
+        <Route path={`/${MODULE_SLUGS.contracts}`} element={<ContractsModule />} />
+        <Route path={`/${MODULE_SLUGS.schedules}`} element={<SchedulesModule />} />
+        <Route path={`/${MODULE_SLUGS.attendance}`} element={<AttendanceModule />} />
+        <Route path={`/${MODULE_SLUGS.tuition}`} element={<TuitionModule />} />
+        <Route path="*" element={<Navigate to={`/${MODULE_SLUGS.dashboard}`} replace />} />
+      </Routes>
     </AppLayout>
   );
 }
@@ -39,7 +42,9 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
     </AuthProvider>
   );
 }
