@@ -1,6 +1,3 @@
-import React from 'react';
-import { DashboardView } from './DashboardView';
+import { DashboardPage } from './DashboardPage';
 
-export default function DashboardModule(props) {
-  return <DashboardView {...props} />;
-}
+export default DashboardPage;

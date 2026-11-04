@@ -1,6 +1,3 @@
-import React from 'react';
-import { ContractPayrollManager } from './ContractPayrollManager';
+import { ContractPayrollPage } from './ContractPayrollPage';
 
-export default function ContractsModule(props) {
-  return <ContractPayrollManager {...props} />;
-}
+export default ContractPayrollPage;

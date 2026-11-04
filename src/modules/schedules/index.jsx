@@ -1,6 +1,3 @@
-import React from 'react';
-import { TimetableManager } from './TimetableManager';
+import { SchedulePage } from './SchedulePage';
 
-export default function SchedulesModule(props) {
-  return <TimetableManager {...props} />;
-}
+export default SchedulePage;

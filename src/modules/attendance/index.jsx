@@ -1,6 +1,3 @@
-import React from 'react';
-import { ClassAttendanceManager } from './ClassAttendanceManager';
+import { AttendancePage } from './AttendancePage';
 
-export default function AttendanceModule(props) {
-  return <ClassAttendanceManager {...props} />;
-}
+export default AttendancePage;

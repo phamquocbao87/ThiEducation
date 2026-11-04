@@ -8,6 +8,10 @@
   background-color: #f5f7fa;
 }
 
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -44,3 +48,67 @@ body {
 .ant-layout-header {
   background: #001529 !important;
 }
+
+/* Landing Page 3D Depth & Subtle Animations */
+@keyframes lakFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes lakArrowPulse {
+  0%, 100% {
+    transform: translateX(0px);
+    opacity: 0.65;
+  }
+  50% {
+    transform: translateX(5px);
+    opacity: 1;
+  }
+}
+
+@keyframes lakShimmerBar {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.lak-float-img {
+  animation: lakFloat 4s ease-in-out infinite;
+}
+
+.lak-arrow-flow {
+  display: inline-flex;
+  animation: lakArrowPulse 1.8s ease-in-out infinite;
+}
+
+.lak-writing-step-card {
+  box-sizing: border-box;
+  position: relative;
+  border-radius: 16px;
+  padding: 20px 18px;
+  height: 100%;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+}
+
+.lak-writing-step-card:hover {
+  transform: translateY(-6px);
+}
+
+.lak-genre-card {
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lak-genre-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 14px 30px rgba(18, 43, 77, 0.12) !important;
+}
+

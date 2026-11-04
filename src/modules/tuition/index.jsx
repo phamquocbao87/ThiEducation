@@ -1,6 +1,3 @@
-import React from 'react';
-import { TuitionManager } from './TuitionManager';
+import { TuitionPage } from './TuitionPage';
 
-export default function TuitionModule(props) {
-  return <TuitionManager {...props} />;
-}
+export default TuitionPage;
