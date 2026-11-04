@@ -71,34 +71,52 @@ export const LandingHeaderHero = ({
             gap: 12,
           }}
         >
-          {/* Brand Logo */}
-          <Space
-            size={10}
-            style={{ cursor: 'pointer' }}
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          >
-            <img
-              src={LANDING_ASSETS.iconLaptopCap}
-              alt="LAK EDUCATION"
-              style={{ width: isMobile ? 34 : 38, height: isMobile ? 34 : 38, objectFit: 'contain' }}
-            />
-            <div>
-              <Text
+          {/* Left Group: Mobile Hamburger Button (Top-Left) + Brand Logo */}
+          <Space size={10}>
+            {isMobile && (
+              <Button
+                type="text"
+                icon={<MenuOutlined style={{ fontSize: 20, color: '#fff' }} />}
+                onClick={() => setMobileMenuOpen(true)}
                 style={{
-                  color: '#fff',
-                  fontSize: isMobile ? 16 : 19,
-                  fontWeight: 800,
-                  letterSpacing: '0.5px',
-                  display: 'block',
-                  lineHeight: 1.1,
+                  width: 38,
+                  height: 38,
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
-              >
-                LAK EDUCATION
-              </Text>
-              <Text style={{ color: '#7EC8F8', fontSize: isMobile ? 10 : 11, fontWeight: 600 }}>
-                McGraw-Hill Wonders ELA • GK – G5
-              </Text>
-            </div>
+              />
+            )}
+
+            <Space
+              size={10}
+              style={{ cursor: 'pointer' }}
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            >
+              <img
+                src={LANDING_ASSETS.iconLaptopCap}
+                alt="LAK EDUCATION"
+                style={{ width: isMobile ? 32 : 38, height: isMobile ? 32 : 38, objectFit: 'contain' }}
+              />
+              <div>
+                <Text
+                  style={{
+                    color: '#fff',
+                    fontSize: isMobile ? 15.5 : 19,
+                    fontWeight: 800,
+                    letterSpacing: '0.5px',
+                    display: 'block',
+                    lineHeight: 1.1,
+                  }}
+                >
+                  LAK EDUCATION
+                </Text>
+                <Text style={{ color: '#7EC8F8', fontSize: isMobile ? 10 : 11, fontWeight: 600 }}>
+                  McGraw-Hill Wonders ELA • GK – G5
+                </Text>
+              </div>
+            </Space>
           </Space>
 
           {/* Desktop Navigation Menu */}
@@ -145,40 +163,42 @@ export const LandingHeaderHero = ({
             </Space>
           )}
 
-          {/* Mobile Controls: Language Switcher + Hamburger Slide Menu Button */}
+          {/* Right Group on Mobile: Language Switcher + Compact Login Button */}
           {isMobile && (
-            <Space size={8}>
+            <Space size={6}>
               <Segmented
                 size="small"
                 value={language}
                 onChange={onChangeLanguage}
                 options={[
-                  { label: '🇬🇧 EN', value: 'en' },
-                  { label: '🇻🇳 VI', value: 'vi' },
+                  { label: 'EN', value: 'en' },
+                  { label: 'VI', value: 'vi' },
                 ]}
                 style={{ fontWeight: 600 }}
               />
               <Button
                 type="primary"
-                ghost
-                icon={<MenuOutlined style={{ fontSize: 18, color: '#fff' }} />}
-                onClick={() => setMobileMenuOpen(true)}
+                size="small"
+                icon={<LoginOutlined />}
+                onClick={onOpenLoginModal}
                 style={{
-                  borderColor: 'rgba(126, 200, 248, 0.5)',
-                  borderRadius: 8,
-                  width: 38,
-                  height: 36,
+                  borderRadius: 16,
+                  fontWeight: 700,
+                  padding: '0 10px',
+                  height: 30,
                 }}
-              />
+              >
+                {language === 'en' ? 'Login' : 'Đăng nhập'}
+              </Button>
             </Space>
           )}
         </div>
       </div>
 
-      {/* Mobile Slide-Out Drawer Menu */}
+      {/* Mobile Slide-Out Drawer Menu (Placement Left — Đồng bộ chuẩn AppLayout) */}
       <Drawer
-        placement="right"
-        width={290}
+        placement="left"
+        width={285}
         open={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
         closeIcon={<CloseOutlined style={{ color: '#fff', fontSize: 16 }} />}
