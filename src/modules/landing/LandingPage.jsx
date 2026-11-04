@@ -28,8 +28,8 @@ export const LandingPage = () => {
 
       message.success(
         language === 'en'
-          ? `Signed in successfully as ${user.name} (${user.role.toUpperCase()}). Redirecting to ERP Workspace...`
-          : `Đăng nhập thành công: ${user.name} (Vai trò: ${user.role.toUpperCase()}). Đang mở màn hình ERP tương ứng...`
+          ? `Welcome back, ${user.name}!`
+          : `Xin chào, ${user.name}!`
       );
 
       if (target.isExternalRedirect) {

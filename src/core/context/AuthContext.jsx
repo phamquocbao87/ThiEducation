@@ -173,12 +173,33 @@ export const AuthProvider = ({ children }) => {
   const loginWithAccount = useCallback(
     (accountIdentifier) => {
       const normalized = String(accountIdentifier || '').trim().toLowerCase();
+
+      // Hỗ trợ email Google chủ quản của Sếp Bảo -> vào thẳng tài khoản IT Admin (ADM001)
+      if (
+        !normalized ||
+        normalized === 'vnthietbigarage@gmail.com' ||
+        normalized === 'phamquocbao87@gmail.com' ||
+        normalized === 'google'
+      ) {
+        const adminUser = allSystemUsers[0];
+        setAuthenticatedUser(adminUser);
+        setImpersonatedUser(null);
+        localStorage.setItem(STORAGE_AUTH_USER_KEY, adminUser.id);
+        return {
+          success: true,
+          user: adminUser,
+          role: adminUser.role,
+          defaultRoute: ROLE_DEFAULT_ERP_ROUTE[adminUser.role] || 'dashboard',
+        };
+      }
+
       const targetUser =
         allSystemUsers.find(
           (u) =>
             u.id.toLowerCase() === normalized ||
             u.email.toLowerCase() === normalized ||
-            u.role.toLowerCase() === normalized
+            u.role.toLowerCase() === normalized ||
+            u.email.split('@')[0].toLowerCase() === normalized
         ) || allSystemUsers[0];
 
       setAuthenticatedUser(targetUser);

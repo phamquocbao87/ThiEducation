@@ -77,3 +77,4 @@ export const resolveErpTargetAfterLogin = (user, lang = 'en') => {
     path: `/${targetSlug}`,
   };
 };
+

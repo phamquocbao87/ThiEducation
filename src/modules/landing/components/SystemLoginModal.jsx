@@ -1,33 +1,42 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   Form,
   Input,
   Button,
-  Select,
-  Alert,
-  Space,
-  Tag,
-  Typography,
   Divider,
-  Avatar,
+  Typography,
+  Checkbox,
 } from 'antd';
 import {
-  LoginOutlined,
-  UserOutlined,
+  MailOutlined,
   LockOutlined,
-  SafetyCertificateOutlined,
-  ArrowRightOutlined,
+  LoginOutlined,
 } from '@ant-design/icons';
-import { useAuth } from '../../../core/context/AuthContext';
-import { PermissionService } from '../../../core/services/PermissionService';
-import {
-  ROLE_DEFAULT_ERP_ROUTE,
-  ROLE_WORKSPACE_DESCRIPTIONS,
-  SITE_DOMAINS,
-} from '../../../core/config/siteConfig';
+import { LANDING_ASSETS } from '../models/landing.model';
 
-const { Text } = Typography;
+const { Title, Text } = Typography;
+
+const GoogleColorIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 48 48" style={{ marginRight: 8, verticalAlign: 'middle' }}>
+    <path
+      fill="#FFC107"
+      d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"
+    />
+    <path
+      fill="#FF3D00"
+      d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"
+    />
+    <path
+      fill="#4CAF50"
+      d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"
+    />
+    <path
+      fill="#1976D2"
+      d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"
+    />
+  </svg>
+);
 
 export const SystemLoginModal = ({
   open,
@@ -35,26 +44,20 @@ export const SystemLoginModal = ({
   onCancel,
   onLoginSuccess,
 }) => {
-  const { allSystemUsers, authenticatedUser } = useAuth();
-  const [selectedUserId, setSelectedUserId] = useState(authenticatedUser?.id || 'ADM001');
+  const [form] = Form.useForm();
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
 
-  const selectedAccount = useMemo(() => {
-    return allSystemUsers.find((u) => u.id === selectedUserId) || allSystemUsers[0];
-  }, [allSystemUsers, selectedUserId]);
-
-  const roleMeta = PermissionService.ROLE_METADATA[selectedAccount.role] || {
-    color: 'blue',
-    shortLabel: selectedAccount.role.toUpperCase(),
+  const handleGoogleSignIn = () => {
+    setLoadingGoogle(true);
+    setTimeout(() => {
+      setLoadingGoogle(false);
+      onLoginSuccess('google');
+    }, 300);
   };
 
-  const targetSlug = ROLE_DEFAULT_ERP_ROUTE[selectedAccount.role] || 'dashboard';
-  const workspaceDesc =
-    (ROLE_WORKSPACE_DESCRIPTIONS[language] || ROLE_WORKSPACE_DESCRIPTIONS.en)[
-      selectedAccount.role
-    ] || '';
-
-  const handleFinishLogin = () => {
-    onLoginSuccess(selectedAccount.id);
+  const handleEmailSignIn = (values) => {
+    const emailInput = values.email?.trim() || 'admin@lakeducation.com';
+    onLoginSuccess(emailInput);
   };
 
   return (
@@ -62,115 +65,124 @@ export const SystemLoginModal = ({
       open={open}
       onCancel={onCancel}
       footer={null}
-      width={540}
-      title={
-        <Space>
-          <SafetyCertificateOutlined style={{ color: '#1890ff', fontSize: 20 }} />
-          <Text strong style={{ fontSize: 16 }}>
-            {language === 'en'
-              ? 'Login to LAK EDUCATION ERP Portal (erp.lakeducation.edu.vn)'
-              : 'Đăng Nhập Hệ Thống Vận Hành Nội Bộ (erp.lakeducation.edu.vn)'}
-          </Text>
-        </Space>
-      }
+      width={420}
+      centered
+      styles={{
+        body: { padding: '16px 8px 8px' },
+      }}
     >
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message={
-          language === 'en'
-            ? 'After signing in, the system automatically identifies your Role (Admin, Director, Academic, Teacher, Accountant, or Student) and directs you to your corresponding ERP workspace.'
-            : 'Sau khi đăng nhập thành công, hệ thống tự động xác định Vai trò (Role) của tài khoản và chuyển thẳng vào màn hình nghiệp vụ tương ứng bên hệ thống ERP nội bộ.'
-        }
-      />
+      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <img
+          src={LANDING_ASSETS.iconLaptopCap}
+          alt="LAK EDUCATION"
+          style={{ width: 52, height: 52, objectFit: 'contain', marginBottom: 10 }}
+        />
+        <Title level={3} style={{ margin: '0 0 4px 0', color: '#122B4D', fontWeight: 800 }}>
+          {language === 'en' ? 'Welcome Back' : 'Đăng Nhập'}
+        </Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>
+          {language === 'en'
+            ? 'Sign in to your LAK EDUCATION account'
+            : 'Đăng nhập vào tài khoản LAK EDUCATION của bạn'}
+        </Text>
+      </div>
 
-      <Form layout="vertical" onFinish={handleFinishLogin}>
+      {/* 1. Đăng nhập bằng Google */}
+      <Button
+        size="large"
+        block
+        loading={loadingGoogle}
+        onClick={handleGoogleSignIn}
+        style={{
+          height: 46,
+          borderRadius: 10,
+          fontWeight: 600,
+          fontSize: 15,
+          color: '#1f2937',
+          borderColor: '#d1d5db',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+        }}
+      >
+        <GoogleColorIcon />
+        <span>
+          {language === 'en' ? 'Continue with Google' : 'Đăng nhập bằng Google'}
+        </span>
+      </Button>
+
+      <Divider plain style={{ margin: '20px 0' }}>
+        <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase' }}>
+          {language === 'en' ? 'or sign in with email' : 'hoặc đăng nhập bằng email'}
+        </Text>
+      </Divider>
+
+      {/* 2. Đăng nhập bằng Email / Password */}
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{
+          email: 'admin@lakeducation.com',
+          password: 'lakeducation2026',
+          remember: true,
+        }}
+        onFinish={handleEmailSignIn}
+        requiredMark={false}
+      >
         <Form.Item
-          label={
-            <Text strong>
-              {language === 'en'
-                ? 'Select Account to Sign In (All 16 System Users across 6 Roles)'
-                : 'Chọn Tài Khoản Đăng Nhập (16 Tài khoản thuộc 6 Vai trò)'}
-            </Text>
-          }
+          name="email"
+          label={<Text strong>{language === 'en' ? 'Email' : 'Email'}</Text>}
+          rules={[
+            {
+              required: true,
+              message: language === 'en' ? 'Please enter your email' : 'Vui lòng nhập email của bạn',
+            },
+          ]}
+          style={{ marginBottom: 16 }}
         >
-          <Select
-            size="large"
-            showSearch
-            optionFilterProp="searchLabel"
-            value={selectedUserId}
-            onChange={setSelectedUserId}
-            options={allSystemUsers.map((u) => {
-              const meta = PermissionService.ROLE_METADATA[u.role] || {
-                color: 'blue',
-                shortLabel: u.role.toUpperCase(),
-              };
-              return {
-                value: u.id,
-                searchLabel: `${u.name} ${u.id} ${u.email} ${u.role} ${u.roleLabel}`,
-                label: (
-                  <Space>
-                    <Tag color={meta.color} style={{ minWidth: 82, textAlign: 'center', margin: 0 }}>
-                      {meta.shortLabel}
-                    </Tag>
-                    <Text strong>{u.name}</Text>
-                    <Tag style={{ margin: 0 }}>{u.id}</Tag>
-                  </Space>
-                ),
-              };
-            })}
-          />
-        </Form.Item>
-
-        <Form.Item label={language === 'en' ? 'Email / Account ID' : 'Email / Mã đăng nhập'}>
           <Input
             size="large"
-            prefix={<UserOutlined />}
-            value={`${selectedAccount.email} (${selectedAccount.id})`}
-            readOnly
+            prefix={<MailOutlined style={{ color: '#9ca3af' }} />}
+            placeholder="name@lakeducation.com"
+            style={{ borderRadius: 10 }}
           />
         </Form.Item>
 
-        <Form.Item label={language === 'en' ? 'Password' : 'Mật khẩu'}>
+        <Form.Item
+          name="password"
+          label={<Text strong>{language === 'en' ? 'Password' : 'Mật khẩu'}</Text>}
+          rules={[
+            {
+              required: true,
+              message: language === 'en' ? 'Please enter your password' : 'Vui lòng nhập mật khẩu',
+            },
+          ]}
+          style={{ marginBottom: 14 }}
+        >
           <Input.Password
             size="large"
-            prefix={<LockOutlined />}
-            defaultValue="lakeducation2026"
+            prefix={<LockOutlined style={{ color: '#9ca3af' }} />}
+            placeholder="••••••••"
+            style={{ borderRadius: 10 }}
           />
         </Form.Item>
 
-        {/* Preview Box: Role Resolution & Target ERP Screen */}
         <div
           style={{
-            background: '#f0f8ff',
-            border: '1px solid #91caff',
-            borderRadius: 12,
-            padding: '12px 14px',
-            marginBottom: 16,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 20,
           }}
         >
-          <Space align="start" size={12}>
-            <Avatar src={selectedAccount.avatar} size={42} icon={<UserOutlined />} />
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                <Text strong style={{ color: '#122B4D' }}>{selectedAccount.name}</Text>
-                <Tag color={roleMeta.color} style={{ margin: 0, fontWeight: 700 }}>
-                  ROLE: {roleMeta.shortLabel}
-                </Tag>
-              </div>
-              <Text style={{ fontSize: 12.5, color: '#1d39c4', display: 'block', marginBottom: 4 }}>
-                <ArrowRightOutlined /> {workspaceDesc}
-              </Text>
-              <Text type="secondary" style={{ fontSize: 11.5 }}>
-                {language === 'en' ? 'Target ERP Route:' : 'Đích chuyển hướng ERP:'}{' '}
-                <code>{`${SITE_DOMAINS.ERP_PRODUCTION}/${targetSlug}`}</code>
-              </Text>
-            </div>
-          </Space>
+          <Form.Item name="remember" valuePropName="checked" noStyle>
+            <Checkbox>{language === 'en' ? 'Remember me' : 'Ghi nhớ đăng nhập'}</Checkbox>
+          </Form.Item>
+          <Button type="link" size="small" style={{ padding: 0 }}>
+            {language === 'en' ? 'Forgot password?' : 'Quên mật khẩu?'}
+          </Button>
         </div>
-
-        <Divider style={{ margin: '12px 0' }} />
 
         <Button
           type="primary"
@@ -181,13 +193,13 @@ export const SystemLoginModal = ({
           style={{
             height: 46,
             fontWeight: 700,
+            fontSize: 15,
             borderRadius: 10,
             background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
+            boxShadow: '0 6px 16px rgba(24, 144, 255, 0.35)',
           }}
         >
-          {language === 'en'
-            ? `Sign In as ${selectedAccount.name} (${roleMeta.shortLabel}) → Enter ERP`
-            : `Đăng Nhập (${selectedAccount.name} — ${roleMeta.shortLabel}) → Vào Hệ Thống ERP`}
+          {language === 'en' ? 'Sign In' : 'Đăng Nhập'}
         </Button>
       </Form>
     </Modal>
