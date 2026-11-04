@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { message } from 'antd';
 import { useAuth } from '../../core/context/AuthContext';
 import { useLanguage } from '../../core/context/LanguageContext';
+import { resolveErpTargetAfterLogin } from '../../core/config/siteConfig';
 import { LANDING_CONTENT } from './models/landing.model';
 import { LandingHeaderHero } from './components/LandingHeaderHero';
 import { LandingCurriculumStages } from './components/LandingCurriculumStages';
@@ -10,20 +12,32 @@ import { SystemLoginModal } from './components/SystemLoginModal';
 
 export const LandingPage = () => {
   const navigate = useNavigate();
-  const { impersonateAccount, exitImpersonation } = useAuth();
+  const { loginWithAccount } = useAuth();
   const { language, setLanguage } = useLanguage();
   const [loginModalOpen, setLoginModalOpen] = useState(false);
 
   const content = LANDING_CONTENT[language] || LANDING_CONTENT.en;
 
   const handleLoginSuccess = (targetUserId) => {
-    if (targetUserId === 'ADM001') {
-      exitImpersonation();
-    } else {
-      impersonateAccount(targetUserId);
-    }
+    const authResult = loginWithAccount(targetUserId);
     setLoginModalOpen(false);
-    navigate('/dashboard');
+
+    if (authResult.success) {
+      const { user } = authResult;
+      const target = resolveErpTargetAfterLogin(user, language);
+
+      message.success(
+        language === 'en'
+          ? `Signed in successfully as ${user.name} (${user.role.toUpperCase()}). Redirecting to ERP Workspace...`
+          : `Đăng nhập thành công: ${user.name} (Vai trò: ${user.role.toUpperCase()}). Đang mở màn hình ERP tương ứng...`
+      );
+
+      if (target.isExternalRedirect) {
+        window.location.href = target.url;
+      } else {
+        navigate(target.path);
+      }
+    }
   };
 
   return (

@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && vite build --config vite.landing.config.js && vite build --config vite.erp.config.js",
+    "build:landing": "vite build --config vite.landing.config.js",
+    "build:erp": "vite build --config vite.erp.config.js",
+    "deploy:landing": "npm run build:landing && firebase deploy --only hosting:landing",
+    "deploy:erp": "npm run build:erp && firebase deploy --only hosting:erp",
     "lint": "oxlint",
     "preview": "vite preview"
   },

@@ -32,10 +32,12 @@ import {
   RollbackOutlined,
   EyeOutlined,
   GlobalOutlined,
+  LogoutOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { PermissionService } from '../services/PermissionService';
+import { isProductionErpDomain, SITE_DOMAINS } from '../config/siteConfig';
 
 const { Header, Content, Sider, Footer } = Layout;
 const { Text, Title } = Typography;
@@ -47,6 +49,7 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
     isImpersonating,
     canImpersonateUsers,
     allSystemUsers,
+    logoutAccount,
     impersonateAccount,
     exitImpersonation,
   } = useAuth();
@@ -210,7 +213,7 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
           )}
 
           {!isMobile && (
-            <Space style={{ color: '#fff' }}>
+            <Space style={{ color: '#fff' }} size={10}>
               <Avatar src={currentUser.avatar} icon={<UserOutlined />} />
               <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
                 <Text style={{ color: '#fff', fontWeight: 600 }}>{currentUser.name}</Text>
@@ -218,6 +221,22 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
                   {localizedCurrentRoleLabel}
                 </Text>
               </div>
+              <Button
+                size="small"
+                danger
+                ghost
+                icon={<LogoutOutlined />}
+                onClick={() => {
+                  logoutAccount();
+                  if (isProductionErpDomain()) {
+                    window.location.href = SITE_DOMAINS.LANDING_PRODUCTION;
+                  } else {
+                    navigate('/');
+                  }
+                }}
+              >
+                {language === 'en' ? 'Logout' : 'Đăng xuất'}
+              </Button>
             </Space>
           )}
         </Space>
