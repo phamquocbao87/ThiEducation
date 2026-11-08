@@ -1,11 +1,18 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import pkg from './package.json' with { type: 'json' };
+
+const buildId = pkg.buildMeta?.buildId || '2026110801v';
 
 /**
  * Vite Build Configuration cho Site 1: lakeducation.edu.vn (Public Marketing & Ads Landing Page)
  * Kết quả xuất ra: dist/landing/ (Chỉ bundle LandingApp + Form Login, loại bỏ hoàn toàn 5 phân hệ ERP nặng)
  */
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version || '1.2.1'),
+    __BUILD_TIME__: JSON.stringify(buildId),
+  },
   plugins: [
     react(),
     {
@@ -26,5 +33,15 @@ export default defineConfig({
   build: {
     outDir: 'dist/landing',
     emptyOutDir: true,
+  },
+  server: {
+    proxy: {
+      '/google-upload': {
+        target: 'https://www.googleapis.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/google-upload/, ''),
+        secure: true,
+      },
+    },
   },
 });

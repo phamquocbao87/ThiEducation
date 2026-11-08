@@ -2,8 +2,8 @@ export const INITIAL_STATS = {
   totalStudents: 520,
   totalTeachers: 68,
   totalAcademicStaff: 8,
-  totalCourses: 6,
-  totalClasses: 28,
+  totalCourses: 0,
+  totalClasses: 0,
   monthlyTuitionCollected: 1250000000,
   monthlyTuitionPending: 180000000,
   monthlyPayrollTotal: 485000000,
@@ -36,17 +36,55 @@ export const MOCK_SYSTEM_HEALTH = {
 
 // Danh sách Khóa học (Courses) cho Director & Giáo vụ
 export const MOCK_COURSES = [
-  { id: 'KH-001', name: 'Native English Speaking Mastery', level: 'Intermediate B1-B2', durationWeeks: 12, feePerMonth: 2500000, activeClasses: 8, enrolledStudents: 145, status: 'Active' },
-  { id: 'KH-002', name: 'IELTS Intensive 6.5+ (100% Native)', level: 'Advanced B2-C1', durationWeeks: 16, feePerMonth: 3200000, activeClasses: 6, enrolledStudents: 112, status: 'Active' },
-  { id: 'KH-003', name: 'Phonics & Pronunciation Foundation', level: 'Elementary A2', durationWeeks: 10, feePerMonth: 2800000, activeClasses: 7, enrolledStudents: 138, status: 'Active' },
-  { id: 'KH-004', name: 'Kids Communication & Spelling Star', level: 'Young Learners', durationWeeks: 12, feePerMonth: 2400000, activeClasses: 7, enrolledStudents: 125, status: 'Active' },
+  {
+    id: 'KH-WONDERS-G1',
+    name: 'Wonders Grade 1 (G1) - Tiếng Anh Học Thuật & Tư Duy Phản Biện',
+    level: 'WONDERS-G1',
+    targetAge: '6 - 7 tuổi (Lớp 1 Tiểu học)',
+    durationMonths: 3,
+    durationWeeks: 12,
+    sessionsPerWeek: 2,
+    totalSessions: 24,
+    maxClassSize: 18,
+    feePerMonth: 2500000,
+    totalCourseFee: 7500000,
+    objectives: 'Phát triển toàn diện 4 kỹ năng ELA: Nhận diện âm vị chuẩn Phonics, nâng cao vốn từ vựng học thuật, đọc sâu văn bản văn học cổ điển và tự tin giao tiếp 100% với Giáo viên Bản Xứ qua Zoom.',
+    curriculumTextbooks: 'McGraw-Hill Wonders Literature Anthology G1 & Reading/Writing Companion',
+    prerequisites: 'Đã hoàn thành cấp độ Wonders GK hoặc đạt bài kiểm tra đánh giá năng lực 1-1 với giáo vụ',
+    format: '100% Native English Teacher (Zoom Cloud Meeting)',
+    activeClasses: 0,
+    enrolledStudents: 0,
+    status: 'Active',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'KH-WONDERS-G4',
+    name: 'Wonders Grade 4 (G4) - Đọc Sâu & Viết Luận Phân Tích',
+    level: 'WONDERS-G4',
+    targetAge: '9 - 10 tuổi (Lớp 4 Tiểu học)',
+    durationMonths: 6,
+    durationWeeks: 24,
+    sessionsPerWeek: 2,
+    totalSessions: 48,
+    maxClassSize: 16,
+    feePerMonth: 3200000,
+    totalCourseFee: 19200000,
+    objectives: 'Rèn luyện kỹ năng đọc sâu (Close Reading), tổng hợp đa nguồn thông tin, viết bài luận phân tích cấu trúc 4 bước và tranh biện bảo vệ luận điểm cá nhân chuẩn Common Core State Standards.',
+    curriculumTextbooks: 'McGraw-Hill Wonders Literature Anthology G4 & Reading/Writing Companion',
+    prerequisites: 'Đã hoàn thành cấp độ Wonders G3 hoặc đạt bài kiểm tra năng lực đầu vào B1',
+    format: '100% Native English Teacher (Zoom Cloud Meeting)',
+    activeClasses: 0,
+    enrolledStudents: 0,
+    status: 'Active',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
 ];
 
 // Danh sách Nhân viên Giáo vụ & Bảng lương Giáo vụ (cho Director & Kế toán)
 export const MOCK_ACADEMIC_STAFF = [
-  { id: 'ACA001', name: 'Trần Thu Hà', position: 'Trưởng nhóm Giáo vụ', managedClasses: 10, managedStudents: 195, completedTasks: 98, baseSalary: 14000000, kpiBonus: 3500000, totalSalary: 17500000, payrollStatus: 'APPROVED', month: '08/2026' },
-  { id: 'ACA002', name: 'Nguyễn Phương Thảo', position: 'Chuyên viên Giáo vụ & Xếp lịch', managedClasses: 9, managedStudents: 165, completedTasks: 95, baseSalary: 11000000, kpiBonus: 2500000, totalSalary: 13500000, payrollStatus: 'APPROVED', month: '08/2026' },
-  { id: 'ACA003', name: 'Võ Hoàng Nam', position: 'Giáo vụ Quản lý Chất lượng & CSKH', managedClasses: 9, managedStudents: 160, completedTasks: 92, baseSalary: 11000000, kpiBonus: 2000000, totalSalary: 13000000, payrollStatus: 'PENDING', month: '08/2026' },
+  { id: 'ACA001', name: 'Trần Thu Hà', gender: 'Nữ', dateOfBirth: '15/06/1992', phoneNumber: '0987654321', position: 'Trưởng nhóm Giáo vụ', managedClasses: 10, managedStudents: 195, completedTasks: 98, baseSalary: 14000000, kpiBonus: 3500000, totalSalary: 17500000, payrollStatus: 'APPROVED', month: '08/2026' },
+  { id: 'ACA002', name: 'Nguyễn Phương Thảo', gender: 'Nữ', dateOfBirth: '20/08/1994', phoneNumber: '0912345678', position: 'Chuyên viên Giáo vụ & Xếp lịch', managedClasses: 9, managedStudents: 165, completedTasks: 95, baseSalary: 11000000, kpiBonus: 2500000, totalSalary: 13500000, payrollStatus: 'APPROVED', month: '08/2026' },
+  { id: 'ACA003', name: 'Võ Hoàng Nam', gender: 'Nam', dateOfBirth: '10/11/1993', phoneNumber: '0938123456', position: 'Giáo vụ Quản lý Chất lượng & CSKH', managedClasses: 9, managedStudents: 160, completedTasks: 92, baseSalary: 11000000, kpiBonus: 2000000, totalSalary: 13000000, payrollStatus: 'PENDING', month: '08/2026' },
 ];
 
 // 100% Foreign Native Teachers
@@ -72,20 +110,9 @@ export const MOCK_PAYROLLS = [
   { id: 'PR-2026-08-05', teacherId: 'GV007', teacherName: 'Mr. Alex Ferguson', month: '08/2026', totalSessions: 40, ratePerSession: 550000, bonus: 3000000, deduction: 0, totalSalary: 25000000, status: 'APPROVED' },
 ];
 
-export const MOCK_CLASSES = [
-  { id: 'LH10A1', courseId: 'KH-001', name: 'Class 10A1 - Advanced English Speaking (Zoom)', teacherId: 'GV001', teacherName: 'Mr. David Smith', subject: 'English Communication', platform: 'Zoom Meeting', meetingLink: 'https://zoom.us/j/888999111', meetingId: '888 999 111', passcode: '123456', totalStudents: 35, schedule: 'Thứ 2, Thứ 4, Thứ 6 (07:30 - 09:30)', recordingUrl: 'https://drive.google.com/drive/folders/zoom-10a1', checkInStatus: 'CHECKED_IN', operationStatus: 'Đang học ổn định' },
-  { id: 'LH11B2', courseId: 'KH-002', name: 'Class 11B2 - IELTS Master 6.5+ (Zoom)', teacherId: 'GV002', teacherName: 'Ms. Emma Watson', subject: 'IELTS Intensive', platform: 'Zoom Meeting', meetingLink: 'https://zoom.us/j/999888777', meetingId: '999 888 777', passcode: '654321', totalStudents: 28, schedule: 'Thứ 3, Thứ 5, Thứ 7 (14:00 - 16:00)', recordingUrl: 'https://drive.google.com/drive/folders/zoom-11b2', checkInStatus: 'UPCOMING', operationStatus: 'Đang học ổn định' },
-  { id: 'LH12A1', courseId: 'KH-003', name: 'Class 12A1 - Phonics & Pronunciation (Zoom)', teacherId: 'GV003', teacherName: 'Mr. Michael Jordan', subject: 'Phonics & Pronunciation', platform: 'Zoom Meeting', meetingLink: 'https://zoom.us/j/777666555', meetingId: '777 666 555', passcode: '112233', totalStudents: 42, schedule: 'Thứ 2, Thứ 5 (18:00 - 20:00)', recordingUrl: 'https://drive.google.com/drive/folders/zoom-12a1', checkInStatus: 'UPCOMING', operationStatus: 'Cần trợ giảng hỗ trợ' },
-  { id: 'LH10C3', courseId: 'KH-004', name: 'Class 10C3 - Kids Communication & Spelling (Zoom)', teacherId: 'GV001', teacherName: 'Mr. David Smith', subject: 'Spelling & Vocabulary', platform: 'Zoom Meeting', meetingLink: 'https://zoom.us/j/555444333', meetingId: '555 444 333', passcode: '445566', totalStudents: 30, schedule: 'Thứ 3, Thứ 6 (18:00 - 20:00)', recordingUrl: 'https://drive.google.com/drive/folders/zoom-10c3', checkInStatus: 'UPCOMING', operationStatus: 'Đang học ổn định' },
-];
+export const MOCK_CLASSES = [];
 
-export const MOCK_TIMETABLE = [
-  { id: 'T01', day: 'Thứ 2', timeSlot: '07:30 - 09:30', classId: 'LH10A1', className: '10A1 - Advanced English Speaking', subject: 'English Communication', teacherId: 'GV001', teacherName: 'Mr. David Smith', platform: 'Zoom Meeting', meetingLink: 'https://zoom.us/j/888999111', status: 'CHECKED_IN' },
-  { id: 'T02', day: 'Thứ 2', timeSlot: '18:00 - 20:00', classId: 'LH12A1', className: '12A1 - Phonics & Pronunciation', subject: 'Phonics & Pronunciation', teacherId: 'GV003', teacherName: 'Mr. Michael Jordan', platform: 'Zoom Meeting', meetingLink: 'https://zoom.us/j/777666555', status: 'COMPLETED' },
-  { id: 'T03', day: 'Thứ 3', timeSlot: '14:00 - 16:00', classId: 'LH11B2', className: '11B2 - IELTS Master 6.5+', subject: 'IELTS Intensive', teacherId: 'GV002', teacherName: 'Ms. Emma Watson', platform: 'Zoom Meeting', meetingLink: 'https://zoom.us/j/999888777', status: 'UPCOMING' },
-  { id: 'T04', day: 'Thứ 3', timeSlot: '18:00 - 20:00', classId: 'LH10C3', className: '10C3 - Kids Communication & Spelling', subject: 'Spelling & Vocabulary', teacherId: 'GV001', teacherName: 'Mr. David Smith', platform: 'Zoom Meeting', meetingLink: 'https://zoom.us/j/555444333', status: 'UPCOMING' },
-  { id: 'T05', day: 'Thứ 4', timeSlot: '07:30 - 09:30', classId: 'LH10A1', className: '10A1 - Advanced English Speaking', subject: 'English Communication', teacherId: 'GV001', teacherName: 'Mr. David Smith', platform: 'Zoom Meeting', meetingLink: 'https://zoom.us/j/888999111', status: 'UPCOMING' },
-];
+export const MOCK_TIMETABLE = [];
 
 export const MOCK_STUDENTS = [
   { id: 'HV001', name: 'Lê Anh Khoa', englishName: 'Kevin Le', age: 15, level: 'B1 Intermediate', classId: 'LH10A1', className: '10A1 - Advanced English Speaking (Zoom)', teacherId: 'GV001', parentName: 'Lê Minh Trí', phone: '0901112223', email: 'khoa.le@student.lakeducation.com', tuitionStatus: 'PAID', amountDue: 2500000, attendanceRate: 100, pronunciationScore: 5, spellingScore: 5, seriousnessScore: 5, listeningScore: 4, latestTeacherNote: 'Khoa demonstrated excellent pronunciation on consonant clusters today. Active participation!' },

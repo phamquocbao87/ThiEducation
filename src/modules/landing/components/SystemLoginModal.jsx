@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   Form,
@@ -7,6 +7,8 @@ import {
   Divider,
   Typography,
   Checkbox,
+  message,
+  Alert,
 } from 'antd';
 import {
   MailOutlined,
@@ -14,6 +16,8 @@ import {
   LoginOutlined,
 } from '@ant-design/icons';
 import { LANDING_ASSETS } from '../models/landing.model';
+import { useAuth } from '../../../core/context/AuthContext';
+import { localizeSystemMessage } from '../../../core/i18n/i18n';
 
 const { Title, Text } = Typography;
 
@@ -45,19 +49,54 @@ export const SystemLoginModal = ({
   onLoginSuccess,
 }) => {
   const [form] = Form.useForm();
+  const { loginWithGoogle, loginWithEmail } = useAuth();
   const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [loadingEmail, setLoadingEmail] = useState(false);
+  const [authError, setAuthError] = useState('');
 
-  const handleGoogleSignIn = () => {
+  // Tự động chuyển đổi ngôn ngữ thông báo lỗi khi người dùng đổi ngôn ngữ EN / VI
+  useEffect(() => {
+    if (authError) {
+      setAuthError((prev) => localizeSystemMessage(prev, language));
+    }
+  }, [language]);
+
+  const handleGoogleSignIn = async () => {
     setLoadingGoogle(true);
-    setTimeout(() => {
+    setAuthError('');
+    try {
+      const result = await loginWithGoogle();
+      if (result && result.success) {
+        onLoginSuccess(result);
+      }
+    } catch (err) {
+      console.error('[Google SignIn Error]:', err);
+      const localizedError = localizeSystemMessage(err.message || 'Không thể đăng nhập bằng Google. Vui lòng thử lại.', language);
+      setAuthError(localizedError);
+      message.error(localizedError);
+    } finally {
       setLoadingGoogle(false);
-      onLoginSuccess('google');
-    }, 300);
+    }
   };
 
-  const handleEmailSignIn = (values) => {
-    const emailInput = values.email?.trim() || 'admin@lakeducation.com';
-    onLoginSuccess(emailInput);
+  const handleEmailSignIn = async (values) => {
+    setLoadingEmail(true);
+    setAuthError('');
+    try {
+      const email = values.email?.trim();
+      const password = values.password;
+      const result = await loginWithEmail(email, password);
+      if (result && result.success) {
+        onLoginSuccess(result);
+      }
+    } catch (err) {
+      console.error('[Email SignIn Error]:', err);
+      const localizedError = localizeSystemMessage(err.message || 'Tài khoản hoặc mật khẩu không đúng.', language);
+      setAuthError(localizedError);
+      message.error(localizedError);
+    } finally {
+      setLoadingEmail(false);
+    }
   };
 
   return (
@@ -86,6 +125,17 @@ export const SystemLoginModal = ({
             : 'Đăng nhập vào tài khoản LAK EDUCATION của bạn'}
         </Text>
       </div>
+
+      {authError && (
+        <Alert
+          type="error"
+          showIcon
+          message={authError}
+          style={{ marginBottom: 16 }}
+          closable
+          onClose={() => setAuthError('')}
+        />
+      )}
 
       {/* 1. Đăng nhập bằng Google */}
       <Button
@@ -123,8 +173,6 @@ export const SystemLoginModal = ({
         form={form}
         layout="vertical"
         initialValues={{
-          email: 'admin@lakeducation.com',
-          password: 'lakeducation2026',
           remember: true,
         }}
         onFinish={handleEmailSignIn}
@@ -189,6 +237,7 @@ export const SystemLoginModal = ({
           htmlType="submit"
           size="large"
           block
+          loading={loadingEmail}
           icon={<LoginOutlined />}
           style={{
             height: 46,

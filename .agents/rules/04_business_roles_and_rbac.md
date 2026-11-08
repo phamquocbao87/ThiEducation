@@ -72,4 +72,41 @@ Dự án **ThiEducation** vận hành theo mô hình **6 Vai Trò (Roles)** tác
    - Khi đang ở chế độ xem hộ (`isImpersonating === true`), hệ thống hiển thị thanh cảnh báo màu cam nổi bật trên cùng màn hình kèm nút **"Quay về màn hình IT Admin" (`exitImpersonation()`)**.
    - Các tài khoản khác (`director`, `academic`, `teacher`, `accountant`, `student`) khi đăng nhập thật sẽ có `canImpersonateUsers === false` và **tuyệt đối không nhìn thấy** công cụ chuyển đổi tài khoản này.
 
+---
+
+## 🛡️ 3. Cơ Chế Bảo Mật Tuyệt Đối 2 Tầng (Universal Route Guard & Zero-Implicit-Admin)
+
+1. **Tuyệt đối không tự gán ngầm quyền Admin:** Khi người dùng chưa đăng nhập, `authenticatedUser` bắt buộc là `null`, `isAuthenticated === false`. Tuyệt đối cấm fallback ngầm về `ADM001` khi chưa có session đăng nhập hợp lệ.
+2. **Tầng 1 (Authentication Guard):** Mọi URL nội bộ ERP (`/dashboard`, `/contracts-payroll`, `/user-management`, `/zoom-schedules`...) nếu người dùng chưa đăng nhập phải bị chặn ngay lập tức qua `ProtectedRoute` và tự động chuyển hướng về Landing Page `/?require_login=true`, bật modal đăng nhập.
+3. **Tầng 2 (RBAC Authorization Guard):** Khi đã đăng nhập, nếu vai trò không có quyền truy cập module (`!PermissionService.canAccessModule(role, moduleKey)`):
+   - Hiển thị màn hình chuẩn **`403 - Không Có Quyền Truy Cập`** (`Result status="403"`).
+   - Cung cấp nút điều hướng quay về Dashboard mặc định của vai trò đó (`ROLE_DEFAULT_ERP_ROUTE`).
+
+---
+
+## 👥 4. Phân Cấp Quản Trị Người Dùng & Bắt Buộc Ghi Vết Kiểm Toán (Audit Logging)
+
+1. **Admin (IT Root — Mặc định `phamquocbao87@gmail.com` / `ADM001`):**
+   - Toàn quyền tạo và kích hoạt/khóa tài khoản cho mọi vai trò: Giám đốc (`director`), Admin (`admin`), Giáo vụ (`academic`), Giáo viên (`teacher`), Kế toán (`accountant`), Học viên (`student`).
+   - Tài khoản Root Admin không thể bị vô hiệu hóa hoặc xóa bởi bất kỳ ai.
+2. **Giám Đốc (Director):**
+   - Có toàn quyền kích hoạt / khóa (`active / deactive`), chỉnh sửa hồ sơ và tạo mới 3 vai trò: Giáo vụ (`academic`), Giáo viên (`teacher`), Học viên (`student`).
+   - Không được phép can thiệp vào tài khoản IT Admin hoặc tài khoản của chính mình.
+3. **Giáo Vụ (Academic):**
+   - Chỉ được phép kích hoạt / khóa (`active / deactive`), chỉnh sửa hồ sơ và tạo mới 2 vai trò: Giáo viên (`teacher`), Học viên (`student`).
+   - **TUYỆT ĐỐI CẤM:** Không được phép active/deactive hay tạo tài khoản Admin, Giám đốc hoặc các tài khoản Giáo vụ khác.
+4. **Bắt buộc Ghi vết Kiểm toán (Audit Logging):**
+   - Mọi thao tác Tạo mới, Kích hoạt, Vô hiệu hóa tài khoản BẮT BUỘC ghi vào Collection **`user_audit_logs`** trên Cloud Firestore `lakeducationdb` (`actor`, `action`, `target`, `description`, `changes`, `createdAt`).
+
+---
+
+## 🏛️ 5. Mô Hình Đào Tạo Nghiệp Vụ Chuẩn (Courses & Classes Hierarchy)
+
+1. **Cấu trúc Khóa học & Lớp học:**
+   - **1 Khóa Học (`Course`):** Khung chương trình đào tạo chung theo tiêu chuẩn giáo trình McGraw-Hill Wonders (Mục tiêu, chuẩn đầu ra, thời lượng tháng, sĩ số tối đa 1 lớp, học phí niêm yết).
+   - **Nhiều Lớp Học (`Classes`):** Mỗi khóa học mở ra nhiều lớp học vận hành cụ thể (`courseId`). Mỗi lớp học có lịch học hàng tuần, sĩ số tối đa theo chuẩn khóa học, có **1 Giáo viên bản xứ phụ trách (`teacherId`)**, và danh sách nhiều học viên theo học (`studentIds`).
+2. **Tách biệt 2 Module Vận hành:**
+   - `src/modules/courses/` (`/courses-classes`): Quản lý danh mục Khóa học & Lớp học, tạo khóa học mới qua trang chuyên biệt `/courses-classes/new`.
+   - `src/modules/schedules/` (`/zoom-schedules`): Thời khóa biểu phòng học trực tuyến Live Zoom Calendar View.
+
 

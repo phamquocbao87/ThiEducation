@@ -201,6 +201,18 @@ export const VI_TO_EN_UI_LABELS = {
   'Chờ đóng phí': 'Pending Payment',
   'Quá hạn': 'Overdue',
   'Tất cả trạng thái': 'All Payment Statuses',
+
+  // 8. Authentication & System Alerts
+  'Tài khoản hoặc mật khẩu không đúng.': 'Incorrect email or password.',
+  'Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.': 'Sign in failed. Please check your credentials.',
+  'Đăng nhập thất bại': 'Sign in failed',
+  'Đăng nhập Google thất bại': 'Google sign-in failed',
+  'Không thể đăng nhập bằng Google. Vui lòng thử lại.': 'Unable to sign in with Google. Please try again.',
+  'Vui lòng nhập địa chỉ email của bạn.': 'Please enter your email address.',
+  'Vui lòng nhập mật khẩu.': 'Please enter your password.',
+  'Vui lòng nhập email của bạn': 'Please enter your email',
+  'Cập nhật thành công!': 'Updated successfully!',
+  'Lưu thay đổi thành công': 'Changes saved successfully',
 };
 
 // Tự động sinh bảng đảo ngược EN -> VI để chuyển qua lại tức thời
@@ -208,6 +220,72 @@ export const EN_TO_VI_UI_LABELS = Object.entries(VI_TO_EN_UI_LABELS).reduce((acc
   acc[en] = vi;
   return acc;
 }, {});
+
+/**
+ * Chuẩn hóa và bản địa hóa thông báo lỗi / thông báo hệ thống theo ngôn ngữ đang chọn
+ */
+export const localizeSystemMessage = (rawMessage, targetLanguage = 'en') => {
+  if (!rawMessage) return '';
+  const isEn = targetLanguage === 'en';
+  const msg = String(rawMessage).trim();
+
+  // Tra cứu trực tiếp từ điển UI Labels trước
+  if (isEn && VI_TO_EN_UI_LABELS[msg]) {
+    return VI_TO_EN_UI_LABELS[msg];
+  }
+  if (!isEn && EN_TO_VI_UI_LABELS[msg]) {
+    return EN_TO_VI_UI_LABELS[msg];
+  }
+
+  // Tra cứu theo ngữ cảnh xác thực (Auth & Security messages)
+  if (
+    msg.includes('mật khẩu') ||
+    msg.includes('password') ||
+    msg.includes('Tài khoản hoặc mật khẩu') ||
+    msg.includes('không chính xác') ||
+    msg.includes('invalid-credential') ||
+    msg.includes('wrong-password') ||
+    msg.includes('user-not-found')
+  ) {
+    return isEn ? 'Incorrect email or password.' : 'Tài khoản hoặc mật khẩu không đúng.';
+  }
+
+  if (msg.includes('chưa được đăng ký') || msg.includes('not registered') || msg.includes('UNREGISTERED')) {
+    return isEn
+      ? 'This account is not registered in the LAK EDUCATION system. Please contact the Academic staff or Administrator.'
+      : 'Tài khoản này chưa được đăng ký trong hệ thống LAK EDUCATION. Vui lòng liên hệ Giáo vụ hoặc Quản trị viên.';
+  }
+
+  if (msg.includes('vô hiệu hóa') || msg.includes('tạm khóa') || msg.includes('disabled')) {
+    return isEn
+      ? 'Your account has been disabled or suspended. Please contact the IT Administrator.'
+      : 'Tài khoản của bạn đã bị vô hiệu hóa hoặc tạm khóa. Vui lòng liên hệ IT Admin.';
+  }
+
+  if (msg.includes('bị xóa') || msg.includes('deleted')) {
+    return isEn
+      ? 'Your account has been deleted from the system. Please contact the IT Administrator.'
+      : 'Tài khoản của bạn đã bị xóa khỏi hệ thống. Vui lòng liên hệ IT Admin.';
+  }
+
+  if (msg.includes('không hỗ trợ đăng nhập qua Google') || msg.includes('email công vụ')) {
+    return isEn
+      ? 'This official organization email does not support Google Sign-In. Please sign in with Email and Password.'
+      : 'Tài khoản này là email công vụ, không hỗ trợ đăng nhập qua Google. Vui lòng đăng nhập bằng Email và Mật khẩu.';
+  }
+
+  if (msg.includes('đóng cửa sổ') || msg.includes('popup-closed-by-user')) {
+    return isEn
+      ? 'Google sign-in window was closed before completion.'
+      : 'Bạn đã đóng cửa sổ đăng nhập Google trước khi hoàn tất.';
+  }
+
+  if (msg.includes('mạng') || msg.includes('network')) {
+    return isEn ? 'Network connection error. Please try again.' : 'Lỗi kết nối mạng. Vui lòng thử lại.';
+  }
+
+  return msg;
+};
 
 export const resources = {
   en: {
@@ -231,10 +309,12 @@ export const resources = {
       impersonateSearchPlaceholder: 'Search by Name, ID (GV001, HV003, ACA002...) or Email...',
       menus: {
         dashboard: 'Dashboard Overview',
+        courses: 'Courses & Classes',
+        schedules: 'Live Zoom Schedules',
+        attendance: 'Attendance & Evaluation',
         contracts: 'Contracts & Payroll',
-        schedules: 'Courses & Schedule',
-        attendance: 'Classes, Profiles & Evaluation',
         tuition: 'Tuition & Billing',
+        users: 'User Management & Audit',
       },
       roles: {
         admin: 'IT System Administrator',
@@ -310,10 +390,12 @@ export const resources = {
       impersonateSearchPlaceholder: 'Tìm theo Tên, Mã (GV001, HV003, ACA002...) hoặc Email...',
       menus: {
         dashboard: 'Tổng Quan (Dashboard)',
+        courses: 'Khóa Học & Lớp Học',
+        schedules: 'Thời Khóa Biểu Zoom',
+        attendance: 'Điểm Danh & Đánh Giá',
         contracts: 'Hợp Đồng & Bảng Lương',
-        schedules: 'Khóa Học & Thời Khóa Biểu',
-        attendance: 'Lớp Học, Hồ Sơ & Đánh Giá',
         tuition: 'Quản Lý Đóng Học Phí',
+        users: 'Quản Lý Người Dùng & Nhật Ký',
       },
       roles: {
         admin: 'IT Quản Trị Hệ Thống',

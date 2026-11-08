@@ -1,4 +1,11 @@
+/* global __APP_VERSION__, __BUILD_TIME__ */
 import { MODULE_SLUGS } from '../../shared/utils/slug';
+
+export const APP_VERSION =
+  typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.2.1';
+export const APP_BUILD_TIME =
+  typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : '2026110801v';
+export const APP_BUILD_VERSION_LABEL = `Version ${APP_VERSION} • build ${APP_BUILD_TIME}`;
 
 export const SITE_DOMAINS = {
   LANDING_PRODUCTION: 'https://lakeducation.edu.vn',

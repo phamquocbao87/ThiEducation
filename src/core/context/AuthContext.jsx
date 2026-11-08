@@ -5,10 +5,14 @@ import {
   MOCK_STUDENTS,
 } from '../../shared/data/mockData';
 import { ROLE_DEFAULT_ERP_ROUTE } from '../config/siteConfig';
+import { AuthService } from '../services/AuthService';
 
 const AuthContext = createContext();
 
 export const STORAGE_AUTH_USER_KEY = 'lak_authenticated_user_id';
+
+// Mật khẩu mặc định khởi tạo chuẩn cho toàn hệ thống
+export const DEFAULT_SYSTEM_PASSWORD = 'LakEducation@2026';
 
 // Danh sách tài khoản lõi đại diện 6 Roles
 export const CORE_ROLE_USERS = {
@@ -18,7 +22,8 @@ export const CORE_ROLE_USERS = {
     role: 'admin',
     roleLabel: 'IT Quản Trị Hệ Thống (System Admin)',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=BaoAdmin',
-    email: 'admin@lakeducation.com',
+    email: 'phamquocbao87@gmail.com',
+    password: DEFAULT_SYSTEM_PASSWORD,
   },
   director: {
     id: 'DIR001',
@@ -27,14 +32,19 @@ export const CORE_ROLE_USERS = {
     roleLabel: 'Giám Đốc Điều Hành (Director)',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=TuanDirector',
     email: 'director@lakeducation.com',
+    password: DEFAULT_SYSTEM_PASSWORD,
   },
   academic: {
     id: 'ACA001',
     name: 'Trần Thu Hà',
+    gender: 'Nữ',
+    dateOfBirth: '15/06/1992',
+    phoneNumber: '0987654321',
     role: 'academic',
     roleLabel: 'Giáo Vụ Đào Tạo (Academic)',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=HaAcademic',
     email: 'academic@lakeducation.com',
+    password: DEFAULT_SYSTEM_PASSWORD,
   },
   teacher: {
     id: 'GV001',
@@ -43,6 +53,7 @@ export const CORE_ROLE_USERS = {
     roleLabel: 'Giáo Viên Bản Xứ (Native Teacher)',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=DavidTeacher',
     email: 'david.smith@lakeducation.com',
+    password: DEFAULT_SYSTEM_PASSWORD,
   },
   accountant: {
     id: 'ACC001',
@@ -51,6 +62,7 @@ export const CORE_ROLE_USERS = {
     roleLabel: 'Kế Toán Tài Chính (Accountant)',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=MaiAccountant',
     email: 'accounting@lakeducation.com',
+    password: DEFAULT_SYSTEM_PASSWORD,
   },
   student: {
     id: 'HV001',
@@ -59,6 +71,7 @@ export const CORE_ROLE_USERS = {
     roleLabel: 'Học Viên (Student)',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=KhoaStudent',
     email: 'anhkhoa.student@lakeducation.com',
+    password: DEFAULT_SYSTEM_PASSWORD,
   },
 };
 
@@ -66,23 +79,39 @@ export const CORE_ROLE_USERS = {
  * Xây dựng danh bạ TẤT CẢ tài khoản có trong hệ thống (16 tài khoản thuộc 6 Roles)
  */
 export const buildAllSystemUsersDirectory = () => {
-  const teacherAccounts = MOCK_TEACHERS.map((t) => ({
-    id: t.id,
-    name: t.name,
-    role: 'teacher',
-    roleLabel: `Giáo Viên Bản Xứ (${t.nationality} — ${t.certificate})`,
-    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(t.id)}`,
-    email: `${t.id.toLowerCase()}@lakeducation.com`,
-    extraInfo: `Đơn giá: ${(t.hourlyRate / 1000).toFixed(0)}k/tiết | Rating: ⭐ ${t.rating}`,
-  }));
+  const teacherAccounts = MOCK_TEACHERS.map((t) => {
+    const rate = t.ratePerSession || t.hourlyRate || 420000;
+    return {
+      id: t.id,
+      name: t.name,
+      role: 'teacher',
+      nationality: t.nationality || 'Australia 🇦🇺',
+      certificate: t.certificate || 'TESOL / CELTA',
+      hourlyRate: rate,
+      phoneNumber: t.phone || t.phoneNumber || '+61 2 9374 4000',
+      gender: t.name?.startsWith('Ms.') ? 'Nữ' : 'Nam',
+      dateOfBirth: t.dateOfBirth || '14/05/1992',
+      roleLabel: `Giáo Viên Bản Xứ (${t.nationality || 'Native'} — ${t.certificate || 'TESOL / CELTA'})`,
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(t.id)}`,
+      email: `${t.id.toLowerCase()}@lakeducation.com`,
+      password: DEFAULT_SYSTEM_PASSWORD,
+      extraInfo: `Đơn giá: ${(rate / 1000).toLocaleString('vi-VN')}k/tiết | Hợp đồng: ${t.contractType || 'Native Teacher'}`,
+      assignedClasses: 'Wonders GK-A, Wonders G1-B',
+      bio: `${t.name} là giáo viên bản xứ giàu kinh nghiệm tại LAK EDUCATION, sở hữu chứng chỉ giảng dạy quốc tế ${t.certificate || 'TESOL / CELTA'}, chuyên phụ trách các lớp tiếng Anh tiểu học và giao tiếp phản xạ tự nhiên.`,
+    };
+  });
 
   const academicAccounts = MOCK_ACADEMIC_STAFF.map((s) => ({
     id: s.id,
     name: s.name,
+    gender: s.gender || (s.id === 'ACA001' || s.id === 'ACA002' ? 'Nữ' : 'Nam'),
+    dateOfBirth: s.dateOfBirth || (s.id === 'ACA001' ? '15/06/1992' : '20/08/1994'),
+    phoneNumber: s.phoneNumber || '0987654321',
     role: 'academic',
     roleLabel: s.position,
     avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(s.id)}`,
     email: `${s.id.toLowerCase()}@lakeducation.com`,
+    password: DEFAULT_SYSTEM_PASSWORD,
     extraInfo: `Quản lý ${s.managedClasses} lớp (${s.managedStudents} HV) | KPI: ${s.completedTasks}%`,
   }));
 
@@ -93,6 +122,7 @@ export const buildAllSystemUsersDirectory = () => {
     roleLabel: `Học Viên — ${st.className}`,
     avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(st.id)}`,
     email: `${st.id.toLowerCase()}.student@lakeducation.com`,
+    password: DEFAULT_SYSTEM_PASSWORD,
     extraInfo: `Level: ${st.level} | Chuyên cần: ${st.attendanceRate}% | Phụ huynh: ${st.parentName}`,
   }));
 
@@ -141,10 +171,11 @@ export const AuthProvider = ({ children }) => {
         if (matchedSaved) return matchedSaved;
       }
     }
-    return allSystemUsers[0]; // Mặc định ADM001 khi chưa chọn tài khoản khác
+    // QUY TẮC AN NINH: Chưa đăng nhập -> Trả về null (Không tự gán ngầm làm Admin)
+    return null;
   }, [allSystemUsers]);
 
-  // 1. authenticatedUser: Tài khoản thực sự vừa Login vào hệ thống
+  // 1. authenticatedUser: Tài khoản thực sự vừa Login vào hệ thống (null nếu chưa login)
   const [authenticatedUser, setAuthenticatedUser] = useState(resolveInitialAuthenticatedUser);
 
   // 2. impersonatedUser: Tài khoản đang được IT Admin giả lập xem hộ (nếu authenticatedUser là admin)
@@ -161,10 +192,13 @@ export const AuthProvider = ({ children }) => {
 
   // currentUser là tài khoản quyết định giao diện & dữ liệu của mọi màn hình hiện tại
   const currentUser = impersonatedUser || authenticatedUser;
-  const isImpersonating = Boolean(impersonatedUser && impersonatedUser.id !== authenticatedUser.id);
+  const isImpersonating = Boolean(impersonatedUser && impersonatedUser.id !== authenticatedUser?.id);
+
+  // CỜ XÁC THỰC BẢO MẬT TOÀN CỤC (GLOBAL AUTHENTICATION FLAG)
+  const isAuthenticated = Boolean(authenticatedUser);
 
   // QUY TẮC BẢO MẬT: Chỉ duy nhất tài khoản gốc là IT Admin (role === 'admin') mới có quyền giả lập xem tài khoản khác
-  const canImpersonateUsers = authenticatedUser.role === 'admin';
+  const canImpersonateUsers = authenticatedUser?.role === 'admin';
 
   /**
    * Đăng nhập thực tế từ Form Login trên Landing Page hoặc trang /login
@@ -179,6 +213,8 @@ export const AuthProvider = ({ children }) => {
         !normalized ||
         normalized === 'vnthietbigarage@gmail.com' ||
         normalized === 'phamquocbao87@gmail.com' ||
+        normalized === 'admin@lakeducation.com' ||
+        normalized === 'admin' ||
         normalized === 'google'
       ) {
         const adminUser = allSystemUsers[0];
@@ -193,14 +229,17 @@ export const AuthProvider = ({ children }) => {
         };
       }
 
-      const targetUser =
-        allSystemUsers.find(
-          (u) =>
-            u.id.toLowerCase() === normalized ||
-            u.email.toLowerCase() === normalized ||
-            u.role.toLowerCase() === normalized ||
-            u.email.split('@')[0].toLowerCase() === normalized
-        ) || allSystemUsers[0];
+      const targetUser = allSystemUsers.find(
+        (u) =>
+          u.id.toLowerCase() === normalized ||
+          u.email.toLowerCase() === normalized ||
+          u.role.toLowerCase() === normalized ||
+          u.email.split('@')[0].toLowerCase() === normalized
+      );
+
+      if (!targetUser) {
+        throw new Error(`Tài khoản '${accountIdentifier}' không tồn tại hoặc chưa được đăng ký trong hệ thống LAK EDUCATION.`);
+      }
 
       setAuthenticatedUser(targetUser);
       setImpersonatedUser(null);
@@ -218,11 +257,50 @@ export const AuthProvider = ({ children }) => {
   );
 
   /**
+   * Đăng nhập THẬT bằng Google Account qua Firebase Auth & Cloud Firestore DB
+   */
+  const loginWithGoogle = useCallback(async () => {
+    const userProfile = await AuthService.signInWithGoogle();
+    setAuthenticatedUser(userProfile);
+    setImpersonatedUser(null);
+    localStorage.setItem(STORAGE_AUTH_USER_KEY, userProfile.id || userProfile.code);
+
+    const defaultRoute = ROLE_DEFAULT_ERP_ROUTE[userProfile.role] || 'dashboard';
+    return {
+      success: true,
+      user: userProfile,
+      role: userProfile.role,
+      defaultRoute,
+    };
+  }, []);
+
+  /**
+   * Đăng nhập THẬT bằng Email & Mật khẩu qua Firebase Auth & Cloud Firestore DB
+   */
+  const loginWithEmail = useCallback(async (email, password) => {
+    const userProfile = await AuthService.signInWithEmail(email, password);
+    setAuthenticatedUser(userProfile);
+    setImpersonatedUser(null);
+    localStorage.setItem(STORAGE_AUTH_USER_KEY, userProfile.id || userProfile.code);
+
+    const defaultRoute = ROLE_DEFAULT_ERP_ROUTE[userProfile.role] || 'dashboard';
+    return {
+      success: true,
+      user: userProfile,
+      role: userProfile.role,
+      defaultRoute,
+    };
+  }, []);
+
+  /**
    * Đăng xuất khỏi phiên làm việc hiện tại
    */
-  const logoutAccount = useCallback(() => {
+  const logoutAccount = useCallback(async () => {
+    await AuthService.signOut();
     setImpersonatedUser(null);
-  }, []);
+    localStorage.removeItem(STORAGE_AUTH_USER_KEY);
+    setAuthenticatedUser(allSystemUsers[0]);
+  }, [allSystemUsers]);
 
   /**
    * Chuyển sang xem màn hình của bất kỳ tài khoản nào (Chỉ dành cho IT Admin)
@@ -230,7 +308,7 @@ export const AuthProvider = ({ children }) => {
   const impersonateAccount = (targetIdOrRole) => {
     if (!canImpersonateUsers) return;
 
-    if (targetIdOrRole === 'admin' || targetIdOrRole === authenticatedUser.id) {
+    if (targetIdOrRole === 'admin' || targetIdOrRole === authenticatedUser?.id) {
       setImpersonatedUser(null);
       return;
     }
@@ -256,10 +334,13 @@ export const AuthProvider = ({ children }) => {
       value={{
         authenticatedUser,
         currentUser,
+        isAuthenticated,
         isImpersonating,
         canImpersonateUsers,
         allSystemUsers,
         loginWithAccount,
+        loginWithGoogle,
+        loginWithEmail,
         logoutAccount,
         impersonateAccount,
         exitImpersonation,

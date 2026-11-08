@@ -1,88 +1,190 @@
 import React from 'react';
-import { Row, Col, Card, Tag, Space, Typography, Divider } from 'antd';
-import { CheckCircleTwoTone, StarFilled } from '@ant-design/icons';
+import { Row, Col, Card, Space, Typography } from 'antd';
+import { CheckCircleFilled } from '@ant-design/icons';
 import { LANDING_ASSETS } from '../models/landing.model';
 
 const { Title, Text, Paragraph } = Typography;
+
+const SunburstLeftSvg = () => (
+  <svg width="36" height="36" viewBox="0 0 36 36" fill="none" style={{ flexShrink: 0 }}>
+    <line x1="28" y1="8" x2="14" y2="3" stroke="#FAAD14" strokeWidth="3" strokeLinecap="round" />
+    <line x1="26" y1="18" x2="8" y2="18" stroke="#FAAD14" strokeWidth="3" strokeLinecap="round" />
+    <line x1="28" y1="28" x2="14" y2="33" stroke="#FAAD14" strokeWidth="3" strokeLinecap="round" />
+  </svg>
+);
+
+const SunburstRightSvg = () => (
+  <svg width="36" height="36" viewBox="0 0 36 36" fill="none" style={{ flexShrink: 0 }}>
+    <line x1="8" y1="8" x2="22" y2="3" stroke="#FAAD14" strokeWidth="3" strokeLinecap="round" />
+    <line x1="10" y1="18" x2="28" y2="18" stroke="#FAAD14" strokeWidth="3" strokeLinecap="round" />
+    <line x1="8" y1="28" x2="22" y2="33" stroke="#FAAD14" strokeWidth="3" strokeLinecap="round" />
+  </svg>
+);
 
 export const LandingCurriculumStages = ({ content }) => {
   const { kindergartenSection, primarySection } = content;
 
   return (
     <div>
-      {/* Stage 1: Kindergarten (Wonders GK) — 4 Pillar Cards with WebP Illustrations */}
-      <div id="section-kindergarten" style={{ padding: '48px 24px 64px', background: '#f7fbff' }}>
-        <div style={{ maxWidth: 1240, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', maxWidth: 840, margin: '0 auto 40px' }}>
-            <Tag color="geekblue" style={{ fontSize: 13, fontWeight: 700, padding: '4px 14px', borderRadius: 20, marginBottom: 12 }}>
-              🌱 {kindergartenSection.badge}
-            </Tag>
-            <Title level={2} style={{ color: '#122B4D', marginTop: 0, marginBottom: 12, fontWeight: 800 }}>
-              {kindergartenSection.title}
-            </Title>
-            <Paragraph style={{ fontSize: 16, color: '#4a5568', margin: 0 }}>
+      {/* Stage 1: Kindergarten (Wonders GK) — 100% Matched to ChatGPT Mockup */}
+      <div
+        id="section-kindergarten"
+        style={{
+          padding: '52px 24px 60px',
+          background: 'linear-gradient(180deg, #f7fbff 0%, #eef6ff 100%)',
+        }}
+      >
+        <div style={{ maxWidth: 1260, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', maxWidth: 880, margin: '0 auto 40px' }}>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                background: '#e6f4ff',
+                border: '1px solid #91caff',
+                color: '#0958d9',
+                padding: '5px 16px',
+                borderRadius: 20,
+                fontSize: 12.5,
+                fontWeight: 800,
+                letterSpacing: '0.4px',
+                marginBottom: 14,
+              }}
+            >
+              <span>🌱</span>
+              <span>{kindergartenSection.badge}</span>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 16,
+                marginBottom: 10,
+              }}
+            >
+              <SunburstLeftSvg />
+              <Title
+                level={2}
+                className="lak-display-font"
+                style={{
+                  color: '#122B4D',
+                  margin: 0,
+                  fontWeight: 800,
+                  fontSize: 31,
+                  lineHeight: 1.25,
+                }}
+              >
+                {kindergartenSection.title}
+              </Title>
+              <SunburstRightSvg />
+            </div>
+
+            <Paragraph
+              style={{
+                fontSize: 15.5,
+                color: '#4a5568',
+                margin: '0 auto',
+                maxWidth: 740,
+                lineHeight: 1.65,
+              }}
+            >
               {kindergartenSection.subtitle}
             </Paragraph>
           </div>
 
+          {/* 2x2 Illustration-Led Pillar Grid (Seamless White Card Backdrop) */}
           <Row gutter={[24, 24]}>
             {kindergartenSection.pillars.map((pillar) => (
               <Col xs={24} md={12} key={pillar.number}>
                 <Card
                   hoverable
+                  className="lak-pillar-card"
                   style={{
                     height: '100%',
-                    borderRadius: 18,
-                    border: '1px solid #d6e8ff',
-                    boxShadow: '0 8px 24px rgba(18, 43, 77, 0.06)',
+                    background: '#ffffff',
                   }}
+                  styles={{ body: { padding: '22px 24px' } }}
                 >
-                  <Row gutter={[18, 16]} align="middle">
-                    <Col xs={24} sm={8}>
+                  <Row gutter={[20, 16]} align="middle">
+                    <Col xs={24} sm={10}>
+                      <img
+                        src={pillar.image}
+                        alt={pillar.title}
+                        className="lak-float-img"
+                        style={{
+                          width: '100%',
+                          height: 185,
+                          objectFit: 'contain',
+                          display: 'block',
+                          margin: '0 auto',
+                        }}
+                      />
+                    </Col>
+
+                    <Col xs={24} sm={14}>
                       <div
                         style={{
-                          background: '#ffffff',
-                          border: '1px solid #e6f4ff',
-                          borderRadius: 14,
-                          padding: 10,
-                          textAlign: 'center',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: 8,
                         }}
                       >
-                        <img
-                          src={pillar.image}
-                          alt={pillar.title}
+                        <div
                           style={{
-                            width: '100%',
-                            maxHeight: 155,
-                            objectFit: 'contain',
-                            display: 'block',
-                            margin: '0 auto',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            background: '#e6f4ff',
+                            border: '1px solid #bae0ff',
+                            borderRadius: 16,
+                            padding: '3px 12px',
                           }}
-                        />
-                      </div>
-                    </Col>
-                    <Col xs={24} sm={16}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <Space>
-                          <span style={{ fontSize: 20 }}>{pillar.icon}</span>
-                          <Tag color="blue" style={{ fontWeight: 700 }}>
+                        >
+                          <span style={{ fontSize: 13 }}>{pillar.icon}</span>
+                          <Text style={{ fontSize: 12, fontWeight: 700, color: '#0958d9' }}>
                             {pillar.badge}
-                          </Tag>
-                        </Space>
-                        <Text style={{ fontSize: 24, fontWeight: 900, color: '#bae0ff' }}>
+                          </Text>
+                        </div>
+
+                        <Text
+                          className="lak-display-font"
+                          style={{
+                            fontSize: 28,
+                            fontWeight: 800,
+                            color: '#69b1ff',
+                            lineHeight: 1,
+                          }}
+                        >
                           {pillar.number}
                         </Text>
                       </div>
 
-                      <Title level={4} style={{ color: '#122B4D', marginTop: 0, marginBottom: 10, fontSize: 17.5 }}>
+                      <Title
+                        level={4}
+                        className="lak-display-font"
+                        style={{
+                          color: '#122B4D',
+                          marginTop: 0,
+                          marginBottom: 10,
+                          fontSize: 18.5,
+                          fontWeight: 800,
+                          lineHeight: 1.3,
+                        }}
+                      >
                         {pillar.title}
                       </Title>
 
                       <Space orientation="vertical" size={8} style={{ width: '100%' }}>
                         {pillar.highlights.map((pt, i) => (
                           <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                            <CheckCircleTwoTone twoToneColor="#1890ff" style={{ marginTop: 4, fontSize: 15 }} />
-                            <Text style={{ fontSize: 13.8, color: '#2d3748', lineHeight: 1.6 }}>
+                            <CheckCircleFilled
+                              style={{ color: '#52c41a', marginTop: 4, fontSize: 14, flexShrink: 0 }}
+                            />
+                            <Text style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.58 }}>
                               {pt}
                             </Text>
                           </div>
@@ -97,90 +199,148 @@ export const LandingCurriculumStages = ({ content }) => {
         </div>
       </div>
 
-      {/* Visual Reference Banner (web-landing.webp) + Stage 2: Primary (Grades 1-5) */}
-      <div id="section-primary" style={{ padding: '64px 24px', background: '#ffffff' }}>
-        <div style={{ maxWidth: 1240, margin: '0 auto' }}>
-          <Row gutter={[32, 32]} align="middle" style={{ marginBottom: 44 }}>
-            <Col xs={24} lg={14}>
-              <Tag color="purple" style={{ fontSize: 13, fontWeight: 700, padding: '4px 14px', borderRadius: 20, marginBottom: 12 }}>
-                🎓 {primarySection.badge}
-              </Tag>
-              <Title level={2} style={{ color: '#122B4D', marginTop: 0, marginBottom: 12, fontWeight: 800 }}>
+      {/* Stage 2: Primary (Grades 1–5) — 100% Matched to ChatGPT Mockup */}
+      <div id="section-primary" style={{ padding: '48px 24px 64px', background: '#ffffff' }}>
+        <div
+          style={{
+            maxWidth: 1260,
+            margin: '0 auto',
+            background: 'linear-gradient(180deg, #eaf4ff 0%, #f7fbff 100%)',
+            borderRadius: 28,
+            border: '1px solid #bae0ff',
+            padding: '40px 32px 44px',
+            boxShadow: '0 16px 40px rgba(18, 43, 77, 0.06)',
+          }}
+        >
+          {/* Split Header with Seamless Learning Beyond Boundaries Artwork */}
+          <Row gutter={[32, 24]} align="middle" style={{ marginBottom: 32 }}>
+            <Col xs={24} lg={13}>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: '#f9f0ff',
+                  border: '1px solid #d3adf7',
+                  color: '#531dab',
+                  padding: '5px 16px',
+                  borderRadius: 20,
+                  fontSize: 12.5,
+                  fontWeight: 800,
+                  marginBottom: 12,
+                }}
+              >
+                <span>🎓</span>
+                <span>{primarySection.badge}</span>
+              </div>
+
+              <Title
+                level={2}
+                className="lak-display-font"
+                style={{
+                  color: '#122B4D',
+                  marginTop: 0,
+                  marginBottom: 12,
+                  fontWeight: 800,
+                  fontSize: 31,
+                  lineHeight: 1.24,
+                }}
+              >
                 {primarySection.title}
               </Title>
-              <Paragraph style={{ fontSize: 16, color: '#4a5568', margin: 0, lineHeight: 1.7 }}>
+
+              <Paragraph style={{ fontSize: 15.5, color: '#4a5568', margin: 0, lineHeight: 1.65 }}>
                 {primarySection.subtitle}
               </Paragraph>
             </Col>
-            <Col xs={24} lg={10}>
-              <div
+
+            <Col xs={24} lg={11}>
+              <img
+                src={LANDING_ASSETS.learningBanner}
+                alt="Learning Beyond Boundaries"
                 style={{
-                  borderRadius: 18,
-                  overflow: 'hidden',
-                  border: '2px solid #bae0ff',
-                  boxShadow: '0 12px 28px rgba(18,43,77,0.08)',
+                  width: '100%',
+                  maxHeight: 205,
+                  objectFit: 'contain',
+                  display: 'block',
+                  mixBlendMode: 'multiply',
                 }}
-              >
-                <img
-                  src={LANDING_ASSETS.learningBanner}
-                  alt="Learning Beyond Boundaries"
-                  style={{ width: '100%', display: 'block', objectFit: 'cover' }}
-                />
-              </div>
+              />
             </Col>
           </Row>
 
+          {/* 3 Visual-First Primary Pillar Cards with Inset Sky-Blue Illustration Frame */}
           <Row gutter={[24, 24]}>
             {primarySection.pillars.map((item, idx) => (
               <Col xs={24} lg={8} key={idx}>
                 <Card
                   hoverable
-                  cover={
-                    <div
-                      style={{
-                        background: '#f8fbff',
-                        padding: '18px 24px 10px',
-                        textAlign: 'center',
-                        borderBottom: '1px solid #f0f5ff',
-                      }}
-                    >
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        style={{
-                          height: 170,
-                          width: '100%',
-                          objectFit: 'contain',
-                        }}
-                      />
-                    </div>
-                  }
+                  className="lak-pillar-card"
                   style={{
                     height: '100%',
-                    borderRadius: 18,
-                    overflow: 'hidden',
-                    borderTop: `4px solid ${item.color}`,
-                    boxShadow: '0 8px 24px rgba(18, 43, 77, 0.06)',
+                    background: '#ffffff',
                   }}
+                  styles={{ body: { padding: '18px 20px 24px' } }}
                 >
-                  <div style={{ marginBottom: 10 }}>
-                    <span style={{ fontSize: 22, marginRight: 8 }}>{item.icon}</span>
-                    <Title level={4} style={{ display: 'inline', color: '#122B4D', margin: 0, fontSize: 17.5 }}>
+                  {/* Inset Rounded Illustration Frame */}
+                  <div
+                    style={{
+                      background: 'linear-gradient(180deg, #e6f4ff 0%, #ffffff 100%)',
+                      border: '1.5px solid #91caff',
+                      borderRadius: 16,
+                      padding: '12px 16px 6px',
+                      textAlign: 'center',
+                      marginBottom: 16,
+                    }}
+                  >
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="lak-float-img"
+                      style={{
+                        height: 175,
+                        width: '100%',
+                        objectFit: 'contain',
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 20, lineHeight: 1.2 }}>{item.icon}</span>
+                    <Title
+                      level={4}
+                      className="lak-display-font"
+                      style={{
+                        color: '#122B4D',
+                        margin: 0,
+                        fontSize: 18,
+                        fontWeight: 800,
+                        lineHeight: 1.3,
+                      }}
+                    >
                       {item.title}
                     </Title>
                   </div>
 
-                  <Paragraph strong style={{ color: item.color, fontSize: 14, marginBottom: 14 }}>
+                  <Paragraph
+                    strong
+                    style={{
+                      color: item.color,
+                      fontSize: 13.5,
+                      marginBottom: 12,
+                      lineHeight: 1.45,
+                    }}
+                  >
                     {item.subtitle}
                   </Paragraph>
 
-                  <Divider style={{ margin: '12px 0' }} />
-
-                  <Space orientation="vertical" size={10} style={{ width: '100%' }}>
+                  <Space orientation="vertical" size={9} style={{ width: '100%' }}>
                     {item.bullets.map((b, bIdx) => (
-                      <div key={bIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                        <StarFilled style={{ color: item.color, marginTop: 4, fontSize: 14 }} />
-                        <Text style={{ fontSize: 13.8, color: '#2d3748', lineHeight: 1.65 }}>
+                      <div key={bIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <CheckCircleFilled
+                          style={{ color: '#52c41a', marginTop: 4, fontSize: 14, flexShrink: 0 }}
+                        />
+                        <Text style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.58 }}>
                           {b}
                         </Text>
                       </div>

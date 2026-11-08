@@ -27,6 +27,7 @@ import {
   UserOutlined,
   SwapOutlined,
   BookOutlined,
+  AppstoreOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
   RollbackOutlined,
@@ -37,7 +38,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { PermissionService } from '../services/PermissionService';
-import { isProductionErpDomain, SITE_DOMAINS } from '../config/siteConfig';
+import { isProductionErpDomain, SITE_DOMAINS, APP_BUILD_VERSION_LABEL } from '../config/siteConfig';
+import { DriveStorageService } from '../services/DriveStorageService';
 
 const { Header, Content, Sider, Footer } = Layout;
 const { Text, Title } = Typography;
@@ -69,15 +71,52 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const isEnglish = language === 'en';
+
   const allMenuDefinitions = useMemo(
     () => [
-      { key: 'dashboard', icon: <DashboardOutlined />, label: t('menus.dashboard') },
-      { key: 'contracts', icon: <FileTextOutlined />, label: t('menus.contracts') },
-      { key: 'schedules', icon: <CalendarOutlined />, label: t('menus.schedules') },
-      { key: 'attendance', icon: <TeamOutlined />, label: t('menus.attendance') },
-      { key: 'tuition', icon: <DollarOutlined />, label: t('menus.tuition') },
+      {
+        key: 'dashboard',
+        icon: <DashboardOutlined />,
+        label: isEnglish ? 'Dashboard Overview' : 'Tổng Quan (Dashboard)',
+      },
+      {
+        key: 'courses',
+        icon: <BookOutlined />,
+        label: isEnglish ? 'Courses & Classes' : 'Khóa Học & Lớp Học',
+      },
+      {
+        key: 'curriculum',
+        icon: <AppstoreOutlined />,
+        label: isEnglish ? 'Curriculum Levels' : 'Cấp Độ Giáo Trình',
+      },
+      {
+        key: 'schedules',
+        icon: <CalendarOutlined />,
+        label: isEnglish ? 'Live Zoom Schedules' : 'Thời Khóa Biểu Zoom',
+      },
+      {
+        key: 'attendance',
+        icon: <TeamOutlined />,
+        label: isEnglish ? 'Attendance & Evaluation' : 'Điểm Danh & Đánh Giá',
+      },
+      {
+        key: 'contracts',
+        icon: <FileTextOutlined />,
+        label: isEnglish ? 'Contracts & Payroll' : 'Hợp Đồng & Bảng Lương',
+      },
+      {
+        key: 'tuition',
+        icon: <DollarOutlined />,
+        label: isEnglish ? 'Tuition & Billing' : 'Quản Lý Đóng Học Phí',
+      },
+      {
+        key: 'users',
+        icon: <SafetyCertificateOutlined />,
+        label: isEnglish ? 'User Management & Audit' : 'Quản Trị Người Dùng & Audit',
+      },
     ],
-    [t]
+    [isEnglish]
   );
 
   const menuItems = allMenuDefinitions.filter((item) =>
@@ -131,40 +170,50 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: isMobile ? '0 12px' : '0 24px',
+          padding: isMobile ? '0 10px' : '0 24px',
           background: '#001529',
           boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          overflow: 'hidden',
+          boxSizing: 'border-box',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 12, minWidth: 0, flexShrink: 1 }}>
           {isMobile && (
             <Button
               type="text"
               icon={<MenuOutlined style={{ color: '#fff', fontSize: 18 }} />}
               onClick={() => setMobileDrawerOpen(true)}
+              style={{ width: 34, height: 34, padding: 0 }}
             />
           )}
           <div
-            style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', overflow: 'hidden' }}
             onClick={() => setActiveTab('dashboard')}
           >
-            <BookOutlined style={{ fontSize: 24, color: '#1890ff' }} />
-            <Title level={4} style={{ color: '#fff', margin: 0, fontWeight: 700, letterSpacing: '0.5px' }}>
-              {t('appTitle')}
-            </Title>
+            <BookOutlined style={{ fontSize: isMobile ? 20 : 24, color: '#1890ff', flexShrink: 0 }} />
+            <Text style={{ color: '#fff', margin: 0, fontWeight: 700, fontSize: isMobile ? 15 : 18, whiteSpace: 'nowrap' }}>
+              {isMobile ? 'LAK' : t('appTitle')}
+            </Text>
           </div>
         </div>
 
-        <Space size={isMobile ? 6 : 12}>
+        <Space size={isMobile ? 4 : 12} style={{ flexShrink: 0 }}>
           <Button
             size={isMobile ? 'small' : 'middle'}
             icon={<GlobalOutlined />}
-            onClick={() => navigate('/')}
+            onClick={() => {
+              if (isProductionErpDomain()) {
+                window.location.href = SITE_DOMAINS.LANDING_PRODUCTION;
+              } else {
+                navigate('/');
+              }
+            }}
             style={{
               background: 'rgba(255,255,255,0.12)',
               color: '#fff',
               borderColor: 'rgba(255,255,255,0.3)',
               borderRadius: 6,
+              padding: isMobile ? '0 6px' : undefined,
             }}
           >
             {!isMobile && (language === 'en' ? 'Landing Page' : 'Trang Chủ')}
@@ -172,19 +221,19 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
 
           {/* BỘ CHUYỂN NGÔN NGỮ 2 CHẾ ĐỘ: MẶC ĐỊNH TIẾNG ANH (EN) | TIẾNG VIỆT (VI) */}
           <Segmented
-            size={isMobile ? 'small' : 'middle'}
+            size="small"
             value={language}
             onChange={(val) => setLanguage(val)}
             options={[
-              { label: '🇬🇧 EN', value: 'en' },
-              { label: '🇻🇳 VI', value: 'vi' },
+              { label: isMobile ? 'EN' : '🇬🇧 EN', value: 'en' },
+              { label: isMobile ? 'VI' : '🇻🇳 VI', value: 'vi' },
             ]}
             style={{ fontWeight: 600 }}
           />
 
           {/* CHỈ DUY NHẤT ADMIN MỚI CÓ QUYỀN GIẢ LẬP / CHUYỂN TÀI KHOẢN BẤT KỲ */}
           {canImpersonateUsers && (
-            <Space size={8}>
+            <Space size={4}>
               {isImpersonating && (
                 <Button
                   danger
@@ -199,14 +248,19 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
               <Button
                 type="primary"
                 ghost
-                size={isMobile ? 'small' : 'middle'}
                 icon={<SwapOutlined />}
                 onClick={() => setIsImpersonateModalOpen(true)}
-                style={{ borderRadius: 6 }}
+                style={{
+                  borderRadius: 6,
+                  height: isMobile ? 32 : 34,
+                  padding: isMobile ? '0 6px' : '0 12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                }}
               >
-                {!isMobile && `${t('adminViewAsBtn')} `}
-                <Tag color={currentRoleMeta.color} style={{ margin: 0 }}>
-                  {currentRoleMeta.shortLabel} — {currentUser.id}
+                {!isMobile && (isEnglish ? 'Admin View-As: ' : 'Admin Xem Dưới Tên User: ')}
+                <Tag color={currentRoleMeta.color} style={{ margin: 0, fontSize: isMobile ? 11 : 12 }}>
+                  {isMobile ? currentUser.id : `${currentRoleMeta.shortLabel} — ${currentUser.id}`}
                 </Tag>
               </Button>
             </Space>
@@ -214,7 +268,11 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
 
           {!isMobile && (
             <Space style={{ color: '#fff' }} size={10}>
-              <Avatar src={currentUser.avatar} icon={<UserOutlined />} />
+              <Avatar
+                key={currentUser.avatar || currentUser.id}
+                src={DriveStorageService.formatAvatarUrl(currentUser.avatar, 100)}
+                icon={<UserOutlined />}
+              />
               <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
                 <Text style={{ color: '#fff', fontWeight: 600 }}>{currentUser.name}</Text>
                 <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11 }}>
@@ -280,7 +338,7 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
           >
             <div style={{ padding: '14px 20px', borderBottom: '1px solid #f0f0f0' }}>
               <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
-                {t('menuHeaderPrefix')} {currentRoleMeta.shortLabel} ({currentUser.id})
+                {isEnglish ? 'WORKSPACE MENU FOR' : 'MENU CÔNG VIỆC CỦA'} {currentRoleMeta.shortLabel} ({currentUser.id})
               </Text>
             </div>
             <Menu
@@ -308,7 +366,11 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
           >
             <Card style={{ marginBottom: 16, background: '#fafafa' }} styles={{ body: { padding: 12 } }}>
               <Space align="center">
-                <Avatar src={currentUser.avatar} size={40} />
+                <Avatar
+                  key={currentUser.avatar || currentUser.id}
+                  src={DriveStorageService.formatAvatarUrl(currentUser.avatar, 100)}
+                  size={40}
+                />
                 <div>
                   <Text strong style={{ display: 'block' }}>{currentUser.name}</Text>
                   <Tag color={currentRoleMeta.color}>{localizedCurrentRoleLabel}</Tag>
@@ -353,7 +415,10 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
             {children}
           </Content>
           <Footer style={{ textAlign: 'center', color: '#8c8c8c', padding: '16px 0 0 0', fontSize: 13 }}>
-            {t('footerText')}
+            <div>{t('footerText')}</div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+              {APP_BUILD_VERSION_LABEL}
+            </div>
           </Footer>
         </Layout>
       </Layout>
@@ -433,7 +498,13 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
                   ]}
                 >
                   <List.Item.Meta
-                    avatar={<Avatar src={u.avatar} icon={<UserOutlined />} />}
+                    avatar={
+                      <Avatar
+                        key={u.avatar || u.id}
+                        src={DriveStorageService.formatAvatarUrl(u.avatar, 100)}
+                        icon={<UserOutlined />}
+                      />
+                    }
                     title={
                       <Space>
                         <Tag color={meta.color} style={{ minWidth: 78, textAlign: 'center' }}>

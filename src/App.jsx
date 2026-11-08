@@ -4,14 +4,18 @@ import { AuthProvider } from './core/context/AuthContext';
 import { LanguageProvider } from './core/context/LanguageContext';
 import { AppLayout } from './core/layout/AppLayout';
 import { MODULE_SLUGS, getModuleFromSlug, getSlugFromModule } from './shared/utils/slug';
+import { ProtectedRoute } from './core/router/ProtectedRoute';
 
 // Independent Domain Modules
 import LandingModule from './modules/landing';
 import DashboardModule from './modules/dashboard';
+import CoursesModule from './modules/courses';
+import CurriculumModule from './modules/curriculum';
 import ContractsModule from './modules/contracts';
 import SchedulesModule from './modules/schedules';
 import AttendanceModule from './modules/attendance';
 import TuitionModule from './modules/tuition';
+import UsersModule from './modules/users';
 
 function AppRoutes() {
   const navigate = useNavigate();
@@ -40,16 +44,117 @@ function AppRoutes() {
   }
 
   return (
-    <AppLayout activeTab={activeTab} setActiveTab={handleTabChange}>
-      <Routes>
-        <Route path={`/${MODULE_SLUGS.dashboard}`} element={<DashboardModule setActiveTab={handleTabChange} />} />
-        <Route path={`/${MODULE_SLUGS.contracts}`} element={<ContractsModule />} />
-        <Route path={`/${MODULE_SLUGS.schedules}`} element={<SchedulesModule />} />
-        <Route path={`/${MODULE_SLUGS.attendance}`} element={<AttendanceModule />} />
-        <Route path={`/${MODULE_SLUGS.tuition}`} element={<TuitionModule />} />
-        <Route path="*" element={<Navigate to={`/${MODULE_SLUGS.dashboard}`} replace />} />
-      </Routes>
-    </AppLayout>
+    <ProtectedRoute>
+      <AppLayout activeTab={activeTab} setActiveTab={handleTabChange}>
+        <Routes>
+          <Route
+            path={`/${MODULE_SLUGS.dashboard}`}
+            element={
+              <ProtectedRoute moduleKey="dashboard">
+                <DashboardModule setActiveTab={handleTabChange} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.courses}`}
+            element={
+              <ProtectedRoute moduleKey="courses">
+                <CoursesModule />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.courses}/:action`}
+            element={
+              <ProtectedRoute moduleKey="courses">
+                <CoursesModule />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.curriculum}`}
+            element={
+              <ProtectedRoute moduleKey="curriculum">
+                <CurriculumModule />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.curriculum}/:levelId`}
+            element={
+              <ProtectedRoute moduleKey="curriculum">
+                <CurriculumModule />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.curriculum}/:levelId/:action`}
+            element={
+              <ProtectedRoute moduleKey="curriculum">
+                <CurriculumModule />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.schedules}`}
+            element={
+              <ProtectedRoute moduleKey="schedules">
+                <SchedulesModule />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.contracts}`}
+            element={
+              <ProtectedRoute moduleKey="contracts">
+                <ContractsModule />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.attendance}`}
+            element={
+              <ProtectedRoute moduleKey="attendance">
+                <AttendanceModule />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.tuition}`}
+            element={
+              <ProtectedRoute moduleKey="tuition">
+                <TuitionModule />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.users}`}
+            element={
+              <ProtectedRoute moduleKey="users">
+                <UsersModule />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.users}/:userId`}
+            element={
+              <ProtectedRoute moduleKey="users">
+                <UsersModule />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.users}/:userId/:action`}
+            element={
+              <ProtectedRoute moduleKey="users">
+                <UsersModule />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to={`/${MODULE_SLUGS.dashboard}`} replace />} />
+        </Routes>
+      </AppLayout>
+    </ProtectedRoute>
   );
 }
 

@@ -80,12 +80,22 @@ export class DriveStorageService {
 
     const { uploadUrl } = sessionData.data;
 
-    // Bước 2: Đẩy dữ liệu nhị phân trực tiếp từ trình duyệt lên Google Drive
-    const uploadRes = await fetch(uploadUrl, {
+    // Bước 2: Đẩy dữ liệu nhị phân trực tiếp lên Google Drive
+    // Khi chạy trên localhost / dev, proxy qua Vite server /google-upload để tránh lỗi CORS chặn đọc response của Google
+    let effectiveUploadUrl = uploadUrl;
+    if (
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ) {
+      effectiveUploadUrl = uploadUrl.replace('https://www.googleapis.com', '/google-upload');
+    }
+
+    const contentRange = file.size > 0 ? `bytes 0-${file.size - 1}/${file.size}` : 'bytes */0';
+    const uploadRes = await fetch(effectiveUploadUrl, {
       method: 'PUT',
       headers: {
         'Content-Type': file.type || 'application/octet-stream',
-        'Content-Length': String(file.size),
+        'Content-Range': contentRange,
       },
       body: file,
     });
@@ -158,9 +168,40 @@ export class DriveStorageService {
     return data.data || [];
   }
 
-  static getImageCdnUrl(fileId, width = 800) {
+  static getImageCdnUrl(fileId, size = 400) {
     if (!fileId) return '';
-    return `https://lh3.googleusercontent.com/d/${fileId}=w${width}`;
+    return `https://lh3.googleusercontent.com/d/${fileId}=s${size}-c`;
+  }
+
+  /**
+   * Định dạng chuẩn hóa URL ảnh đại diện Google Drive sang CDN siêu tốc độ & vuông vắn:
+   * - Hỗ trợ cả fileId, drive.google.com/file/d/..., drive.google.com/uc?id=... và lh3.googleusercontent.com
+   * - Tối ưu kích thước (s200, s400) giúp tải nhanh dưới 50ms và không tốn băng thông
+   */
+  static formatAvatarUrl(url, size = 400) {
+    if (!url || typeof url !== 'string') return '';
+
+    // Nếu là link lh3.googleusercontent.com
+    if (url.includes('googleusercontent.com/d/')) {
+      const rawId = url.split('/d/')[1]?.split('=')[0];
+      if (rawId) {
+        return `https://lh3.googleusercontent.com/d/${rawId}=s${size}-c`;
+      }
+    }
+
+    // Nếu là link drive.google.com/file/d/FILE_ID/view...
+    const matchFile = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (matchFile && matchFile[1]) {
+      return `https://lh3.googleusercontent.com/d/${matchFile[1]}=s${size}-c`;
+    }
+
+    // Nếu là drive.google.com/uc?export=download&id=FILE_ID
+    const matchUc = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (matchUc && matchUc[1]) {
+      return `https://lh3.googleusercontent.com/d/${matchUc[1]}=s${size}-c`;
+    }
+
+    return url;
   }
 
   static getDirectDownloadUrl(fileId) {

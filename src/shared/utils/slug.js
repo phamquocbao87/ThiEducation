@@ -16,14 +16,18 @@ export const createSlug = (text) => {
 
 export const MODULE_SLUGS = {
   dashboard: 'dashboard',
-  contracts: 'contracts-payroll',
+  courses: 'courses-classes',
+  curriculum: 'curriculum-levels',
   schedules: 'zoom-schedules',
   attendance: 'class-attendance-evaluation',
+  contracts: 'contracts-payroll',
   tuition: 'tuition-fees',
+  users: 'user-management',
 };
 
 export const getSlugFromModule = (key) => MODULE_SLUGS[key] || 'dashboard';
 export const getModuleFromSlug = (slug) => {
-  const entry = Object.entries(MODULE_SLUGS).find(([_, value]) => value === slug);
+  const rootSlug = String(slug || '').split('/')[0];
+  const entry = Object.entries(MODULE_SLUGS).find(([_, value]) => value === rootSlug || value === slug);
   return entry ? entry[0] : 'dashboard';
 };

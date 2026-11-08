@@ -1,12 +1,12 @@
 {
   "projects": {
-    "default": "lakeducation-erp"
+    "default": "lakeducation"
   },
   "targets": {
-    "lakeducation-erp": {
+    "lakeducation": {
       "hosting": {
         "landing": [
-          "lakeducation-landing"
+          "lakeducation"
         ],
         "erp": [
           "lakeducation-erp-portal"
