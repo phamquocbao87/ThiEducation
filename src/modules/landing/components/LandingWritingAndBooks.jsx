@@ -424,7 +424,16 @@ export const LandingWritingAndBooks = ({
             </Row>
 
             {/* 3 Core Academic Writing Genres Mastered by Students */}
-            <Divider style={{ margin: '24px 0 22px' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '24px 0 22px',
+                gap: 12,
+              }}
+            >
+              <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
               <div
                 style={{
                   background: '#e6f4ff',
@@ -432,17 +441,20 @@ export const LandingWritingAndBooks = ({
                   color: '#0958d9',
                   fontSize: 11.5,
                   fontWeight: 800,
-                  padding: '5px 18px',
+                  padding: '6px 14px',
                   borderRadius: 16,
                   textTransform: 'uppercase',
-                  letterSpacing: '0.8px',
+                  letterSpacing: '0.6px',
+                  textAlign: 'center',
+                  maxWidth: '100%',
                 }}
               >
                 {language === 'en'
                   ? '• 3 CORE ACADEMIC WRITING GENRES MASTERED BY STUDENTS •'
                   : '• 3 THỂ LOẠI VIẾT HỌC THUẬT TRỌNG TÂM HỌC SINH ĐƯỢC RÈN LUYỆN •'}
               </div>
-            </Divider>
+              <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+            </div>
 
             <Row gutter={[18, 18]} style={{ marginBottom: 26 }}>
               {writingAndOrganizerSection.writingGenres.map((g, idx) => (
@@ -738,9 +750,9 @@ export const LandingWritingAndBooks = ({
               <path d="M40 52C58 48 78 38 96 24" stroke="#7EC8F8" strokeWidth="1.5" strokeDasharray="4 4" />
             </svg>
 
-            <Row gutter={[28, 20]} align="middle">
+            <Row gutter={[24, 20]} align="middle">
               {/* Left 3D Clipboard & Golden Pen Artwork (from ChatGPT Plus) */}
-              <Col xs={24} md={5} style={{ textAlign: 'center' }}>
+              <Col xs={24} lg={5} style={{ textAlign: 'center' }}>
                 <div
                   className="lak-float-img"
                   style={{
@@ -763,16 +775,16 @@ export const LandingWritingAndBooks = ({
               </Col>
 
               {/* Center Persuasive Assessment Copy */}
-              <Col xs={24} md={13}>
+              <Col xs={24} lg={11}>
                 <Title
                   level={2}
                   className="lak-display-font"
                   style={{
                     color: '#ffffff',
                     margin: '0 0 8px 0',
-                    fontSize: 28,
+                    fontSize: 26,
                     fontWeight: 800,
-                    lineHeight: 1.22,
+                    lineHeight: 1.24,
                   }}
                 >
                   {assessmentCtaSection.title}
@@ -783,18 +795,18 @@ export const LandingWritingAndBooks = ({
               </Col>
 
               {/* Right Warm Golden Pill CTA Button */}
-              <Col xs={24} md={6} style={{ textAlign: 'center' }}>
+              <Col xs={24} lg={8} style={{ textAlign: 'center' }}>
                 <Button
                   size="large"
                   className="lak-gold-cta-btn"
                   onClick={() => setAssessmentModalOpen(true)}
                   style={{
-                    height: 52,
-                    padding: '0 26px',
-                    fontSize: 15.5,
+                    minHeight: 50,
+                    padding: '10px 20px',
+                    fontSize: 14.5,
                     borderRadius: 26,
                     width: '100%',
-                    maxWidth: 270,
+                    maxWidth: 310,
                   }}
                 >
                   {assessmentCtaSection.buttonText} <ArrowRightOutlined style={{ marginLeft: 6 }} />

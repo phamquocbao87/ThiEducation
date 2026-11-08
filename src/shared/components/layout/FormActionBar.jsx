@@ -54,10 +54,11 @@ export const FormActionBar = ({
           WebkitBackdropFilter: 'blur(10px)',
           borderTop: '1px solid #e2e8f0',
           boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.08)',
-          padding: '12px 16px',
+          padding: '10px 8px',
           display: 'flex',
-          gap: 10,
+          gap: 8,
           width: '100%',
+          boxSizing: 'border-box',
           marginTop: 20,
           ...style,
         }}
@@ -69,10 +70,12 @@ export const FormActionBar = ({
             onClick={onCancel}
             style={{
               flex: 1,
-              height: 44,
+              minWidth: 0,
+              minHeight: 42,
+              padding: '4px 8px',
               borderRadius: 8,
               fontWeight: 500,
-              fontSize: 14,
+              fontSize: 13,
             }}
           >
             {defaultCancel}
@@ -88,13 +91,15 @@ export const FormActionBar = ({
           loading={loading}
           onClick={onSubmit}
           style={{
-            flex: onCancel ? 2 : 1,
-            height: 44,
+            flex: onCancel ? 1.4 : 1,
+            minWidth: 0,
+            minHeight: 42,
+            padding: '4px 10px',
             borderRadius: 8,
             backgroundColor: '#1890ff',
             boxShadow: '0 4px 12px rgba(24, 144, 255, 0.35)',
             fontWeight: 600,
-            fontSize: 14,
+            fontSize: 13,
           }}
         >
           {defaultSubmit}

@@ -284,10 +284,42 @@ async def run_qc_audit():
         await ctx_d.close()
 
         # ================================================================
-        # 2. AUDIT MOBILE (390 x 844)
+        # 2. AUDIT MOBILE DEVICE THẬT (is_mobile=True, has_touch=True: 360x800 & 390x844)
         # ================================================================
-        print("\n--- [2] KIỂM TOÁN MOBILE (390 x 844) ---")
-        ctx_m = await browser.new_context(viewport={'width': 390, 'height': 844})
+        print("\n--- [2] KIỂM TOÁN MOBILE DEVICE THẬT (is_mobile=True: 360x800 & 390x844) ---")
+
+        # 2.0 Kiểm tra Landing Page & Login Modal trên màn hình điện thoại thật 360x800 (is_mobile=True)
+        ctx_m360 = await browser.new_context(viewport={'width': 360, 'height': 800}, is_mobile=True, has_touch=True, device_scale_factor=3)
+        page_m360 = await ctx_m360.new_page()
+        await page_m360.goto('http://localhost:3000/')
+        await page_m360.wait_for_timeout(700)
+        await page_m360.locator('button:has-text("Login"), button:has-text("Đăng nhập")').first.click()
+        await page_m360.wait_for_timeout(500)
+        await page_m360.screenshot(path='/Users/baopqmac/.gemini/antigravity/brain/ca1f6c39-e403-4e88-b08e-71b8d7f04e98/scratch/real_mobile_360_login_modal.png')
+
+        landing_360_check = await page_m360.evaluate('''() => {
+            const innerW = window.innerWidth;
+            const docW = document.documentElement.clientWidth;
+            const scrollW = document.documentElement.scrollWidth;
+            const modal = document.querySelector('.ant-modal');
+            const mRect = modal ? modal.getBoundingClientRect() : null;
+            return {
+                innerWidth: innerW,
+                docWidth: docW,
+                scrollWidth: scrollW,
+                noViewportExpansion: innerW === 360 && scrollW <= 360,
+                modalFitsScreen: Boolean(mRect && mRect.left >= 8 && mRect.right <= 352),
+                modalLeft: mRect ? Math.round(mRect.left) : null,
+                modalRight: mRect ? Math.round(mRect.right) : null,
+                modalWidth: mRect ? Math.round(mRect.width) : null
+            };
+        }''')
+        l360_ok = landing_360_check['noViewportExpansion'] and landing_360_check['modalFitsScreen']
+        test_results.append(('Real Mobile 360px Landing & Login Modal Centered (is_mobile=True)', l360_ok, json.dumps(landing_360_check)))
+        print(f"  [2.0] Real Mobile 360px Landing & Login Modal: {'PASS' if l360_ok else 'FAIL'} ({landing_360_check})")
+        await ctx_m360.close()
+
+        ctx_m = await browser.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True, device_scale_factor=3)
         await ctx_m.add_init_script(f'''
             localStorage.setItem('lak_authenticated_user_id', 'ADM001');
             localStorage.setItem('lak_app_language', 'vi');
@@ -304,6 +336,67 @@ async def run_qc_audit():
         m2_no_overflow = body_scroll_m2 <= 390
         test_results.append(('Mobile Tab 2 Class Cards Zero Overflow (390px)', m2_no_overflow, f"{body_scroll_m2}px <= 390px"))
         print(f"  [2.1] Zero Overflow Mobile Tab 2: {'PASS' if m2_no_overflow else 'FAIL'} ({body_scroll_m2}px)")
+
+        # 2.2 Kiểm tra Slide Menu trên Mobile có nút Đăng Xuất Tài Khoản (height >= 40px)
+        await page_m.locator('header button:has(.anticon-menu)').first.click()
+        await page_m.wait_for_timeout(500)
+        await page_m.screenshot(path='/Users/baopqmac/.gemini/antigravity/brain/ca1f6c39-e403-4e88-b08e-71b8d7f04e98/scratch/mobile_slide_menu_logout.png')
+        mobile_logout_check = await page_m.evaluate('''() => {
+            const btn = document.querySelector('.lak-mobile-drawer-logout-btn');
+            if (!btn) return { exists: false };
+            const rect = btn.getBoundingClientRect();
+            return {
+                exists: true,
+                text: btn.innerText.trim(),
+                height: Math.round(rect.height),
+                width: Math.round(rect.width)
+            };
+        }''')
+        m_logout_ok = mobile_logout_check.get('exists') and mobile_logout_check.get('height', 0) >= 40 and 'Đăng Xuất Tài Khoản' in mobile_logout_check.get('text', '')
+        test_results.append(('Mobile Slide Menu Logout Account Button (height >= 40px)', m_logout_ok, json.dumps(mobile_logout_check, ensure_ascii=False)))
+        print(f"  [2.2] Mobile Slide Menu Logout Button: {'PASS' if m_logout_ok else 'FAIL'} ({mobile_logout_check})")
+
+        # 2.3 Kiểm toán Kéo Giãn Chiều Rộng Màn Hình & Chống Tràn Text Ra Ngoài Control (360px -> 1280px)
+        resize_routes = ['/', '/dashboard', '/courses-classes', '/curriculum-levels', '/zoom-schedules', '/user-management', '/user-management/register']
+        resize_widths = [(360, True), (520, False), (768, False), (920, False), (1100, False), (1280, False)]
+        control_overflow_issues = []
+
+        for rw, r_mob in resize_widths:
+            ctx_r = await browser.new_context(viewport={'width': rw, 'height': 850}, is_mobile=r_mob, has_touch=r_mob)
+            await ctx_r.add_init_script('''
+                localStorage.setItem('lak_authenticated_user_id', 'ADM001');
+                localStorage.setItem('lak_app_language', 'vi');
+            ''')
+            page_r = await ctx_r.new_page()
+            for r_path in resize_routes:
+                await page_r.goto(f'http://localhost:3000{r_path}', wait_until='domcontentloaded')
+                await page_r.wait_for_timeout(300)
+                found_r = await page_r.evaluate('''() => {
+                    const errs = [];
+                    const vw = window.innerWidth;
+                    if (document.documentElement.scrollWidth > vw + 1) {
+                        errs.push(`PAGE_OVERFLOW:${document.documentElement.scrollWidth}>${vw}`);
+                    }
+                    document.querySelectorAll('button, .ant-btn').forEach(btn => {
+                        const r = btn.getBoundingClientRect();
+                        if (r.width === 0 || r.height === 0 || btn.matches('.ant-switch')) return;
+                        btn.querySelectorAll('span').forEach(sp => {
+                            if (sp.closest('.ant-switch')) return;
+                            const sr = sp.getBoundingClientRect();
+                            if (sr.width > 0 && (sr.right > r.right + 3 || sr.left < r.left - 3)) {
+                                errs.push(`BTN_TEXT_OUTSIDE:${(btn.innerText || '').trim().slice(0, 25)}`);
+                            }
+                        });
+                    });
+                    return errs;
+                }''')
+                if found_r:
+                    control_overflow_issues.append(f"{rw}px@{r_path}:{found_r[0]}")
+            await ctx_r.close()
+
+        resize_ok = len(control_overflow_issues) == 0
+        test_results.append(('Multi-Width Resize (360-1280px) & Button Text Containment', resize_ok, f"Issues={len(control_overflow_issues)}"))
+        print(f"  [2.3] Multi-Width Resize & Button Text Containment: {'PASS' if resize_ok else 'FAIL'} (Issues={len(control_overflow_issues)})")
 
         # ================================================================
         # 3. DỌN DẸP 100% DỮ LIỆU TEST DO PHÒNG QC TẠO RA (ZERO TEST-DATA RESIDUE TEARDOWN)

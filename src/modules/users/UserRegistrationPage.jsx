@@ -661,6 +661,7 @@ export const UserRegistrationPage = () => {
           style={{
             display: 'flex',
             justifyContent: 'flex-end',
+            flexWrap: 'wrap',
             gap: 12,
             padding: '16px 0',
           }}
@@ -668,7 +669,7 @@ export const UserRegistrationPage = () => {
           <Button
             size="large"
             onClick={() => navigate('/user-management')}
-            style={{ borderRadius: 8, minWidth: 120 }}
+            style={{ borderRadius: 8, flex: '1 1 110px', maxWidth: 160 }}
           >
             Hủy Bỏ
           </Button>
@@ -680,7 +681,8 @@ export const UserRegistrationPage = () => {
             onClick={handleSubmit}
             style={{
               borderRadius: 8,
-              minWidth: 200,
+              flex: '2 1 180px',
+              maxWidth: 260,
               backgroundColor: '#1890ff',
               boxShadow: '0 4px 12px rgba(24,144,255,0.4)',
               fontWeight: 700,

@@ -17,12 +17,93 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
   padding: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   background-color: #f5f7fa;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.ant-divider-inner-text {
+  white-space: normal !important;
+  text-align: center;
+}
+
+/* Global Protection Against Button / Tag / Card Header Text Overflow Across All Viewport Widths */
+.ant-btn {
+  max-width: 100%;
+  white-space: normal !important;
+  height: auto !important;
+  min-height: 32px;
+  line-height: 1.35 !important;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.ant-btn-sm {
+  min-height: 26px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.ant-btn-lg,
+.lak-mobile-drawer-logout-btn {
+  min-height: 42px !important;
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
+.ant-btn > span {
+  white-space: normal !important;
+  word-break: break-word;
+}
+
+.ant-tag {
+  max-width: 100%;
+  white-space: normal !important;
+  word-break: break-word;
+}
+
+.ant-card-head-wrapper {
+  flex-wrap: wrap !important;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.ant-card-head-title,
+.ant-card-head-title * {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  word-break: break-word;
+}
+
+.ant-card-extra {
+  margin-inline-start: 0 !important;
+  max-width: 100%;
+}
+
+.ant-statistic-content {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 767px) {
+  .ant-modal {
+    max-width: calc(100vw - 24px) !important;
+    margin: 12px auto !important;
+  }
+  .ant-result {
+    padding: 20px 8px !important;
+  }
 }
 
 /* Custom Scrollbars */

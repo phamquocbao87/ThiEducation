@@ -152,7 +152,7 @@ export const LandingHeaderHero = ({
           background: 'rgba(13, 33, 63, 0.96)',
           backdropFilter: 'blur(12px)',
           borderBottom: '1px solid rgba(126, 200, 248, 0.22)',
-          padding: isMobile ? '10px 16px' : '12px 24px',
+          padding: isMobile ? '8px 10px' : '12px 24px',
         }}
       >
         <div
@@ -162,54 +162,63 @@ export const LandingHeaderHero = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 12,
+            gap: isMobile ? 6 : 12,
           }}
         >
           {/* Left Group: Mobile Hamburger Button (Top-Left) + Brand Logo */}
-          <Space size={10}>
+          <Space size={isMobile ? 4 : 10} style={{ minWidth: 0, flexShrink: 0 }}>
             {isMobile && (
               <Button
                 type="text"
-                icon={<MenuOutlined style={{ fontSize: 20, color: '#fff' }} />}
+                icon={<MenuOutlined style={{ fontSize: 18, color: '#fff' }} />}
                 onClick={() => setMobileMenuOpen(true)}
                 style={{
-                  width: 38,
-                  height: 38,
+                  width: 30,
+                  height: 30,
                   padding: 0,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  flexShrink: 0,
                 }}
               />
             )}
 
             <Space
-              size={10}
-              style={{ cursor: 'pointer' }}
+              size={isMobile ? 6 : 10}
+              style={{ cursor: 'pointer', minWidth: 0 }}
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             >
               <img
                 src={LANDING_ASSETS.iconLaptopCap}
                 alt="LAK EDUCATION"
-                style={{ width: isMobile ? 32 : 40, height: isMobile ? 32 : 40, objectFit: 'contain' }}
+                style={{
+                  width: isMobile ? 25 : 40,
+                  height: isMobile ? 25 : 40,
+                  objectFit: 'contain',
+                  flexShrink: 0,
+                }}
               />
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <Text
                   className="lak-display-font"
                   style={{
                     color: '#fff',
-                    fontSize: isMobile ? 15.5 : 19,
+                    fontSize: isMobile ? 13.5 : 19,
                     fontWeight: 800,
-                    letterSpacing: '0.4px',
+                    letterSpacing: isMobile ? '0px' : '0.4px',
                     display: 'block',
-                    lineHeight: 1.1,
+                    lineHeight: 1.15,
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   LAK EDUCATION
                 </Text>
-                <Text style={{ color: '#7EC8F8', fontSize: isMobile ? 10 : 11.5, fontWeight: 600 }}>
-                  McGraw-Hill Wonders ELA • GK – G5
-                </Text>
+                {!isMobile && (
+                  <Text style={{ color: '#7EC8F8', fontSize: 11.5, fontWeight: 600 }}>
+                    McGraw-Hill Wonders ELA • GK – G5
+                  </Text>
+                )}
               </div>
             </Space>
           </Space>
@@ -260,7 +269,7 @@ export const LandingHeaderHero = ({
 
           {/* Right Group on Mobile: Language Switcher + Compact Login Button */}
           {isMobile && (
-            <Space size={6}>
+            <Space size={4} style={{ flexShrink: 0 }}>
               <Segmented
                 size="small"
                 value={language}
@@ -269,7 +278,7 @@ export const LandingHeaderHero = ({
                   { label: 'EN', value: 'en' },
                   { label: 'VI', value: 'vi' },
                 ]}
-                style={{ fontWeight: 700 }}
+                style={{ fontWeight: 700, fontSize: 11.5 }}
               />
               <Button
                 type="primary"
@@ -277,10 +286,11 @@ export const LandingHeaderHero = ({
                 icon={<LoginOutlined />}
                 onClick={onOpenLoginModal}
                 style={{
-                  borderRadius: 16,
+                  borderRadius: 15,
                   fontWeight: 700,
-                  padding: '0 10px',
-                  height: 30,
+                  padding: '0 8px',
+                  height: 28,
+                  fontSize: 12,
                 }}
               >
                 {language === 'en' ? 'Login' : 'Đăng nhập'}
@@ -451,7 +461,15 @@ export const LandingHeaderHero = ({
               </Paragraph>
 
               {/* CTA Buttons */}
-              <Space size={14} wrap>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  flexWrap: 'wrap',
+                  gap: 12,
+                  width: '100%',
+                }}
+              >
                 <Button
                   size="large"
                   className="lak-gold-cta-btn"
@@ -459,9 +477,10 @@ export const LandingHeaderHero = ({
                   onClick={() => scrollToSection('section-kindergarten')}
                   style={{
                     height: 46,
-                    padding: '0 24px',
-                    fontSize: 14.5,
+                    padding: isMobile ? '0 16px' : '0 24px',
+                    fontSize: isMobile ? 13.5 : 14.5,
                     borderRadius: 24,
+                    width: isMobile ? '100%' : 'auto',
                   }}
                 >
                   {content.hero.ctaSecondary} <ArrowRightOutlined style={{ marginLeft: 4 }} />
@@ -473,18 +492,19 @@ export const LandingHeaderHero = ({
                   onClick={() => scrollToSection('section-books')}
                   style={{
                     height: 46,
-                    padding: '0 22px',
-                    fontSize: 14.5,
+                    padding: isMobile ? '0 16px' : '0 22px',
+                    fontSize: isMobile ? 13.5 : 14.5,
                     fontWeight: 700,
                     borderRadius: 24,
                     color: '#fff',
                     borderColor: 'rgba(126, 200, 248, 0.7)',
                     background: 'rgba(255, 255, 255, 0.1)',
+                    width: isMobile ? '100%' : 'auto',
                   }}
                 >
                   {content.nav.curriculumInside}
                 </Button>
-              </Space>
+              </div>
             </Col>
 
             {/* Right Column: Seamless 3D Wonders Books + Happy Students on Golden Arc */}

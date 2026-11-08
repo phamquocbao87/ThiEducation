@@ -64,9 +64,13 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
   const [userSearchText, setUserSearchText] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isCompactHeader, setIsCompactHeader] = useState(window.innerWidth < 1200);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+      setIsCompactHeader(window.innerWidth < 1200);
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -113,7 +117,7 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
       {
         key: 'users',
         icon: <SafetyCertificateOutlined />,
-        label: isEnglish ? 'User Management & Audit' : 'Quản Trị Người Dùng & Audit',
+        label: isEnglish ? 'User Management' : 'Quản Trị Người Dùng',
       },
     ],
     [isEnglish]
@@ -191,15 +195,15 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
             onClick={() => setActiveTab('dashboard')}
           >
             <BookOutlined style={{ fontSize: isMobile ? 20 : 24, color: '#1890ff', flexShrink: 0 }} />
-            <Text style={{ color: '#fff', margin: 0, fontWeight: 700, fontSize: isMobile ? 15 : 18, whiteSpace: 'nowrap' }}>
-              {isMobile ? 'LAK' : t('appTitle')}
+            <Text style={{ color: '#fff', margin: 0, fontWeight: 700, fontSize: isMobile ? 15 : isCompactHeader ? 16 : 18, whiteSpace: 'nowrap' }}>
+              {isMobile ? 'LAK' : isCompactHeader ? 'LAK EDUCATION' : t('appTitle')}
             </Text>
           </div>
         </div>
 
-        <Space size={isMobile ? 4 : 12} style={{ flexShrink: 0 }}>
+        <Space size={isMobile ? 4 : isCompactHeader ? 8 : 12} style={{ flexShrink: 0 }}>
           <Button
-            size={isMobile ? 'small' : 'middle'}
+            size={isMobile || isCompactHeader ? 'small' : 'middle'}
             icon={<GlobalOutlined />}
             onClick={() => {
               if (isProductionErpDomain()) {
@@ -213,7 +217,7 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
               color: '#fff',
               borderColor: 'rgba(255,255,255,0.3)',
               borderRadius: 6,
-              padding: isMobile ? '0 6px' : undefined,
+              padding: isMobile ? '0 6px' : isCompactHeader ? '0 8px' : undefined,
             }}
           >
             {!isMobile && (language === 'en' ? 'Landing Page' : 'Trang Chủ')}
@@ -225,8 +229,8 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
             value={language}
             onChange={(val) => setLanguage(val)}
             options={[
-              { label: isMobile ? 'EN' : '🇬🇧 EN', value: 'en' },
-              { label: isMobile ? 'VI' : '🇻🇳 VI', value: 'vi' },
+              { label: isMobile || isCompactHeader ? 'EN' : '🇬🇧 EN', value: 'en' },
+              { label: isMobile || isCompactHeader ? 'VI' : '🇻🇳 VI', value: 'vi' },
             ]}
             style={{ fontWeight: 600 }}
           />
@@ -242,7 +246,7 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
                   icon={<RollbackOutlined />}
                   onClick={exitImpersonation}
                 >
-                  {!isMobile && t('exitViewAsBtn')}
+                  {!isMobile && !isCompactHeader && t('exitViewAsBtn')}
                 </Button>
               )}
               <Button
@@ -253,31 +257,36 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
                 style={{
                   borderRadius: 6,
                   height: isMobile ? 32 : 34,
-                  padding: isMobile ? '0 6px' : '0 12px',
+                  padding: isMobile || isCompactHeader ? '0 6px' : '0 12px',
                   display: 'inline-flex',
                   alignItems: 'center',
                 }}
               >
-                {!isMobile && (isEnglish ? 'Admin View-As: ' : 'Admin Xem Dưới Tên User: ')}
+                {!isMobile && !isCompactHeader && (isEnglish ? 'Admin View-As: ' : 'Admin Xem Dưới Tên User: ')}
                 <Tag color={currentRoleMeta.color} style={{ margin: 0, fontSize: isMobile ? 11 : 12 }}>
-                  {isMobile ? currentUser.id : `${currentRoleMeta.shortLabel} — ${currentUser.id}`}
+                  {isMobile || isCompactHeader ? currentUser.id : `${currentRoleMeta.shortLabel} — ${currentUser.id}`}
                 </Tag>
               </Button>
             </Space>
           )}
 
           {!isMobile && (
-            <Space style={{ color: '#fff' }} size={10}>
+            <Space style={{ color: '#fff' }} size={isCompactHeader ? 6 : 10}>
               <Avatar
                 key={currentUser.avatar || currentUser.id}
                 src={DriveStorageService.formatAvatarUrl(currentUser.avatar, 100)}
                 icon={<UserOutlined />}
+                size={isCompactHeader ? 30 : 32}
               />
               <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                <Text style={{ color: '#fff', fontWeight: 600 }}>{currentUser.name}</Text>
-                <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11 }}>
-                  {localizedCurrentRoleLabel}
+                <Text style={{ color: '#fff', fontWeight: 600, fontSize: isCompactHeader ? 13 : 14, whiteSpace: 'nowrap' }}>
+                  {currentUser.name}
                 </Text>
+                {!isCompactHeader && (
+                  <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11, whiteSpace: 'nowrap' }}>
+                    {localizedCurrentRoleLabel}
+                  </Text>
+                )}
               </div>
               <Button
                 size="small"
@@ -362,20 +371,69 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
             placement="left"
             onClose={() => setMobileDrawerOpen(false)}
             open={mobileDrawerOpen}
-            width={265}
+            width={280}
+            footer={
+              <div style={{ padding: '4px 0' }}>
+                <Button
+                  danger
+                  type="primary"
+                  block
+                  icon={<LogoutOutlined />}
+                  className="lak-mobile-drawer-logout-btn"
+                  style={{
+                    height: 42,
+                    borderRadius: 8,
+                    fontWeight: 600,
+                    fontSize: 14,
+                  }}
+                  onClick={() => {
+                    setMobileDrawerOpen(false);
+                    logoutAccount();
+                    if (isProductionErpDomain()) {
+                      window.location.href = SITE_DOMAINS.LANDING_PRODUCTION;
+                    } else {
+                      navigate('/');
+                    }
+                  }}
+                >
+                  {language === 'en' ? 'Logout Account' : 'Đăng Xuất Tài Khoản'}
+                </Button>
+                <div style={{ textAlign: 'center', fontSize: 11, color: '#94a3b8', marginTop: 6 }}>
+                  {APP_BUILD_VERSION_LABEL}
+                </div>
+              </div>
+            }
           >
-            <Card style={{ marginBottom: 16, background: '#fafafa' }} styles={{ body: { padding: 12 } }}>
-              <Space align="center">
+            <Card
+              style={{ marginBottom: 16, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}
+              styles={{ body: { padding: 12 } }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Avatar
                   key={currentUser.avatar || currentUser.id}
                   src={DriveStorageService.formatAvatarUrl(currentUser.avatar, 100)}
-                  size={40}
+                  icon={<UserOutlined />}
+                  size={42}
+                  style={{ flexShrink: 0 }}
                 />
-                <div>
-                  <Text strong style={{ display: 'block' }}>{currentUser.name}</Text>
-                  <Tag color={currentRoleMeta.color}>{localizedCurrentRoleLabel}</Tag>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <Text strong style={{ display: 'block', lineHeight: 1.25 }}>
+                    {currentUser.name}
+                  </Text>
+                  <Tag
+                    color={currentRoleMeta.color}
+                    style={{
+                      marginTop: 4,
+                      marginRight: 0,
+                      whiteSpace: 'normal',
+                      lineHeight: '16px',
+                      padding: '2px 6px',
+                    }}
+                  >
+                    {localizedCurrentRoleLabel}
+                  </Tag>
                 </div>
-              </Space>
+              </div>
             </Card>
             <div style={{ marginBottom: 12 }}>
               <Space>

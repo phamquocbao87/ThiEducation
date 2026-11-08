@@ -80,8 +80,8 @@ export const AdminSystemHealthPanel = ({
   return (
     <div>
       <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card style={{ borderColor: '#52c41a', borderRadius: 8 }}>
+        <Col xs={24} sm={12} xl={6}>
+          <Card style={{ borderColor: '#52c41a', borderRadius: 8, height: '100%' }}>
             <Statistic
               title="Uptime Hệ Thống"
               value={healthData.uptime}
@@ -91,8 +91,8 @@ export const AdminSystemHealthPanel = ({
             <Text type="secondary" style={{ fontSize: 12 }}>Firebase Hosting & SSL Active</Text>
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card style={{ borderColor: '#1890ff', borderRadius: 8 }}>
+        <Col xs={24} sm={12} xl={6}>
+          <Card style={{ borderColor: '#1890ff', borderRadius: 8, height: '100%' }}>
             <Statistic
               title="Tải CPU & RAM"
               value={`${healthData.cpuUsage}% / ${healthData.memoryUsage}%`}
@@ -102,8 +102,8 @@ export const AdminSystemHealthPanel = ({
             <Progress percent={healthData.memoryUsage} size="small" status="active" />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card style={{ borderColor: '#722ed1', borderRadius: 8 }}>
+        <Col xs={24} sm={12} xl={6}>
+          <Card style={{ borderColor: '#722ed1', borderRadius: 8, height: '100%' }}>
             <Statistic
               title="Firebase / Firestore Cloud"
               value="< 150 MB / 1 GB"
@@ -113,21 +113,21 @@ export const AdminSystemHealthPanel = ({
             <Text type="secondary" style={{ fontSize: 12 }}>Tài khoản: {healthData.firebaseAccount}</Text>
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card style={{ borderColor: '#fa8c16', borderRadius: 8 }}>
+        <Col xs={24} sm={12} xl={6}>
+          <Card style={{ borderColor: '#fa8c16', borderRadius: 8, height: '100%' }}>
             <Statistic
               title="Google Drive (hosting-store)"
               value="lakeducation_com"
               prefix={<GlobalOutlined style={{ color: '#fa8c16' }} />}
-              styles={{ content: { color: '#fa8c16', fontWeight: 'bold', fontSize: 18 } }}
+              styles={{ content: { color: '#fa8c16', fontWeight: 'bold', fontSize: 17 } }}
             />
             <Button
               type="link"
               size="small"
-              style={{ padding: 0, fontSize: 12 }}
+              style={{ padding: 0, fontSize: 12, textAlign: 'left', justifyContent: 'flex-start' }}
               onClick={() => window.open(healthData.driveRootUrl, '_blank')}
             >
-              Mở Thư Mục Gốc Dự Án Trên Drive →
+              Mở Thư Mục Gốc Dự Án →
             </Button>
           </Card>
         </Col>

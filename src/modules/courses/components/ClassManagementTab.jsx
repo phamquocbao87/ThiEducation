@@ -234,7 +234,7 @@ export const ClassManagementTab = ({
                 : record.zoomStudentLink || record.meetingLink;
 
             return (
-              <Col xs={24} sm={12} md={12} lg={8} key={record.id}>
+              <Col xs={24} sm={12} md={12} lg={12} xl={8} key={record.id}>
                 <Card
                   hoverable
                   style={{

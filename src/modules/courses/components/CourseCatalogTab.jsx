@@ -137,7 +137,7 @@ export const CourseCatalogTab = ({
       ) : (
         <Row gutter={[16, 16]}>
           {courses.map((course) => (
-            <Col xs={24} sm={12} md={12} lg={8} key={course.id}>
+            <Col xs={24} sm={12} md={12} lg={12} xl={8} key={course.id}>
               <Card
                 hoverable
                 style={{

@@ -104,10 +104,11 @@ export const SystemLoginModal = ({
       open={open}
       onCancel={onCancel}
       footer={null}
-      width={420}
+      width="min(420px, calc(100vw - 24px))"
       centered
+      style={{ maxWidth: 'calc(100vw - 24px)', margin: '0 auto' }}
       styles={{
-        body: { padding: '16px 8px 8px' },
+        body: { padding: '12px 4px 6px' },
       }}
     >
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -162,11 +163,16 @@ export const SystemLoginModal = ({
         </span>
       </Button>
 
-      <Divider plain style={{ margin: '20px 0' }}>
-        <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0' }}>
+        <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+        <Text
+          type="secondary"
+          style={{ fontSize: 11.5, fontWeight: 600, textTransform: 'uppercase', whiteSpace: 'nowrap' }}
+        >
           {language === 'en' ? 'or sign in with email' : 'hoặc đăng nhập bằng email'}
         </Text>
-      </Divider>
+        <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+      </div>
 
       {/* 2. Đăng nhập bằng Email / Password */}
       <Form

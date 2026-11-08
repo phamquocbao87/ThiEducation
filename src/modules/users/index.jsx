@@ -12,7 +12,7 @@ import { UserRegistrationPage } from './UserRegistrationPage';
  */
 export default function UsersModule() {
   const { userId } = useParams();
-  if (userId === 'new' || userId === 'create') {
+  if (userId === 'new' || userId === 'create' || userId === 'register') {
     return <UserRegistrationPage />;
   }
   if (userId) {
