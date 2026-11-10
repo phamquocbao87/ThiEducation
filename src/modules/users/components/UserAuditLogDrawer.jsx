@@ -19,6 +19,7 @@ import {
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { AUDIT_ACTIONS, ROLE_COLORS } from '../models/user.model';
+import { useLanguage } from '../../../core/context/LanguageContext';
 
 const { Text, Title } = Typography;
 
@@ -27,7 +28,12 @@ export const UserAuditLogDrawer = ({
   onClose,
   auditLogs = [],
   loading = false,
+  language: propLanguage,
+  isEnglish: propIsEnglish,
 }) => {
+  const contextLanguage = useLanguage();
+  const isEnglish = propIsEnglish !== undefined ? propIsEnglish : contextLanguage?.isEnglish;
+  const t = contextLanguage?.t || ((key) => key);
   const getActionIcon = (action) => {
     switch (action) {
       case AUDIT_ACTIONS.CREATE_USER:
@@ -78,22 +84,22 @@ export const UserAuditLogDrawer = ({
       title={
         <Space>
           <SafetyCertificateOutlined style={{ color: '#52c41a', fontSize: 20 }} />
-          <span>Nhật Ký Kiểm Toán & Phân Quyền (Audit Logs)</span>
+          <span>{t('users.auditDrawer.title')}</span>
         </Space>
       }
     >
       <div style={{ marginBottom: 16 }}>
         <Text type="secondary">
-          Ghi nhận toàn bộ thao tác Tạo mới, Cập nhật thông tin, Kích hoạt và Vô hiệu hóa tài khoản trong hệ thống.
+          {t('users.auditDrawer.subtitle')}
         </Text>
       </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
-          <Spin tip="Đang tải nhật ký kiểm toán..." />
+          <Spin tip={t('users.auditDrawer.loading')} />
         </div>
       ) : auditLogs.length === 0 ? (
-        <Empty description="Chưa có nhật ký thao tác nào" />
+        <Empty description={t('users.auditDrawer.empty')} />
       ) : (
         <Timeline
           items={auditLogs.map((log) => ({

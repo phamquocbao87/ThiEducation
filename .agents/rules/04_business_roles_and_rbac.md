@@ -66,11 +66,11 @@ Dự án **ThiEducation** vận hành theo mô hình **6 Vai Trò (Roles)** tác
 2. **Data Scoping (Cô lập dữ liệu theo Role):**
    - Với `teacher`: Phải filter dữ liệu theo `teacherId` của giáo viên đang đăng nhập.
    - Với `student`: Phải filter dữ liệu theo `studentId` của học viên đang đăng nhập.
-3. **Admin User Impersonation (`View-As Any User` — Chỉ dành riêng cho `admin`):**
-   - Trong [`src/core/context/AuthContext.jsx`](file:///Volumes/DATA/projects/ThiEducation/src/core/context/AuthContext.jsx), tách bạch giữa **`authenticatedUser`** (tài khoản đăng nhập gốc) và **`impersonatedUser`** (tài khoản mục tiêu đang xem hộ), với `currentUser = impersonatedUser || authenticatedUser`.
-   - **Chỉ duy nhất `authenticatedUser.role === 'admin'`** (`canImpersonateUsers === true`) mới thấy nút **"Giả Lập Xem Tài Khoản"** trên Header ([`src/core/layout/AppLayout.jsx`](file:///Volumes/DATA/projects/ThiEducation/src/core/layout/AppLayout.jsx)) và được phép chuyển sang **bất kỳ tài khoản cụ thể nào** trong toàn hệ thống (`ADM001`, `DIR001`, `ACA001..ACA003`, `GV001..GV007`, `ACC001`, `HV001..HV005`) để kiểm tra giao diện & dữ liệu cô lập của chính user đó.
-   - Khi đang ở chế độ xem hộ (`isImpersonating === true`), hệ thống hiển thị thanh cảnh báo màu cam nổi bật trên cùng màn hình kèm nút **"Quay về màn hình IT Admin" (`exitImpersonation()`)**.
-   - Các tài khoản khác (`director`, `academic`, `teacher`, `accountant`, `student`) khi đăng nhập thật sẽ có `canImpersonateUsers === false` và **tuyệt đối không nhìn thấy** công cụ chuyển đổi tài khoản này.
+3. **Vận Hành 100% Dữ Liệu Thực Tế & Gỡ Bỏ Cơ Chế Giả Lập (Pure Real Data & Zero Impersonation Invariant):**
+   - Theo chỉ đạo của Sếp Bảo, hệ thống vận hành hoàn toàn trên dữ liệu người dùng thực tế từ Cloud Firestore `lakeducationdb`.
+   - Cơ chế giả lập / Impersonation (*"Admin Xem Dưới Tên User"*) và modal danh bạ giả lập đã được **gỡ bỏ hoàn toàn**.
+   - Mỗi người dùng đăng nhập bằng chính tài khoản thật của mình qua Google OAuth hoặc Email/Mật khẩu.
+   - Tài khoản nhân sự cốt lõi thật gồm: `ADM001` (Phạm Quốc Bảo), `DIR505` (Phạm Hiếu Thi), `ACC330` (Lê Thị Mỹ Dung). Toàn bộ mock data đã được loại bỏ.
 
 ---
 
@@ -108,5 +108,38 @@ Dự án **ThiEducation** vận hành theo mô hình **6 Vai Trò (Roles)** tác
 2. **Tách biệt 2 Module Vận hành:**
    - `src/modules/courses/` (`/courses-classes`): Quản lý danh mục Khóa học & Lớp học, tạo khóa học mới qua trang chuyên biệt `/courses-classes/new`.
    - `src/modules/schedules/` (`/zoom-schedules`): Thời khóa biểu phòng học trực tuyến Live Zoom Calendar View.
+
+---
+
+## 👨‍👩‍👧‍👦 6. Quy Chuẩn Số Điện Thoại Chính/Phụ, Cụm Gia Đình (`familyId`) & Chốt Chặn Bảo Mật 3 Tầng Chống Leo Thang Đặc Quyền
+
+1. **Ràng buộc Định danh & 2 Hình Thức Đăng Nhập:**
+   - **Hai hình thức đăng nhập chuẩn:** Đăng nhập bằng Email (nếu tài khoản có Email) hoặc Đăng nhập bằng Số điện thoại 1 (Chính).
+   - **Số điện thoại 1 (Chính - Bắt buộc):** Dùng để định danh, nhận thông báo và làm giá trị đăng nhập duy nhất bằng số điện thoại.
+   - **Số điện thoại 2 (Phụ - Tùy chọn):** Dành cho phụ huynh thứ 2 (Bố/Mẹ cùng theo dõi con). **TUYỆT ĐỐI KHÔNG dùng SĐT phụ để đăng nhập** và không bắt buộc định dạng nghiêm ngặt (`rules={[]}`), không chặn trùng lặp giữa các tài khoản.
+   - **Cán bộ / Giáo viên:** Bắt buộc 100% có Email công vụ + 1 SĐT chính riêng biệt (duy nhất trên toàn hệ thống).
+   - **Học viên:** Cho phép để trống Email nếu đã có SĐT chính.
+2. **Quy chuẩn Tên Tiếng Anh Bắt Buộc (`English Name Invariant`):**
+   - Mọi tài khoản người dùng trên hệ thống **bắt buộc phải có Tên Tiếng Anh (`englishName`)**.
+   - Khi tạo mới hoặc chỉnh sửa Họ và Tên, hệ thống tự động sinh Tên tiếng Anh bằng hàm `toEnglishName(name)` (lọc bỏ toàn bộ dấu tiếng Việt). Người dùng có thể chỉnh sửa lại thành tên quốc tế (VD: *"Cowboy"*, *"NaNa"*).
+3. **Mô hình Cụm Gia Đình Tự Động 100% (`Zero-Effort Auto-Clustering` — `familyId` & `parentUserId`):**
+   - Khi tạo con thứ 2, 3 có cùng SĐT phụ huynh:
+     * `UserService.checkDuplicateContact` tự động cho phép chia sẻ SĐT khi cả hai bên đều là `Học Viên (Student)`, tuyệt đối không quăng lỗi chặn người dùng.
+     * `UserService.createUser` tự động gán mã `familyId` (`FAM_<sđt_chính>`) và **tự động cập nhật đồng bộ ngược lại cho con thứ nhất** để cả hai cùng thuộc chung một Cụm Gia Đình.
+     * Giao diện `UserRegistrationPage` tự động hiển thị thẻ thông báo xanh lá cây phát hiện anh/chị/em ruột và mở nút tạo ngay tức thì.
+4. **Chốt Chặn Bảo Mật 3 Tầng Chống Rò Rỉ & Leo Thang Đặc Quyền (Privilege Escalation Shield):**
+   - **Tầng 1 (Khóa SĐT Cán Bộ Tại Form):** Giáo vụ (academic) hoặc người dùng khác tuyệt đối không được phép sử dụng SĐT của Cán bộ/Lãnh đạo (Giám đốc, Admin, Giáo vụ, Kế toán, Giáo viên) để tạo hoặc sửa tài khoản học viên. Nếu vi phạm, Form lập tức hiển thị cảnh báo an ninh màu đỏ, vô hiệu hóa nút Submit và ghi nhật ký cảnh báo an ninh.
+   - **Tầng 2 (Tách Biệt Xác Thực Khi Đăng Nhập):**
+     * **Đăng nhập bằng Email:** Hệ thống **KHÔNG BAO GIỜ mở rộng Cụm gia đình**. Chỉ tìm đúng 1 tài khoản có Email đó và kiểm tra đúng mật khẩu của Cán bộ đó. Nhập sai mật khẩu $\rightarrow$ Báo sai mật khẩu, tuyệt đối không rớt sang tài khoản con!
+     * **Đăng nhập bằng SĐT chung:** Hệ thống lọc nghiêm ngặt các hồ sơ có mật khẩu khớp 100% với mật khẩu người dùng vừa nhập (`cleanPassword === p.password`). Dùng mật khẩu của con thì **chỉ hiển thị danh sách các con**, tài khoản Giám đốc/Admin được ẩn kín 100%!
+   - **Tầng 3 (Chặn Leo Thang Tại Header):** Khi đang ở phiên đăng nhập của Học viên, bộ chuyển đổi trên Header (`FamilyProfileSwitcher`) chỉ cho phép chuyển đổi giữa các con anh/chị/em, cấm tuyệt đối chuyển đổi lên tài khoản Cán bộ/Giám đốc.
+5. **Màn Hình Chọn Hồ Sơ Con Khi Đăng Nhập (`Profile Candidate Selector Modal`):**
+   - Khi phụ huynh đăng nhập bằng SĐT chính dùng chung của các con, hệ thống hiển thị Dialog chọn con trực quan (`.lak-profile-candidate-card`). Bấm 1 chạm vào Card con nào là vào học ngay lập tức.
+6. **Bộ Chuyển Đổi Hồ Sơ Con 1 Chạm Trên Header (`FamilyProfileSwitcher`):**
+   - Nút **`Switch Child / Đổi Hồ Sơ`** trên Header và Mobile Drawer cho phép phụ huynh/học viên chuyển đổi giữa các anh chị em ruột tức thì (**0ms phản hồi**) mà không cần đăng xuất.
+7. **Menu IT Admin Switch Role (Đổi Vai Trò Trực Tiếp):**
+   - Riêng IT Admin (`ADM001`), hệ thống cung cấp Menu **`Switch Role / Đổi Vai Trò`** trên Header để kiểm thử và điều hành hệ thống dưới cả 6 vai trò (Giám đốc, Giáo vụ, Giáo viên, Kế toán, Học viên).
+   - Khi đang xem thử, màn hình có **Banner Cảnh Báo Màu Cam** ở đỉnh trang và nút **"Thoát Chế Độ Xem"** để trở về IT Admin trong 0ms.
+
 
 

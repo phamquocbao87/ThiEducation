@@ -23,12 +23,12 @@ export const CurriculumLevelTable = ({
   onDelete,
   canManage = true,
 }) => {
-  const { isEnglish } = useLanguage();
+  const { isEnglish, t } = useLanguage();
 
   const columns = useMemo(
     () => [
       {
-        title: isEnglish ? 'Order' : 'STT',
+        title: t('curriculum.table.colOrder'),
         dataIndex: 'orderIndex',
         key: 'orderIndex',
         width: 70,
@@ -40,7 +40,7 @@ export const CurriculumLevelTable = ({
         ),
       },
       {
-        title: isEnglish ? 'Level Name & Code' : 'Mã & Cấp Độ Giáo Trình',
+        title: t('curriculum.table.colLevelCode'),
         key: 'levelInfo',
         width: 260,
         render: (_, record) => (
@@ -102,7 +102,7 @@ export const CurriculumLevelTable = ({
         ),
       },
       {
-        title: isEnglish ? 'Age Range & CEFR' : 'Độ Tuổi & Chuẩn Đầu Ra',
+        title: t('curriculum.table.colAgeCefr'),
         key: 'targetGroup',
         width: 200,
         render: (_, record) => (
@@ -118,7 +118,7 @@ export const CurriculumLevelTable = ({
         ),
       },
       {
-        title: isEnglish ? 'Skills Focus' : 'Kỹ Năng Trọng Tâm',
+        title: t('curriculum.table.colSkills'),
         key: 'skillsFocus',
         width: 240,
         render: (_, record) => (
@@ -136,13 +136,13 @@ export const CurriculumLevelTable = ({
         ),
       },
       {
-        title: isEnglish ? 'Units & Duration' : 'Số Unit & Thời Lượng',
+        title: t('curriculum.table.colUnits'),
         key: 'duration',
         width: 190,
         render: (_, record) => (
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>
-              📚 {record.totalUnits} {isEnglish ? 'Units' : 'Chủ đề (Units)'}
+              📚 {record.totalUnits} {t('curriculum.table.unitsCount')}
             </div>
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
               ⏱️ {record.recommendedDuration}
@@ -151,7 +151,7 @@ export const CurriculumLevelTable = ({
         ),
       },
       {
-        title: isEnglish ? 'Status' : 'Trạng Thái',
+        title: t('curriculum.table.colStatus'),
         dataIndex: 'status',
         key: 'status',
         width: 140,
@@ -162,10 +162,10 @@ export const CurriculumLevelTable = ({
             <Tooltip
               title={
                 !canManage
-                  ? isEnglish ? 'You do not have permission to change status' : 'Bạn không có quyền đổi trạng thái'
+                  ? t('curriculum.table.noPermissionStatus')
                   : isActive
-                  ? isEnglish ? 'Click to deactivate level' : 'Gạt để tạm ngưng cấp độ này'
-                  : isEnglish ? 'Click to activate level' : 'Gạt để kích hoạt cấp độ này'
+                  ? t('curriculum.table.toggleDeactivate')
+                  : t('curriculum.table.toggleActivate')
               }
             >
               <Switch
@@ -181,13 +181,13 @@ export const CurriculumLevelTable = ({
         },
       },
       {
-        title: isEnglish ? 'Actions' : 'Thao Tác',
+        title: t('curriculum.table.colActions'),
         key: 'actions',
         width: 140,
         align: 'center',
         render: (_, record) => (
           <Space size={4}>
-            <Tooltip title={isEnglish ? 'View details' : 'Xem chi tiết'}>
+            <Tooltip title={t('curriculum.table.tooltipView')}>
               <Button
                 type="text"
                 size="small"
@@ -195,7 +195,7 @@ export const CurriculumLevelTable = ({
                 onClick={() => onView && onView(record)}
               />
             </Tooltip>
-            <Tooltip title={isEnglish ? 'Edit curriculum level' : 'Chỉnh sửa cấp độ'}>
+            <Tooltip title={t('curriculum.table.tooltipEdit')}>
               <Button
                 type="text"
                 size="small"
@@ -204,7 +204,7 @@ export const CurriculumLevelTable = ({
                 disabled={!canManage}
               />
             </Tooltip>
-            <Tooltip title={isEnglish ? 'Delete curriculum level' : 'Xóa cấp độ'}>
+            <Tooltip title={t('curriculum.table.tooltipDelete')}>
               <Button
                 type="text"
                 danger
@@ -218,7 +218,7 @@ export const CurriculumLevelTable = ({
         ),
       },
     ],
-    [isEnglish, canManage, onView, onEdit, onToggleStatus, onDelete]
+    [isEnglish, canManage, onView, onEdit, onToggleStatus, onDelete, t]
   );
 
   return (

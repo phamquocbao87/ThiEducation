@@ -23,6 +23,7 @@ export const MODULE_SLUGS = {
   contracts: 'contracts-payroll',
   tuition: 'tuition-fees',
   users: 'user-management',
+  profile: 'my-profile',
 };
 
 export const getSlugFromModule = (key) => MODULE_SLUGS[key] || 'dashboard';

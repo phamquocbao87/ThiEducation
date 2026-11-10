@@ -86,7 +86,75 @@ export const isGmailAddress = (email) => {
  * - Email công vụ / Non-Gmail: CHỈ hỗ trợ mật khẩu ['password']
  */
 export const resolveAuthProvidersByEmail = (email) => {
+  if (!email) return ['password'];
   return isGmailAddress(email) ? ['google', 'password'] : ['password'];
 };
+
+/**
+ * Chuẩn hóa số điện thoại: Loại bỏ khoảng trắng, dấu chấm, gạch ngang, ngoặc đơn
+ */
+export const normalizePhoneNumber = (phone) => {
+  if (!phone) return '';
+  return String(phone).trim().replace(/[\s\-\.\(\)]/g, '');
+};
+
+/**
+ * Nhận diện loại định danh người dùng nhập vào ô Đăng nhập:
+ * - 'email': Chứa ký tự '@'
+ * - 'phone': Bắt đầu bằng '0' hoặc '+', chứa chữ số (độ dài >= 8)
+ * - 'code': Khớp tiền tố ID tài khoản (ADM, DIR, ACA, GV, ACC, HV...)
+ * - 'unknown'
+ */
+export const detectLoginIdentifierType = (input) => {
+  if (!input) return 'unknown';
+  const clean = String(input).trim();
+  if (clean.includes('@')) return 'email';
+  const normalizedPhone = normalizePhoneNumber(clean);
+  if (/^(\+?84|0)[35789]\d{8}$/.test(normalizedPhone) || /^(\+?\d{8,14})$/.test(normalizedPhone)) {
+    return 'phone';
+  }
+  if (/^(ADM|DIR|ACA|GV|ACC|HV)\d+$/i.test(clean)) {
+    return 'code';
+  }
+  return 'unknown';
+};
+
+/**
+ * Chuyển đổi Họ và Tên tiếng Việt thành Tên Tiếng Anh (English Name) không dấu chuẩn quốc tế
+ * Ví dụ: "Bảo Thư" -> "Bao Thu", "Nguyễn Minh Tuấn" -> "Nguyen Minh Tuan"
+ */
+export const toEnglishName = (name) => {
+  if (!name) return '';
+  let text = String(name).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  text = text.replace(/đ/g, 'd').replace(/Đ/g, 'D');
+  return text.trim();
+};
+
+/**
+ * Tạo mã định danh Cụm Gia Đình chuẩn từ SĐT chính
+ * Ví dụ: "0989557230" -> "FAM_0989557230"
+ */
+export const generateFamilyId = (phone) => {
+  const clean = normalizePhoneNumber(phone);
+  if (!clean) return '';
+  return `FAM_${clean}`;
+};
+
+export const TUITION_STATUS = {
+  PAID: 'Đã đóng đủ',
+  PARTIAL: 'Còn nợ đợt 2',
+  PENDING: 'Chờ đối soát',
+  UNPAID: 'Chưa hoàn thành',
+  SCHOLARSHIP: 'Học bổng / Miễn giảm',
+};
+
+export const TUITION_STATUS_CONFIG = {
+  'Đã đóng đủ': { color: 'green', labelEn: 'Paid in Full' },
+  'Còn nợ đợt 2': { color: 'orange', labelEn: 'Installment 2 Due' },
+  'Chờ đối soát': { color: 'gold', labelEn: 'Pending Verification' },
+  'Chưa hoàn thành': { color: 'red', labelEn: 'Unpaid / Overdue' },
+  'Học bổng / Miễn giảm': { color: 'purple', labelEn: 'Scholarship / Waived' },
+};
+
 
 

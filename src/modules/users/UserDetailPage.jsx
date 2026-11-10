@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -54,12 +54,16 @@ import {
   LinkOutlined,
   EyeOutlined,
   ScissorOutlined,
+  StarFilled,
+  WarningOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../core/context/AuthContext';
 import { useLanguage } from '../../core/context/LanguageContext';
 import { UserService } from './services/UserService';
 import { UserAuditService } from './services/UserAuditService';
 import { DriveStorageService } from '../../core/services/DriveStorageService';
+import { formatScheduleForViewer, findScheduleConflictsInClassList } from '../../shared/utils/scheduleUtils';
+import { DEFAULT_ACTIVE_CLASSES } from './UserRegistrationPage';
 import {
   USER_ROLES,
   USER_STATUS,
@@ -67,6 +71,8 @@ import {
   ROLE_COLORS,
   isGmailAddress,
   resolveAuthProvidersByEmail,
+  toEnglishName,
+  generateFamilyId,
 } from './models/user.model';
 import { PermissionService } from '../../core/services/PermissionService';
 import { UserDeleteModal } from './components/UserDeleteModal';
@@ -98,13 +104,17 @@ const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
-export const UserDetailPage = () => {
-  const { userId, action } = useParams();
+export const UserDetailPage = ({ isSelfProfile = false }) => {
+  const { userId: paramUserId, action } = useParams();
   const isEditMode = action === 'edit';
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
-  const { isEnglish, language } = useLanguage();
+  const { currentUser, syncCurrentUserProfile } = useAuth();
+  const { isEnglish, language, t } = useLanguage();
   const [form] = Form.useForm();
+
+  const userId = isSelfProfile ? (currentUser?.id || currentUser?.code) : paramUserId;
+  const baseProfilePath = isSelfProfile ? '/my-profile' : `/user-management/${userId}`;
+  const backListPath = isSelfProfile ? '/dashboard' : '/user-management';
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -119,12 +129,49 @@ export const UserDetailPage = () => {
   const [cropImageSrc, setCropImageSrc] = useState(null);
   const [cropFileName, setCropFileName] = useState('avatar.jpg');
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
+  const [linkedClasses, setLinkedClasses] = useState([]);
+  const [familyMembers, setFamilyMembers] = useState([]);
 
-  // Theo dõi email nhập vào trong form để nhận diện loại tài khoản thời gian thực
-  const watchedEmail = Form.useWatch('email', form) || user?.email || '';
+  // Danh sách các lớp học đang hoạt động trong hệ thống
+  const [availableClasses] = useState(() => {
+    try {
+      const saved = localStorage.getItem('lak_erp_classes');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_ACTIVE_CLASSES;
+  });
+
+  // Theo dõi email, sđt và vai trò nhập vào trong form để nhận diện loại tài khoản thời gian thực
+  const watchedEmail = Form.useWatch('email', form) ?? user?.email ?? '';
+  const watchedPhone = Form.useWatch('phoneNumber', form) ?? user?.phoneNumber ?? '';
+  const watchedRole = Form.useWatch('role', form) || user?.role || USER_ROLES.STUDENT;
+  const watchedEditEnrolledClassIds = Form.useWatch('enrolledClassIds', form) || [];
+  const isTargetStudent = watchedRole === USER_ROLES.STUDENT;
   const isGmail = isGmailAddress(watchedEmail);
 
-  // Tải chi tiết User
+  // Kiểm tra trùng lịch học online thời gian thực trong chế độ Chỉnh sửa
+  const editConflictInfo = useMemo(() => {
+    return findScheduleConflictsInClassList(watchedEditEnrolledClassIds, availableClasses);
+  }, [watchedEditEnrolledClassIds, availableClasses]);
+
+  // Cấp độ tự động nhận diện theo các lớp học đã chọn
+  const editDerivedLevels = useMemo(() => {
+    if (!watchedEditEnrolledClassIds || watchedEditEnrolledClassIds.length === 0) return [];
+    const set = new Set();
+    watchedEditEnrolledClassIds.forEach((clsId) => {
+      const cls = availableClasses.find((c) => c.id === clsId || c.classId === clsId);
+      if (cls) {
+        const lvl = cls.courseLevel || cls.level || cls.courseName || 'Wonders G1';
+        set.add(lvl);
+      }
+    });
+    return Array.from(set);
+  }, [watchedEditEnrolledClassIds, availableClasses]);
+
+  // Tải chi tiết User & danh sách Lớp học thực tế liên kết (cho Giáo viên & Học viên)
   const loadUserDetail = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
@@ -132,14 +179,65 @@ export const UserDetailPage = () => {
       const data = await UserService.getUserById(userId);
       if (!data) {
         message.error(`Không tìm thấy tài khoản với mã: ${userId}`);
-        navigate('/user-management');
+        navigate(backListPath);
         return;
       }
-      setUser(data);
+      const normalizedData = {
+        ...data,
+        englishName: data.englishName || toEnglishName(data.name) || '',
+        secondaryPhone: data.secondaryPhone || '',
+        familyId: data.familyId || (data.role === 'student' ? generateFamilyId(data.phoneNumber) : ''),
+        parentUserId: data.parentUserId || '',
+      };
+      setUser(normalizedData);
+
+      // Đọc danh sách lớp học thực tế từ localStorage ('lak_erp_classes') để gắn vào Profile của GV / HV
+      try {
+        const rawClasses = localStorage.getItem('lak_erp_classes');
+        const parsedClasses = rawClasses ? JSON.parse(rawClasses) : [];
+        const allClasses = Array.isArray(parsedClasses) && parsedClasses.length > 0 ? parsedClasses : DEFAULT_ACTIVE_CLASSES;
+        const targetCode = data.id || data.code;
+        if (data.role === 'teacher') {
+          setLinkedClasses(allClasses.filter((c) => c.teacherId === targetCode));
+        } else if (data.role === 'student') {
+          const studentClassIds = Array.isArray(data.enrolledClassIds) ? data.enrolledClassIds : [];
+          setLinkedClasses(allClasses.filter((c) => 
+            (Array.isArray(c.studentIds) && c.studentIds.includes(targetCode)) ||
+            studentClassIds.includes(c.id) ||
+            studentClassIds.includes(c.classId)
+          ));
+        } else {
+          setLinkedClasses(allClasses);
+        }
+      } catch {
+        setLinkedClasses([]);
+      }
+
+      // Đọc danh sách anh chị em cùng cụm gia đình (nếu có familyId)
+      const targetFamily = normalizedData.familyId;
+      if (targetFamily) {
+        try {
+          const siblings = await UserService.getFamilyMembers(targetFamily);
+          setFamilyMembers(siblings.filter((s) => (s.id || s.code) !== (data.id || data.code)));
+        } catch {
+          setFamilyMembers([]);
+        }
+      } else {
+        setFamilyMembers([]);
+      }
+
+      const initialEnrolled = Array.isArray(data.enrolledClassIds) && data.enrolledClassIds.length > 0
+        ? data.enrolledClassIds
+        : (data.classId ? [data.classId] : []);
+
       form.setFieldsValue({
         name: data.name || '',
+        englishName: data.englishName || toEnglishName(data.name) || '',
         email: data.email || '',
         phoneNumber: data.phoneNumber || '',
+        secondaryPhone: data.secondaryPhone || '',
+        familyId: normalizedData.familyId || '',
+        parentUserId: data.parentUserId || '',
         gender: data.gender || 'Nam',
         dateOfBirth: parseDateToDayjs(data.dateOfBirth),
         joinDate: parseDateToDayjs(data.joinDate),
@@ -150,35 +248,36 @@ export const UserDetailPage = () => {
         status: data.status === USER_STATUS.ACTIVE,
         extraInfo: data.extraInfo || '',
         // Trường nghiệp vụ theo Role
+        enrolledClassIds: initialEnrolled,
         className: data.className || '',
         level: data.level || 'G1',
         parentName: data.parentName || '',
-        parentPhone: data.parentPhone || '',
+        parentPhone: data.parentPhone || data.phoneNumber || '',
         attendanceRate: data.attendanceRate !== undefined ? data.attendanceRate : 96,
-        tuitionStatus: data.tuitionStatus || 'Đã đóng đủ',
+        tuitionStatus: data.tuitionStatus || 'Chờ đối soát',
         academicNotes: data.academicNotes || '',
         nationality: data.nationality || 'Mỹ (US)',
         certificate: data.certificate || 'TESOL / CELTA',
         hourlyRate: data.hourlyRate || 450000,
         assignedClasses: data.assignedClasses || 'GK-A, G1-B',
         bio: data.bio || '',
-        position: data.position || 'Điều phối viên giáo vụ',
-        department: data.department || 'Phòng Đào Tạo',
+        position: data.position || (data.role === 'accountant' ? 'Kế toán tổng hợp & Đối soát học phí' : data.role === 'director' ? 'Giám đốc Điều hành (CEO)' : data.role === 'admin' ? 'Trưởng phòng Hạ tầng IT & Bảo mật' : 'Điều phối viên giáo vụ'),
+        department: data.department || (data.role === 'accountant' ? 'Phòng Tài Chính - Kế Toán' : data.role === 'director' ? 'Ban Giám Đốc Điều Hành' : data.role === 'admin' ? 'Phòng Quản Trị Hệ Thống IT' : 'Phòng Đào Tạo'),
       });
     } catch (err) {
       message.error(`Lỗi tải thông tin tài khoản: ${err.message}`);
     } finally {
       setLoading(false);
     }
-  }, [userId, navigate, form]);
+  }, [userId, backListPath, navigate, form]);
 
   useEffect(() => {
     loadUserDetail();
   }, [loadUserDetail]);
 
-  // Tải Audit Logs riêng của tài khoản này (Chỉ nạp khi tài khoản đang đăng nhập là Admin)
+  // Tải Audit Logs riêng của tài khoản này (Khi Admin xem hoặc chính chủ xem trên /my-profile)
   const loadUserAuditLogs = useCallback(async () => {
-    if (!userId || currentUser?.role !== 'admin') return;
+    if (!userId || (currentUser?.role !== 'admin' && !isSelfProfile)) return;
     setAuditLoading(true);
     try {
       const logs = await UserAuditService.getAuditLogs(100);
@@ -196,7 +295,7 @@ export const UserDetailPage = () => {
     } finally {
       setAuditLoading(false);
     }
-  }, [userId, user, currentUser?.role]);
+  }, [userId, user, currentUser?.role, isSelfProfile]);
 
   useEffect(() => {
     if (user) {
@@ -206,19 +305,21 @@ export const UserDetailPage = () => {
 
   // Quyền hạn RBAC
   const canEdit = user ? PermissionService.canEditUser(currentUser, user) : false;
-  const canDelete = user ? PermissionService.canDeleteUser(currentUser, user) : false;
+  const canEditSensitive = PermissionService.canEditSensitiveFields(currentUser?.role);
+  const canDelete = user && !isSelfProfile ? PermissionService.canDeleteUser(currentUser, user) : false;
   const canChangeStatus = user ? PermissionService.canChangeUserStatus(currentUser, user) : false;
-  const canUploadAvatar = PermissionService.canUploadAvatar(currentUser?.role || '');
+  const canUploadAvatar = user ? PermissionService.canUploadAvatar(currentUser, user) : false;
   const isAdmin = currentUser?.role === 'admin';
+  const canViewAuditLogs = isAdmin || isSelfProfile;
   const isRootAdmin = user?.id === 'ADM001' || user?.email === 'phamquocbao87@gmail.com';
 
   // Điều hướng an toàn: nếu đang ở chế độ /edit nhưng không có quyền sửa -> Tự động chuyển về chế độ view
   useEffect(() => {
     if (!loading && user && isEditMode && !canEdit) {
       message.warning(isEnglish ? 'You do not have permission to edit this profile' : 'Bạn không có quyền chỉnh sửa tài khoản này');
-      navigate('/user-management/' + userId, { replace: true });
+      navigate(baseProfilePath, { replace: true });
     }
-  }, [loading, user, isEditMode, canEdit, navigate, userId, isEnglish]);
+  }, [loading, user, isEditMode, canEdit, navigate, baseProfilePath, isEnglish]);
 
   // 1. Bước 1: Khi người dùng chọn file ảnh từ máy tính
   // - Kiểm tra định dạng & giới hạn cứng 5MB
@@ -405,6 +506,9 @@ export const UserDetailPage = () => {
       });
 
       setUser(updatedUser);
+      if (typeof syncCurrentUserProfile === 'function') {
+        syncCurrentUserProfile(updatedUser);
+      }
       setAvatarPreview(null);
       setRawSelectedFile(null);
       message.success('Cập nhật thành công! Đã lưu ảnh đầy đủ và hiển thị bản crop.');
@@ -426,13 +530,41 @@ export const UserDetailPage = () => {
     try {
       const values = await form.validateFields();
       setSaving(true);
+      const cleanEnglishName = values.englishName?.trim() || toEnglishName(values.name);
+
+      // Chặn nếu học viên bị trùng khung giờ học online giữa các lớp
+      if (user?.role === USER_ROLES.STUDENT && editConflictInfo.hasConflict) {
+        throw new Error(
+          `Không thể lưu do trùng khung giờ học online giữa các lớp đã chọn: ${editConflictInfo.conflicts.map((c) => c.message).join(' | ')}`
+        );
+      }
+
       const updatePayload = {
         ...values,
+        englishName: cleanEnglishName,
+        secondaryPhone: values.secondaryPhone ? values.secondaryPhone.trim() : '',
+        familyId: values.familyId || user?.familyId || (user?.role === USER_ROLES.STUDENT ? generateFamilyId(values.phoneNumber) : ''),
+        parentUserId: values.parentUserId || user?.parentUserId || '',
         dateOfBirth: formatDateToStr(values.dateOfBirth),
         joinDate: formatDateToStr(values.joinDate),
         status: user?.status || USER_STATUS.ACTIVE,
         authProviders: resolveAuthProvidersByEmail(values.email),
       };
+
+      if (user?.role === USER_ROLES.STUDENT) {
+        const editEnrolled = Array.isArray(values.enrolledClassIds) ? values.enrolledClassIds : [];
+        updatePayload.enrolledClassIds = editEnrolled;
+        updatePayload.className = editEnrolled
+          .map((cid) => {
+            const c = availableClasses.find((cls) => cls.id === cid || cls.classId === cid);
+            return c ? c.name : cid;
+          })
+          .join(', ') || '';
+        updatePayload.level = editDerivedLevels.join(', ') || user?.level || 'Wonders ELA';
+        updatePayload.tuitionStatus = user?.tuitionStatus || 'Chờ đối soát';
+        updatePayload.parentPhone = values.parentPhone || values.phoneNumber || user?.parentPhone || '';
+      }
+
       if (values.newPassword && values.newPassword.trim()) {
         updatePayload.password = values.newPassword.trim();
       }
@@ -441,9 +573,15 @@ export const UserDetailPage = () => {
       const updated = await UserService.updateUserProfile(currentUser, user, updatePayload);
       form.setFieldValue('newPassword', '');
       setUser(updated);
+      if (typeof syncCurrentUserProfile === 'function') {
+        syncCurrentUserProfile(updated);
+      }
+      if (user?.role === USER_ROLES.STUDENT && Array.isArray(updatePayload.enrolledClassIds)) {
+        UserService.syncStudentClasses(user.id || user.code, updatePayload.enrolledClassIds);
+      }
       message.success(isEnglish ? `Profile of ${updated.name} updated successfully` : `Đã lưu thành công thông tin hồ sơ của ${updated.name}`);
       loadUserAuditLogs();
-      navigate('/user-management/' + userId);
+      navigate(baseProfilePath);
     } catch (err) {
       if (err.errorFields) {
         message.warning('Vui lòng kiểm tra lại các trường thông tin bắt buộc');
@@ -479,7 +617,7 @@ export const UserDetailPage = () => {
       await UserService.deleteUser(currentUser, targetUser, deleteReason);
       message.success(`Đã xóa tài khoản: ${targetUser.name} (${targetUser.code || targetUser.id})`);
       setIsDeleteModalOpen(false);
-      navigate('/user-management');
+      navigate(backListPath);
     } catch (err) {
       message.error(err.message || 'Không thể xóa tài khoản này');
     } finally {
@@ -522,21 +660,23 @@ export const UserDetailPage = () => {
             icon={<ArrowLeftOutlined />}
             onClick={() => {
               if (isEditMode) {
-                navigate('/user-management/' + userId);
+                navigate(baseProfilePath);
               } else {
-                navigate('/user-management');
+                navigate(backListPath);
               }
             }}
             style={{ borderRadius: 8 }}
           >
             {isEditMode
-              ? (isEnglish ? 'Cancel & Return to View' : 'Hủy & Quay Lại Xem')
-              : (isEnglish ? 'Back to List' : 'Quay Lại Danh Sách')}
+              ? t('userDetail.cancelReturn')
+              : isSelfProfile
+              ? t('userDetail.backToDashboard')
+              : t('userDetail.backToList')}
           </Button>
           <Text type="secondary" style={{ fontSize: 13 }}>
-            {isEnglish
-              ? (isEditMode ? 'User Management / Edit Profile' : 'User Management / Account Details')
-              : (isEditMode ? 'Quản Trị Người Dùng / Chỉnh Sửa Hồ Sơ' : 'Quản Trị Người Dùng / Chi Tiết Tài Khoản')}
+            {isSelfProfile
+              ? (isEditMode ? `${t('menus.profile')} / ${t('userDetail.btnEdit')}` : `${t('menus.profile')} / ${t('common.details')}`)
+              : (isEditMode ? `${t('menus.users')} / ${t('userDetail.btnEdit')}` : `${t('menus.users')} / ${t('common.details')}`)}
           </Text>
         </Space>
 
@@ -548,7 +688,7 @@ export const UserDetailPage = () => {
               onClick={() => setIsDeleteModalOpen(true)}
               style={{ borderRadius: 8 }}
             >
-              {isEnglish ? 'Delete Account' : 'Xóa Tài Khoản'}
+              {t('userDetail.btnDelete')}
             </Button>
           )}
 
@@ -556,7 +696,7 @@ export const UserDetailPage = () => {
             <Button
               type="primary"
               icon={<EditOutlined />}
-              onClick={() => navigate('/user-management/' + userId + '/edit')}
+              onClick={() => navigate(`${baseProfilePath}/edit`)}
               style={{
                 borderRadius: 8,
                 backgroundColor: '#1890ff',
@@ -564,17 +704,17 @@ export const UserDetailPage = () => {
                 fontWeight: 600,
               }}
             >
-              {isEnglish ? 'Edit Profile' : 'Chỉnh Sửa Hồ Sơ'}
+              {t('userDetail.btnEdit')}
             </Button>
           )}
 
           {isEditMode && (
             <>
               <Button
-                onClick={() => navigate('/user-management/' + userId)}
+                onClick={() => navigate(baseProfilePath)}
                 style={{ borderRadius: 8 }}
               >
-                {isEnglish ? 'Cancel' : 'Hủy'}
+                {t('common.cancel')}
               </Button>
               <Button
                 type="primary"
@@ -588,7 +728,7 @@ export const UserDetailPage = () => {
                   fontWeight: 600,
                 }}
               >
-                {isEnglish ? 'Save Changes' : 'Lưu Thay Đổi'}
+                {t('userDetail.btnSave')}
               </Button>
             </>
           )}
@@ -689,6 +829,11 @@ export const UserDetailPage = () => {
                   <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
                     {user.name}
                   </Title>
+                  {(user.englishName || toEnglishName(user.name)) && (
+                    <Tag color="cyan" style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', margin: 0 }}>
+                      🇬🇧 {user.englishName || toEnglishName(user.name)}
+                    </Tag>
+                  )}
                   <Tag color="geekblue" style={{ fontSize: 13, fontWeight: 700, padding: '2px 8px', margin: 0 }}>
                     {user.code || user.id}
                   </Tag>
@@ -725,24 +870,24 @@ export const UserDetailPage = () => {
                 {hasCustomAvatar && canUploadAvatar && (
                   <div style={{ marginTop: 8 }}>
                     <Space size={8}>
-                      <Tooltip title={isEnglish ? 'Adjust circular crop from original photo' : 'Căn chỉnh & cắt lại khung tròn từ ảnh gốc'}>
+                      <Tooltip title={t('userDetail.recropTooltip')}>
                         <Button
                           size="small"
                           icon={<ScissorOutlined />}
                           onClick={handleReCropExistingAvatar}
                           style={{ borderRadius: 6, fontSize: 12 }}
                         >
-                          {isEnglish ? 'Re-crop' : 'Cắt Lại'}
+                          {t('userDetail.recrop')}
                         </Button>
                       </Tooltip>
-                      <Tooltip title={isEnglish ? 'View full original photo in new tab' : 'Xem ảnh đầy đủ nguyên gốc trên tab mới'}>
+                      <Tooltip title={t('userDetail.viewOriginalTooltip')}>
                         <Button
                           size="small"
                           icon={<EyeOutlined />}
                           onClick={() => window.open(user.avatarOriginal || user.avatar, '_blank')}
                           style={{ borderRadius: 6, fontSize: 12 }}
                         >
-                          {isEnglish ? 'View Original' : 'Xem Ảnh Gốc'}
+                          {t('userDetail.viewOriginal')}
                         </Button>
                       </Tooltip>
                     </Space>
@@ -756,17 +901,17 @@ export const UserDetailPage = () => {
           <Col xs={24} sm={8} md={6} style={{ textAlign: 'right' }}>
             <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
               <Text strong style={{ fontSize: 12, color: '#475569' }}>
-                {isEnglish ? 'ACCOUNT STATUS' : 'TRẠNG THÁI TÀI KHOẢN'}
+                {t('userDetail.accountStatus')}
               </Text>
               <Tooltip
                 title={
                   isRootAdmin
-                    ? (isEnglish ? 'Supreme Root Admin cannot be disabled' : 'Root Admin tối cao không thể bị khóa')
+                    ? t('userDetail.rootAdminNoLock')
                     : !canChangeStatus
-                    ? (isEnglish ? 'You do not have permission to change status for this account' : 'Bạn không có quyền thay đổi trạng thái của tài khoản này')
+                    ? t('userDetail.noPermStatus')
                     : isActive
-                    ? (isEnglish ? 'Toggle to temporarily disable this account' : 'Gạt để tạm khóa tài khoản này')
-                    : (isEnglish ? 'Toggle to reactivate this account' : 'Gạt để kích hoạt lại tài khoản')
+                    ? t('userDetail.lockAccountPrompt')
+                    : t('userDetail.unlockAccountPrompt')
                 }
               >
                 <Switch
@@ -803,7 +948,7 @@ export const UserDetailPage = () => {
                 label: (
                   <Space>
                     <UserOutlined />
-                    <span>{isEnglish ? 'Personal Info & Contact' : 'Thông Tin Cá Nhân & Liên Hệ'}</span>
+                    <span>{t('userDetail.sections.personal')}</span>
                   </Space>
                 ),
                 children: (
@@ -814,38 +959,68 @@ export const UserDetailPage = () => {
                       column={{ xs: 1, sm: 2, md: 3 }}
                       styles={{ label: { fontWeight: 600, color: '#475569', backgroundColor: '#f8fafc' }, content: { color: '#0f172a' } }}
                     >
-                      <Descriptions.Item label={isEnglish ? 'Full Name' : 'Họ và Tên'}>
+                      <Descriptions.Item label={t('userDetail.fields.fullName')}>
                         <Text strong style={{ fontSize: 15 }}>{user.name}</Text>
                       </Descriptions.Item>
-                      <Descriptions.Item label={isEnglish ? 'Account Code' : 'Mã Tài Khoản'}>
+                      <Descriptions.Item label={t('userDetail.fields.englishName')}>
+                        <Text strong style={{ fontSize: 14, color: '#0284c7' }}>
+                          {user.englishName || toEnglishName(user.name)}
+                        </Text>
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('userDetail.fields.code')}>
                         <Tag color="geekblue" style={{ fontWeight: 700 }}>{user.code || user.id}</Tag>
                       </Descriptions.Item>
-                      <Descriptions.Item label={isEnglish ? 'RBAC Role' : 'Vai Trò Phân Quyền'}>
+                      <Descriptions.Item label={t('userDetail.fields.role')}>
                         <Tag color={roleColor} style={{ fontWeight: 600 }}>
                           {isEnglish ? (ROLE_LABELS.en?.[user.role] || user.role) : (ROLE_LABELS.vi?.[user.role] || user.role)}
                         </Tag>
                       </Descriptions.Item>
 
-                      <Descriptions.Item label={isEnglish ? 'Email Address' : 'Địa Chỉ Email'}>
+                      <Descriptions.Item label={t('userDetail.fields.email')}>
                         <Space direction="vertical" size={2}>
                           <span>{user.email}</span>
                           {isGmail ? (
                             <span style={{ fontSize: 11, color: '#d97706' }}>
-                              <GoogleOutlined /> {isEnglish ? 'Google Auth & Password' : 'Đăng nhập Google / Mật khẩu'}
+                              <GoogleOutlined /> {t('userDetail.fields.googleAuthAndPassword')}
                             </span>
                           ) : (
                             <span style={{ fontSize: 11, color: '#475569' }}>
-                              <LockOutlined /> {isEnglish ? 'Official Password' : 'Mật khẩu công vụ'}
+                              <LockOutlined /> {t('userDetail.fields.officialPassword')}
                             </span>
                           )}
                         </Space>
                       </Descriptions.Item>
-                      <Descriptions.Item label={isEnglish ? 'Phone Number' : 'Số Điện Thoại'}>
+                      <Descriptions.Item label={t('userDetail.fields.phone1')}>
                         {user.phoneNumber ? (
                           <a href={'tel:' + user.phoneNumber} style={{ color: '#0284c7' }}>
                             <PhoneOutlined style={{ marginRight: 6 }} />
                             {user.phoneNumber}
                           </a>
+                        ) : '—'}
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('userDetail.fields.phone2')}>
+                        {user.secondaryPhone ? (
+                          <a href={'tel:' + user.secondaryPhone} style={{ color: '#16a34a' }}>
+                            <PhoneOutlined style={{ marginRight: 6 }} />
+                            {user.secondaryPhone}
+                          </a>
+                        ) : '—'}
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('userDetail.fields.family')}>
+                        {user.familyId ? (
+                          <Space size={6} wrap>
+                            <Tag color="cyan" style={{ fontWeight: 600 }}>{user.familyId}</Tag>
+                            {familyMembers.map((m) => (
+                              <Tag
+                                key={m.id || m.code}
+                                color="blue"
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => navigate(`/user-management/${m.id || m.code}`)}
+                              >
+                                {m.name}
+                              </Tag>
+                            ))}
+                          </Space>
                         ) : '—'}
                       </Descriptions.Item>
                       <Descriptions.Item label={isEnglish ? 'Gender' : 'Giới Tính'}>
@@ -876,7 +1051,7 @@ export const UserDetailPage = () => {
                         <Button
                           type="primary"
                           icon={<EditOutlined />}
-                          onClick={() => navigate('/user-management/' + userId + '/edit')}
+                          onClick={() => navigate(`${baseProfilePath}/edit`)}
                           style={{
                             borderRadius: 8,
                             backgroundColor: '#1890ff',
@@ -907,7 +1082,7 @@ export const UserDetailPage = () => {
                 ),
                 children: (
                   <div style={{ paddingTop: 16 }}>
-                    {/* DÀNH CHO GIÁO VIÊN BẢN XỨ (Teacher, ví dụ GV004) */}
+                    {/* DÀNH CHO GIÁO VIÊN BẢN XỨ (Teacher, ví dụ GV001..GV007) */}
                     {user.role === 'teacher' && (
                       <div>
                         {/* 3 Metric Highlight Cards */}
@@ -989,7 +1164,15 @@ export const UserDetailPage = () => {
                           styles={{ label: { fontWeight: 600, color: '#475569', backgroundColor: '#f8fafc' }, content: { color: '#0f172a' } }}
                         >
                           <Descriptions.Item label={isEnglish ? 'Assigned Classes' : 'Các Lớp Đang Phụ Trách'}>
-                            {user.assignedClasses ? (
+                            {linkedClasses.length > 0 ? (
+                              <Space size={6} wrap>
+                                {linkedClasses.map((cls) => (
+                                  <Tag key={cls.id} color="blue" style={{ fontWeight: 600 }}>
+                                    {cls.id} — {cls.name}
+                                  </Tag>
+                                ))}
+                              </Space>
+                            ) : user.assignedClasses ? (
                               <Space size={6} wrap>
                                 {user.assignedClasses.split(',').map((cls) => (
                                   <Tag key={cls.trim()} color="blue">{cls.trim()}</Tag>
@@ -1008,6 +1191,50 @@ export const UserDetailPage = () => {
                             </Paragraph>
                           </Descriptions.Item>
                         </Descriptions>
+
+                        {/* Danh sách Lớp Học Thực Tế Đang Giảng Dạy */}
+                        {linkedClasses.length > 0 && (
+                          <div style={{ marginTop: 20 }}>
+                            <Title level={5} style={{ marginBottom: 12, color: '#0f172a' }}>
+                              <CalendarOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                              {isEnglish
+                                ? `Active Teaching Classes (${linkedClasses.length})`
+                                : `Lịch Giảng Dạy & Lớp Học Thực Tế Đang Đảm Nhiệm (${linkedClasses.length} lớp)`}
+                            </Title>
+                            <Row gutter={[16, 16]}>
+                              {linkedClasses.map((cls) => (
+                                <Col xs={24} md={12} key={cls.id}>
+                                  <Card
+                                    size="small"
+                                    style={{ borderRadius: 10, border: '1px solid #cbd5e1', background: '#f8fafc' }}
+                                  >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
+                                      <div>
+                                        <Tag color="geekblue" style={{ fontWeight: 700 }}>{cls.id}</Tag>
+                                        <Text strong style={{ fontSize: 14, color: '#0f172a' }}>{cls.name}</Text>
+                                      </div>
+                                      <Tag color="green">{(cls.studentIds || []).length || cls.totalStudents || 0} {isEnglish ? 'students' : 'học viên'}</Tag>
+                                    </div>
+                                    <div style={{ marginTop: 8, fontSize: 13, color: '#334155' }}>
+                                      <div>
+                                        <ClockCircleOutlined style={{ marginRight: 6, color: '#0284c7' }} />
+                                        <b>{isEnglish ? 'Schedule:' : 'Lịch dạy:'}</b> {formatScheduleForViewer(cls.schedule, isEnglish)}
+                                      </div>
+                                      {cls.zoomHostLink && (
+                                        <div style={{ marginTop: 4 }}>
+                                          <LinkOutlined style={{ marginRight: 6, color: '#16a34a' }} />
+                                          <a href={cls.zoomHostLink} target="_blank" rel="noreferrer">
+                                            {isEnglish ? 'Open Host Zoom Room' : 'Mở Phòng Zoom Giảng Dạy (Host)'}
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </Card>
+                                </Col>
+                              ))}
+                            </Row>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1018,36 +1245,200 @@ export const UserDetailPage = () => {
                           <Col xs={24} sm={8}>
                             <Card size="small" style={{ borderRadius: 10, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
                               <Text type="secondary" style={{ fontSize: 12 }}>{isEnglish ? 'Curriculum Level' : 'Cấp Độ Giáo Trình'}</Text>
-                              <Title level={4} style={{ margin: 0, color: '#15803d' }}>Wonders {user.level || 'G1'}</Title>
+                              <Title level={4} style={{ margin: '2px 0 0', color: '#15803d' }}>
+                                {linkedClasses.length > 0
+                                  ? Array.from(new Set(linkedClasses.map((c) => c.courseLevel || c.level || c.courseName || 'Wonders ELA'))).join(', ')
+                                  : (user.level ? (user.level.startsWith('Wonders') ? user.level : `Wonders ${user.level}`) : 'Wonders ELA (Chưa xếp lớp)')}
+                              </Title>
+                              <Text type="secondary" style={{ fontSize: 11, color: '#16a34a' }}>
+                                {isEnglish ? 'Tied to active enrolled classes' : 'Tự động xác định theo lớp ghi danh'}
+                              </Text>
                             </Card>
                           </Col>
                           <Col xs={24} sm={8}>
                             <Card size="small" style={{ borderRadius: 10, background: '#eff6ff', border: '1px solid #bfdbfe' }}>
                               <Text type="secondary" style={{ fontSize: 12 }}>{isEnglish ? 'Attendance Rate' : 'Tỷ Lệ Chuyên Cần'}</Text>
-                              <Title level={4} style={{ margin: 0, color: '#1d4ed8' }}>{user.attendanceRate !== undefined ? `${user.attendanceRate}%` : '96%'}</Title>
+                              <Title level={4} style={{ margin: '2px 0 0', color: '#1d4ed8' }}>
+                                {user.attendanceRate !== undefined ? `${user.attendanceRate}%` : '100%'}
+                              </Title>
+                              <Text type="secondary" style={{ fontSize: 11, color: '#2563eb' }}>
+                                {isEnglish ? 'Calculated from Zoom sessions' : 'Tự động tính từ số buổi điểm danh Zoom'}
+                              </Text>
                             </Card>
                           </Col>
                           <Col xs={24} sm={8}>
                             <Card size="small" style={{ borderRadius: 10, background: '#fdf4ff', border: '1px solid #f5d0fe' }}>
                               <Text type="secondary" style={{ fontSize: 12 }}>{isEnglish ? 'Tuition Status' : 'Tình Trạng Học Phí'}</Text>
-                              <Tag color="green" style={{ fontSize: 13, padding: '2px 8px', marginTop: 4 }}>
-                                {user.tuitionStatus || (isEnglish ? 'Paid in Full' : 'Đã đóng đủ')}
-                              </Tag>
+                              <div>
+                                <Tag
+                                  color={user.tuitionStatus === 'Đã đóng đủ' ? 'green' : user.tuitionStatus === 'Chờ đối soát' ? 'gold' : 'blue'}
+                                  style={{ fontSize: 13, padding: '2px 8px', marginTop: 4, fontWeight: 600 }}
+                                >
+                                  {user.tuitionStatus || (isEnglish ? 'Pending Audit' : 'Chờ đối soát')}
+                                </Tag>
+                              </div>
+                              <Text type="secondary" style={{ fontSize: 11, color: '#7c3aed' }}>
+                                {isEnglish ? 'Automated accounting sync' : 'Đối soát tự động từ phân hệ Kế toán'}
+                              </Text>
                             </Card>
                           </Col>
                         </Row>
 
                         <Descriptions bordered size="middle" column={{ xs: 1, sm: 2 }} styles={{ label: { fontWeight: 600, color: '#475569', backgroundColor: '#f8fafc' }, content: { color: '#0f172a' } }}>
-                          <Descriptions.Item label={isEnglish ? 'Enrolled Class' : 'Lớp Học Đang Tham Gia'}>
-                            <Tag color="cyan">{user.className || 'Wonders G1-A'}</Tag>
+                          <Descriptions.Item label={isEnglish ? 'Enrolled Classes' : 'Lớp Học Đang Tham Gia'}>
+                            {linkedClasses.length > 0 ? (
+                              <Space size={6} wrap>
+                                {linkedClasses.map((cls) => (
+                                  <Tag key={cls.id} color="cyan" style={{ fontWeight: 600, padding: '3px 8px' }}>
+                                    {cls.id} — {cls.name}
+                                  </Tag>
+                                ))}
+                              </Space>
+                            ) : (
+                              <Tag color="cyan">{user.className || 'Wonders G1-A'}</Tag>
+                            )}
                           </Descriptions.Item>
                           <Descriptions.Item label={isEnglish ? 'Parent Contact' : 'Phụ Huynh Liên Hệ'}>
-                            {user.parentName ? `${user.parentName} (${user.parentPhone || '—'})` : '—'}
-                          </Descriptions.Item>
-                          <Descriptions.Item label={isEnglish ? 'Academic Notes' : 'Nhận Xét Sư Phạm'} span={2}>
-                            {user.academicNotes || '—'}
+                            {user.parentName ? `${user.parentName} (${user.parentPhone || user.phoneNumber || '—'})` : (user.parentPhone || user.phoneNumber || '—')}
                           </Descriptions.Item>
                         </Descriptions>
+
+                        {/* Đánh Giá & Nhận Xét Tiến Độ Học Tập Từ Giáo Viên Bản Xứ */}
+                        <div style={{ marginTop: 20 }}>
+                          <Title level={5} style={{ marginBottom: 12, color: '#0f172a' }}>
+                            <TrophyOutlined style={{ marginRight: 8, color: '#faad14' }} />
+                            {isEnglish
+                              ? 'Native Teacher Learning Evaluation & 4-Skill Progress'
+                              : 'Nhận Xét Tiến Độ Học Tập / Đánh Giá Giáo Viên Bản Xứ'}
+                          </Title>
+
+                          {linkedClasses.length > 0 ? (
+                            <Card
+                              size="small"
+                              style={{
+                                borderRadius: 12,
+                                border: '1px solid #fed7aa',
+                                background: 'linear-gradient(135deg, #fffbeb 0%, #ffffff 100%)',
+                                boxShadow: '0 2px 8px rgba(251,191,36,0.08)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                                <Space size={8}>
+                                  <Avatar style={{ backgroundColor: '#1890ff' }} icon={<UserOutlined />} />
+                                  <div>
+                                    <Text strong style={{ fontSize: 14, color: '#0f172a' }}>
+                                      {linkedClasses[0]?.teacherName || 'Mr. David Smith (USA 🇺🇸)'}
+                                    </Text>
+                                    <div style={{ fontSize: 12, color: '#64748b' }}>
+                                      Giáo viên Bản Xứ • Lớp {linkedClasses[0]?.name || 'Wonders ELA'}
+                                    </div>
+                                  </div>
+                                </Space>
+                                <Tag color="gold" style={{ fontWeight: 600 }}>
+                                  Đánh giá định kỳ Zoom
+                                </Tag>
+                              </div>
+
+                              {/* Bảng điểm 4 kỹ năng chuẩn sư phạm */}
+                              <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
+                                <Col xs={12} sm={6}>
+                                  <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 8, border: '1px solid #fde68a' }}>
+                                    <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>Phát âm Phonics</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                      <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
+                                      <span style={{ fontWeight: 700, color: '#0f172a' }}>5.0 / 5.0</span>
+                                    </div>
+                                  </div>
+                                </Col>
+                                <Col xs={12} sm={6}>
+                                  <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 8, border: '1px solid #fde68a' }}>
+                                    <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>Chính tả & Từ vựng</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                      <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
+                                      <span style={{ fontWeight: 700, color: '#0f172a' }}>5.0 / 5.0</span>
+                                    </div>
+                                  </div>
+                                </Col>
+                                <Col xs={12} sm={6}>
+                                  <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 8, border: '1px solid #fde68a' }}>
+                                    <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>Mức độ tập trung</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                      <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
+                                      <span style={{ fontWeight: 700, color: '#0f172a' }}>5.0 / 5.0</span>
+                                    </div>
+                                  </div>
+                                </Col>
+                                <Col xs={12} sm={6}>
+                                  <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 8, border: '1px solid #fde68a' }}>
+                                    <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>Nghe hiểu tiếng Anh</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                      <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
+                                      <span style={{ fontWeight: 700, color: '#0f172a' }}>4.5 / 5.0</span>
+                                    </div>
+                                  </div>
+                                </Col>
+                              </Row>
+
+                              <div style={{ padding: '10px 14px', background: '#ffffff', borderRadius: 8, border: '1px solid #f3f4f6' }}>
+                                <Text italic style={{ color: '#334155', fontSize: 13, lineHeight: '1.6' }}>
+                                  "{user.academicNotes || 'Học viên tích cực tương tác qua Zoom breakout rooms, phát âm chuẩn các âm đuôi và cụm phụ âm. Tiếp thu nhanh từ vựng bài học McGraw-Hill Wonders và hoàn thành tốt bài tập trên lớp.'}"
+                                </Text>
+                              </div>
+                            </Card>
+                          ) : (
+                            <Alert
+                              type="info"
+                              showIcon
+                              message="Chưa có đánh giá từ giáo viên"
+                              description="Học viên chưa tham gia buổi học nào. Sau mỗi buổi học Zoom, giáo viên bản xứ sẽ trực tiếp chấm điểm 4 kỹ năng và cập nhật nhận xét chi tiết vào đây."
+                              style={{ borderRadius: 10 }}
+                            />
+                          )}
+                        </div>
+
+                        {/* Danh sách Lớp Học Thực Tế & Thời Khóa Biểu Của Học Viên */}
+                        {linkedClasses.length > 0 && (
+                          <div style={{ marginTop: 20 }}>
+                            <Title level={5} style={{ marginBottom: 12, color: '#0f172a' }}>
+                              <CalendarOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                              {isEnglish
+                                ? `My Enrolled Classes & Live Timetable (${linkedClasses.length})`
+                                : `Lớp Học & Thời Khóa Biểu Trực Tuyến Của Học Viên (${linkedClasses.length} lớp)`}
+                            </Title>
+                            <Row gutter={[16, 16]}>
+                              {linkedClasses.map((cls) => (
+                                <Col xs={24} md={12} key={cls.id}>
+                                  <Card
+                                    size="small"
+                                    style={{ borderRadius: 10, border: '1px solid #bae6fd', background: '#f0f9ff' }}
+                                  >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
+                                      <div>
+                                        <Tag color="blue" style={{ fontWeight: 700 }}>{cls.id}</Tag>
+                                        <Text strong style={{ fontSize: 14, color: '#0f172a' }}>{cls.name}</Text>
+                                      </div>
+                                      <Tag color="purple">{cls.teacherName || 'Native Teacher'}</Tag>
+                                    </div>
+                                    <div style={{ marginTop: 8, fontSize: 13, color: '#334155' }}>
+                                      <div>
+                                        <ClockCircleOutlined style={{ marginRight: 6, color: '#0284c7' }} />
+                                        <b>{isEnglish ? 'Class Schedule:' : 'Lịch học:'}</b> {formatScheduleForViewer(cls.schedule, isEnglish)}
+                                      </div>
+                                      {(cls.zoomStudentLink || cls.meetingLink) && (
+                                        <div style={{ marginTop: 4 }}>
+                                          <LinkOutlined style={{ marginRight: 6, color: '#16a34a' }} />
+                                          <a href={cls.zoomStudentLink || cls.meetingLink} target="_blank" rel="noreferrer">
+                                            {isEnglish ? 'Join Zoom Classroom' : 'Vào Phòng Học Zoom Trực Tuyến'}
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </Card>
+                                </Col>
+                              ))}
+                            </Row>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1075,7 +1466,13 @@ export const UserDetailPage = () => {
                         <Descriptions.Item label={isEnglish ? 'System RBAC Role' : 'Vai Trò Phân Quyền'}>
                           <Tag color={roleColor}>{isEnglish ? ROLE_LABELS.en?.[user.role] : ROLE_LABELS.vi?.[user.role]}</Tag>
                         </Descriptions.Item>
-                        <Descriptions.Item label={isEnglish ? 'Operational Notes' : 'Ghi Chú Nghiệp Vụ'}>
+                        <Descriptions.Item label={isEnglish ? 'Department / Unit' : 'Phòng Ban / Đơn Vị Công Tác'}>
+                          {user.department || (user.role === 'accountant' ? 'Phòng Tài Chính - Kế Toán' : user.role === 'director' ? 'Ban Giám Đốc Điều Hành' : 'Phòng Quản Trị Hệ Thống IT')}
+                        </Descriptions.Item>
+                        <Descriptions.Item label={isEnglish ? 'Position / Title' : 'Chức Danh Đảm Nhiệm'}>
+                          {user.position || (user.role === 'accountant' ? 'Kế toán tổng hợp & Đối soát học phí' : user.role === 'director' ? 'Giám đốc Điều hành (CEO)' : 'Trưởng phòng Hạ tầng IT & Bảo mật')}
+                        </Descriptions.Item>
+                        <Descriptions.Item label={isEnglish ? 'Operational Notes' : 'Ghi Chú Nghiệp Vụ & Thẩm Quyền'}>
                           {user.extraInfo || '—'}
                         </Descriptions.Item>
                       </Descriptions>
@@ -1087,7 +1484,7 @@ export const UserDetailPage = () => {
                         <Button
                           type="primary"
                           icon={<EditOutlined />}
-                          onClick={() => navigate('/user-management/' + userId + '/edit')}
+                          onClick={() => navigate(`${baseProfilePath}/edit`)}
                           style={{
                             borderRadius: 8,
                             backgroundColor: '#1890ff',
@@ -1103,8 +1500,8 @@ export const UserDetailPage = () => {
                 ),
               },
 
-              // ================= TAB 3: AUDIT LOGS (CHỈ ADMIN) =================
-              ...(isAdmin ? [{
+              // ================= TAB 3: AUDIT LOGS (ADMIN HOẶC CHÍNH CHỦ TRÊN /my-profile) =================
+              ...(canViewAuditLogs ? [{
                 key: 'audit',
                 label: (
                   <Space>
@@ -1209,73 +1606,165 @@ export const UserDetailPage = () => {
                   </Space>
                 ),
                 children: (
-                  <div style={{ paddingTop: 16 }}>
-                    <Row gutter={20}>
-                      <Col xs={24} sm={12} md={8}>
+                  <div style={{ paddingTop: 12 }}>
+                    {/* Hiển thị Cụm Gia Đình nếu có anh chị em liên kết */}
+                    {familyMembers.length > 0 && (
+                      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '10px 14px', borderRadius: 8, marginBottom: 14 }}>
+                        <Space wrap size={8}>
+                          <Text strong style={{ color: '#166534' }}>👨‍👩‍👧 {isEnglish ? 'Family Cluster:' : 'Cùng Cụm Gia Đình:'}</Text>
+                          <Text type="secondary" style={{ fontSize: 13 }}>
+                            {isEnglish ? `Sharing parent phone with ${familyMembers.length} sibling(s):` : `Đang chia sẻ SĐT phụ huynh với ${familyMembers.length} anh/chị/em:`}
+                          </Text>
+                          {familyMembers.map((m) => (
+                            <Tag
+                              key={m.id || m.code}
+                              color="cyan"
+                              style={{ cursor: 'pointer', fontWeight: 600 }}
+                              onClick={() => navigate(`/user-management/${m.id || m.code}`)}
+                            >
+                              {m.name} ({m.code || m.id})
+                            </Tag>
+                          ))}
+                        </Space>
+                      </div>
+                    )}
+
+                    {/* Hàng 1: Họ và Tên + Tên Tiếng Anh (English Name) */}
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
                         <Form.Item
                           name="name"
-                          label={<Text strong>{isEnglish ? 'Full Name' : 'Họ và Tên'}</Text>}
+                          label={<Text strong>{isEnglish ? 'Full Name (Vietnamese)' : 'Họ và Tên'}</Text>}
                           rules={[{ required: true, message: isEnglish ? 'Please enter full name' : 'Vui lòng nhập họ và tên' }]}
+                          style={{ marginBottom: 14 }}
                         >
                           <Input
                             prefix={<UserOutlined style={{ color: '#94a3b8' }} />}
                             placeholder={isEnglish ? 'Enter full name...' : 'Nhập họ và tên...'}
-                            style={{ borderRadius: 8 }}
+                            style={{ width: '100%', height: 38, borderRadius: 8 }}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const currentEng = form.getFieldValue('englishName');
+                              if (!currentEng || currentEng === toEnglishName(form.getFieldValue('name'))) {
+                                form.setFieldsValue({ englishName: toEnglishName(val) });
+                              }
+                            }}
                           />
                         </Form.Item>
                       </Col>
 
-                      <Col xs={24} sm={12} md={8}>
+                      <Col xs={24} sm={12}>
                         <Form.Item
-                          name="email"
-                          label={<Text strong>{isEnglish ? 'Email Address' : 'Địa Chỉ Email'}</Text>}
-                          rules={[
-                            { required: true, message: isEnglish ? 'Please enter email' : 'Vui lòng nhập email' },
-                            { type: 'email', message: isEnglish ? 'Invalid email format' : 'Email không hợp lệ' },
-                          ]}
-                          extra={
-                            watchedEmail ? (
-                              isGmail ? (
-                                <span style={{ color: '#d97706', fontSize: 12 }}>
-                                  ✨ <b>Gmail:</b> {isEnglish ? 'Sign in with Google or Password' : 'Đăng nhập Google hoặc Mật khẩu'}
-                                </span>
-                              ) : (
-                                <span style={{ color: '#475569', fontSize: 12 }}>
-                                  🔒 <b>{isEnglish ? 'Official Email:' : 'Email công vụ:'}</b> {isEnglish ? 'Sign in with Password' : 'Đăng nhập bằng Mật khẩu'}
-                                </span>
-                              )
-                            ) : null
-                          }
+                          name="englishName"
+                          label={<Text strong>{isEnglish ? 'English Name' : 'Tên Tiếng Anh (English Name)'}</Text>}
+                          rules={[{ required: true, message: isEnglish ? 'Please enter English name' : 'Vui lòng nhập tên tiếng Anh' }]}
+                          style={{ marginBottom: 14 }}
                         >
                           <Input
-                            prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
-                            placeholder="email@lakeducation.com"
-                            style={{ borderRadius: 8 }}
-                          />
-                        </Form.Item>
-                      </Col>
-
-                      <Col xs={24} sm={12} md={8}>
-                        <Form.Item
-                          name="phoneNumber"
-                          label={<Text strong>{isEnglish ? 'Phone Number' : 'Số Điện Thoại Cá Nhân'}</Text>}
-                        >
-                          <Input
-                            prefix={<PhoneOutlined style={{ color: '#94a3b8' }} />}
-                            placeholder="0909 509 116"
-                            style={{ borderRadius: 8 }}
+                            prefix={<GlobalOutlined style={{ color: '#0284c7' }} />}
+                            placeholder={isEnglish ? 'e.g. Bao Thu, Leo, Anna...' : 'VD: Bao Thu, Leo, Anna...'}
+                            style={{ width: '100%', height: 38, borderRadius: 8 }}
                           />
                         </Form.Item>
                       </Col>
                     </Row>
 
-                    <Row gutter={20}>
+                    {/* Hàng 2: Số Điện Thoại 1 (Chính - Bắt buộc) + Số Điện Thoại 2 (Phụ - Tùy chọn) */}
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="phoneNumber"
+                          label={<Text strong>{isEnglish ? 'Primary Phone (Required)' : 'Số Điện Thoại 1 (Chính - Bắt Buộc)'}</Text>}
+                          rules={[
+                            { required: true, message: isEnglish ? 'Please enter primary phone' : 'Vui lòng nhập số điện thoại chính' },
+                            { pattern: /^[0-9+\s\-().]{8,15}$/, message: isEnglish ? 'Invalid phone number' : 'Số điện thoại không hợp lệ' },
+                          ]}
+                          style={{ marginBottom: 14 }}
+                        >
+                          <Input
+                            prefix={<PhoneOutlined style={{ color: '#0284c7' }} />}
+                            placeholder="0909 509 116"
+                            style={{ width: '100%', height: 38, borderRadius: 8 }}
+                          />
+                        </Form.Item>
+                      </Col>
+
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="secondaryPhone"
+                          label={<Text strong>{isEnglish ? 'Secondary Phone (Optional, No Login)' : 'Số Điện Thoại 2 (Phụ - Tùy Chọn, Không Dùng Đăng Nhập)'}</Text>}
+                          rules={[]}
+                          style={{ marginBottom: 14 }}
+                        >
+                          <Input
+                            prefix={<PhoneOutlined style={{ color: '#16a34a' }} />}
+                            placeholder={isEnglish ? 'e.g. 0989 557 230 (Parent 2)' : 'VD: 0989 557 230 (SĐT Bố/Mẹ 2)'}
+                            style={{ width: '100%', height: 38, borderRadius: 8 }}
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+
+                    {/* Hàng 3: Địa Chỉ Email + Cụm Gia Đình */}
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="email"
+                          dependencies={['role']}
+                          label={
+                            <Text strong>
+                              {isTargetStudent
+                                ? (isEnglish ? 'Email Address (Optional)' : 'Địa Chỉ Email (Không bắt buộc)')
+                                : (isEnglish ? 'Email Address (Required)' : 'Địa Chỉ Email Đăng Nhập (Bắt Buộc)')}
+                            </Text>
+                          }
+                          rules={[
+                            ...(isTargetStudent ? [] : [{ required: true, message: isEnglish ? 'Please enter email' : 'Vui lòng nhập email công vụ' }]),
+                            {
+                              validator: (_, value) => {
+                                if (!value || !value.trim()) return Promise.resolve();
+                                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                                if (!emailRegex.test(value.trim())) {
+                                  return Promise.reject(new Error(isEnglish ? 'Invalid email format' : 'Email không hợp lệ'));
+                                }
+                                return Promise.resolve();
+                              },
+                            },
+                          ]}
+                          style={{ marginBottom: 14 }}
+                        >
+                          <Input
+                            prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
+                            placeholder={isTargetStudent ? (isEnglish ? 'student@gmail.com (optional)' : 'hocvien@gmail.com (hoặc để trống)') : 'email@lakeducation.com'}
+                            style={{ width: '100%', height: 38, borderRadius: 8 }}
+                          />
+                        </Form.Item>
+                      </Col>
+
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="familyId"
+                          label={<Text strong>{isEnglish ? 'Family Cluster ID' : 'Mã Cụm Gia Đình'}</Text>}
+                          style={{ marginBottom: 14 }}
+                        >
+                          <Input
+                            disabled
+                            placeholder="FAM_09xxxxxxxx (Tự động gán)"
+                            style={{ width: '100%', height: 38, borderRadius: 8, background: '#f8fafc' }}
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+
+                    {/* Hàng 3: Giới Tính + Ngày Sinh + Số Định Danh */}
+                    <Row gutter={16}>
                       <Col xs={24} sm={8} md={8}>
                         <Form.Item
                           name="gender"
                           label={<Text strong>{isEnglish ? 'Gender' : 'Giới Tính'}</Text>}
+                          style={{ marginBottom: 14 }}
                         >
-                          <Select style={{ borderRadius: 8 }}>
+                          <Select style={{ width: '100%', height: 38, borderRadius: 8 }}>
                             <Option value="Nam">{isEnglish ? 'Male' : 'Nam'}</Option>
                             <Option value="Nữ">{isEnglish ? 'Female' : 'Nữ'}</Option>
                             <Option value="Khác">{isEnglish ? 'Other' : 'Khác'}</Option>
@@ -1287,11 +1776,12 @@ export const UserDetailPage = () => {
                         <Form.Item
                           name="dateOfBirth"
                           label={<Text strong>{isEnglish ? 'Date of Birth' : 'Ngày Sinh'}</Text>}
+                          style={{ marginBottom: 14 }}
                         >
                           <DatePicker
                             format={isEnglish ? ['MM/DD/YYYY', 'YYYY-MM-DD', 'DD/MM/YYYY'] : ['DD/MM/YYYY', 'YYYY-MM-DD']}
                             placeholder={isEnglish ? 'MM/DD/YYYY' : 'DD/MM/YYYY'}
-                            style={{ width: '100%', borderRadius: 8 }}
+                            style={{ width: '100%', height: 38, borderRadius: 8 }}
                             allowClear
                           />
                         </Form.Item>
@@ -1301,26 +1791,29 @@ export const UserDetailPage = () => {
                         <Form.Item
                           name="idCardNumber"
                           label={<Text strong>{isEnglish ? 'Citizen ID / Passport' : 'Số CCCD / Hộ Chiếu / Mã Định Danh'}</Text>}
+                          style={{ marginBottom: 14 }}
                         >
                           <Input
                             prefix={<IdcardOutlined style={{ color: '#94a3b8' }} />}
                             placeholder={isEnglish ? 'Enter ID number or passport...' : 'Nhập số CCCD hoặc Passport...'}
-                            style={{ borderRadius: 8 }}
+                            style={{ width: '100%', height: 38, borderRadius: 8 }}
                           />
                         </Form.Item>
                       </Col>
                     </Row>
 
-                    <Row gutter={20}>
+                    {/* Hàng 4: Địa Chỉ Thường Trú + Tỉnh / Thành Phố */}
+                    <Row gutter={16}>
                       <Col xs={24} sm={16} md={16}>
                         <Form.Item
                           name="address"
                           label={<Text strong>{isEnglish ? 'Permanent / Current Address' : 'Địa Chỉ Thường Trú / Tạm Trú'}</Text>}
+                          style={{ marginBottom: 14 }}
                         >
                           <Input
                             prefix={<HomeOutlined style={{ color: '#94a3b8' }} />}
                             placeholder={isEnglish ? 'Street address, ward, district...' : 'Số nhà, tên đường, phường/xã, quận/huyện...'}
-                            style={{ borderRadius: 8 }}
+                            style={{ width: '100%', height: 38, borderRadius: 8 }}
                           />
                         </Form.Item>
                       </Col>
@@ -1329,19 +1822,20 @@ export const UserDetailPage = () => {
                         <Form.Item
                           name="city"
                           label={<Text strong>{isEnglish ? 'City / Province' : 'Tỉnh / Thành Phố'}</Text>}
+                          style={{ marginBottom: 14 }}
                         >
                           <Input
                             placeholder={isEnglish ? 'Ho Chi Minh City' : 'TP. Hồ Chí Minh'}
-                            style={{ borderRadius: 8 }}
+                            style={{ width: '100%', height: 38, borderRadius: 8 }}
                           />
                         </Form.Item>
                       </Col>
                     </Row>
 
-                    <Divider style={{ margin: '12px 0 20px' }} />
+                    <Divider style={{ margin: '8px 0 14px' }} />
 
                     {/* Phương thức đăng nhập và Bảo mật */}
-                    <div style={{ background: '#f8fafc', padding: '16px 20px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                    <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
                       <Title level={5} style={{ margin: '0 0 10px 0', color: '#1e293b' }}>
                         <SafetyCertificateOutlined style={{ marginRight: 6, color: '#1890ff' }} />
                         {isEnglish ? 'Authentication & Login Methods' : 'Phương Thức Xác Thực Đăng Nhập'}
@@ -1435,6 +1929,7 @@ export const UserDetailPage = () => {
                           label={<Text strong>{isEnglish ? 'Operational Notes / Position' : 'Ghi Chú Nghiệp Vụ / Chức Danh'}</Text>}
                         >
                           <Input
+                            disabled={!canEditSensitive}
                             placeholder={isEnglish ? 'Assignment notes, department or quota...' : 'Ghi chú phân công, phòng ban hoặc định mức...'}
                             style={{ borderRadius: 8 }}
                           />
@@ -1451,53 +1946,167 @@ export const UserDetailPage = () => {
 
                     {/* Dynamic Fields: DÀNH CHO HỌC VIÊN (Student) */}
                     {user.role === 'student' && (
-                      <Row gutter={20}>
-                        <Col xs={24} sm={12} md={8}>
-                          <Form.Item name="className" label={<Text strong>{isEnglish ? 'Enrolled Class' : 'Lớp Học Đang Tham Gia'}</Text>}>
-                            <Input placeholder={isEnglish ? 'E.g. Wonders Primary G3-A' : 'VD: Wonders Primary G3-A'} style={{ borderRadius: 8 }} />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12} md={8}>
-                          <Form.Item name="level" label={<Text strong>{isEnglish ? 'Curriculum Level' : 'Cấp Độ Chương Trình (Level)'}</Text>}>
-                            <Select style={{ borderRadius: 8 }}>
-                              <Option value="GK">{isEnglish ? 'Wonders GK (Kindergarten)' : 'Wonders GK (Mầm non / Kindergarten)'}</Option>
-                              <Option value="G1">{isEnglish ? 'Wonders G1 (Grade 1)' : 'Wonders G1 (Lớp 1)'}</Option>
-                              <Option value="G2">{isEnglish ? 'Wonders G2 (Grade 2)' : 'Wonders G2 (Lớp 2)'}</Option>
-                              <Option value="G3">{isEnglish ? 'Wonders G3 (Grade 3)' : 'Wonders G3 (Lớp 3)'}</Option>
-                              <Option value="G4">{isEnglish ? 'Wonders G4 (Grade 4)' : 'Wonders G4 (Lớp 4)'}</Option>
-                              <Option value="G5">{isEnglish ? 'Wonders G5 (Grade 5)' : 'Wonders G5 (Lớp 5)'}</Option>
-                            </Select>
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12} md={8}>
-                          <Form.Item name="tuitionStatus" label={<Text strong>{isEnglish ? 'Tuition Status' : 'Tình Trạng Học Phí'}</Text>}>
-                            <Select style={{ borderRadius: 8 }}>
-                              <Option value="Đã đóng đủ">{isEnglish ? 'Paid in Full' : 'Đã đóng đủ (Hoàn tất)'}</Option>
-                              <Option value="Còn nợ đợt 2">{isEnglish ? 'Installment 2 Due' : 'Còn nợ đợt 2'}</Option>
-                              <Option value="Học bổng / Miễn giảm">{isEnglish ? 'Scholarship / Waived' : 'Học bổng / Miễn giảm'}</Option>
-                            </Select>
-                          </Form.Item>
-                        </Col>
-
-                        <Col xs={24} sm={12} md={8}>
-                          <Form.Item name="parentName" label={<Text strong>{isEnglish ? 'Parent / Guardian Name' : 'Họ Tên Phụ Huynh / Người Giám Hộ'}</Text>}>
-                            <Input placeholder={isEnglish ? 'E.g. Mr. Tuan / Ms. Mai' : 'VD: Anh Tuấn / Chị Mai'} style={{ borderRadius: 8 }} />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12} md={8}>
-                          <Form.Item name="parentPhone" label={<Text strong>{isEnglish ? 'Parent Phone Number' : 'Số Điện Thoại Phụ Huynh'}</Text>}>
-                            <Input placeholder="0912 345 678" style={{ borderRadius: 8 }} />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12} md={8}>
-                          <Form.Item name="attendanceRate" label={<Text strong>{isEnglish ? 'Attendance Rate (%)' : 'Tỷ Lệ Chuyên Cần (%)'}</Text>}>
-                            <InputNumber min={0} max={100} style={{ width: '100%', borderRadius: 8 }} addonAfter="%" />
-                          </Form.Item>
-                        </Col>
-
+                      <Row gutter={[16, 12]}>
                         <Col span={24}>
-                          <Form.Item name="academicNotes" label={<Text strong>{isEnglish ? 'Learning Progress & Teacher Feedback' : 'Nhận Xét Tiến Độ Học Tập / Đánh Giá Giáo Viên'}</Text>}>
-                            <TextArea rows={3} placeholder={isEnglish ? 'Reading fluency, phonics, vocabulary and homework submission...' : 'Ghi nhận khả năng đọc hiểu, phát âm, từ vựng và bài tập về nhà...'} style={{ borderRadius: 8 }} />
+                          <Form.Item
+                            name="enrolledClassIds"
+                            label={
+                              <Space size={6}>
+                                <Text strong>{isEnglish ? 'Enrolled Classes' : 'Lớp Học Online Ghi Danh'}</Text>
+                                <Tag color="blue" style={{ fontSize: 11, fontWeight: 600 }}>Nhiều Lớp</Tag>
+                              </Space>
+                            }
+                            extra={
+                              <span style={{ fontSize: 12, color: '#64748b' }}>
+                                💡 Mỗi học viên có thể đăng ký nhiều lớp học online. Hệ thống sẽ tự động phát hiện và chặn trùng khung giờ học trực tuyến Zoom.
+                              </span>
+                            }
+                          >
+                            <Select
+                              mode="multiple"
+                              placeholder={isEnglish ? 'Select 1 or more Zoom classes...' : 'Chọn 1 hoặc nhiều lớp học Zoom tham gia...'}
+                              style={{ width: '100%', minHeight: 40, borderRadius: 8 }}
+                              allowClear
+                              optionLabelProp="label"
+                            >
+                              {availableClasses.map((cls) => (
+                                <Option
+                                  key={cls.id}
+                                  value={cls.id}
+                                  label={`${cls.id} — ${cls.name}`}
+                                >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0' }}>
+                                    <Space size={8}>
+                                      <Tag color="blue" style={{ fontWeight: 700, margin: 0 }}>{cls.id}</Tag>
+                                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{cls.name}</span>
+                                    </Space>
+                                    <Space size={6}>
+                                      <Tag color="cyan" icon={<ClockCircleOutlined />} style={{ margin: 0 }}>
+                                        {cls.schedule}
+                                      </Tag>
+                                      <Tag color="purple" style={{ margin: 0 }}>
+                                        {cls.teacherName || 'GV Bản Xứ'}
+                                      </Tag>
+                                    </Space>
+                                  </div>
+                                </Option>
+                              ))}
+                            </Select>
+                          </Form.Item>
+                        </Col>
+
+                        {/* Cảnh báo trùng khung giờ học online */}
+                        {editConflictInfo.hasConflict && (
+                          <Col span={24}>
+                            <Alert
+                              type="error"
+                              showIcon
+                              icon={<WarningOutlined style={{ color: '#ff4d4f' }} />}
+                              style={{
+                                marginBottom: 16,
+                                borderRadius: 8,
+                                backgroundColor: '#fff2f0',
+                                border: '1.5px solid #ff4d4f',
+                              }}
+                              message={
+                                <div>
+                                  <Text strong style={{ color: '#cf1322', fontSize: 13 }}>
+                                    ⛔ PHÁT HIỆN TRÙNG KHUNG GIỜ HỌC ONLINE:
+                                  </Text>
+                                  <ul style={{ margin: '6px 0 0 18px', padding: 0, color: '#434343', fontSize: 13 }}>
+                                    {editConflictInfo.conflicts.map((c, idx) => (
+                                      <li key={idx} style={{ marginTop: 2 }}>{c.message}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              }
+                            />
+                          </Col>
+                        )}
+
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            label={<Text strong>{isEnglish ? 'Curriculum Level (Auto-Derived)' : 'Cấp Độ Chương Trình (Tự Động Theo Lớp)'}</Text>}
+                            extra={<span style={{ fontSize: 12, color: '#64748b' }}>Cấp độ đi liền với lớp học đã chọn, không cần chọn thủ công.</span>}
+                          >
+                            <div
+                              style={{
+                                minHeight: 40,
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '4px 11px',
+                                background: '#f8fafc',
+                                border: '1px solid #d9d9d9',
+                                borderRadius: 8,
+                                flexWrap: 'wrap',
+                                gap: 6,
+                              }}
+                            >
+                              {editDerivedLevels.length > 0 ? (
+                                editDerivedLevels.map((lvl) => (
+                                  <Tag key={lvl} color="purple" style={{ margin: 0, fontWeight: 600, padding: '2px 8px' }}>
+                                    {lvl}
+                                  </Tag>
+                                ))
+                              ) : (
+                                <Text type="secondary" style={{ fontSize: 13 }}>
+                                  {user.level ? `Wonders ${user.level}` : 'Tự động xác định theo lớp ghi danh'}
+                                </Text>
+                              )}
+                            </div>
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            label={<Text strong>{isEnglish ? 'Tuition Status (Automated)' : 'Tình Trạng Học Phí (Hệ Thống Tự Động)'}</Text>}
+                            extra={<span style={{ fontSize: 12, color: '#64748b' }}>Hệ thống kế toán tự động đối soát dựa trên học phần đăng ký, không chỉnh sửa thủ công.</span>}
+                          >
+                            <div
+                              style={{
+                                height: 40,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '0 11px',
+                                background: '#f8fafc',
+                                border: '1px solid #d9d9d9',
+                                borderRadius: 8,
+                              }}
+                            >
+                              <Tag
+                                color={user.tuitionStatus === 'Đã đóng đủ' ? 'green' : user.tuitionStatus === 'Chờ đối soát' ? 'gold' : 'blue'}
+                                style={{ margin: 0, fontWeight: 600, padding: '2px 8px' }}
+                              >
+                                {user.tuitionStatus || 'Chờ đối soát'}
+                              </Tag>
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                {isEnglish ? 'Automated Accounting Sync' : 'Đối soát tự động từ Kế toán'}
+                              </Text>
+                            </div>
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="parentName"
+                            label={<Text strong>{isEnglish ? 'Parent / Guardian Name' : 'Họ Tên Phụ Huynh / Người Giám Hộ'}</Text>}
+                          >
+                            <Input placeholder={isEnglish ? 'E.g. Mr. Tuan / Ms. Mai' : 'VD: Anh Tuấn / Chị Mai'} style={{ width: '100%', height: 40, borderRadius: 8 }} />
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="parentPhone"
+                            label={<Text strong>{isEnglish ? 'Parent Phone Number (Default Phone 1)' : 'Số Điện Thoại Phụ Huynh (Mặc Định Là SĐT 1)'}</Text>}
+                            extra={<span style={{ fontSize: 12, color: '#16a34a' }}>Đồng bộ với Số Điện Thoại 1 chính.</span>}
+                          >
+                            <Input
+                              prefix={<PhoneOutlined style={{ color: '#0284c7' }} />}
+                              placeholder="0912 345 678"
+                              style={{ width: '100%', height: 40, borderRadius: 8 }}
+                            />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1519,6 +2128,7 @@ export const UserDetailPage = () => {
                         <Col xs={24} sm={12} md={8}>
                           <Form.Item name="hourlyRate" label={<Text strong>{isEnglish ? 'Session Rate (VND / Session)' : 'Đơn Giá Tiết Dạy (VNĐ / Tiết)'}</Text>}>
                             <InputNumber
+                              disabled={!canEditSensitive}
                               min={100000}
                               step={50000}
                               formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
@@ -1530,7 +2140,7 @@ export const UserDetailPage = () => {
                         </Col>
                         <Col xs={24} sm={12} md={12}>
                           <Form.Item name="assignedClasses" label={<Text strong>{isEnglish ? 'Assigned Classes' : 'Các Lớp Đang Phụ Trách'}</Text>}>
-                            <Input placeholder="GK-A, G1-B, G3-Online..." style={{ borderRadius: 8 }} />
+                            <Input disabled={!canEditSensitive} placeholder="GK-A, G1-B, G3-Online..." style={{ borderRadius: 8 }} />
                           </Form.Item>
                         </Col>
                         <Col xs={24} sm={12} md={12}>
@@ -1551,12 +2161,12 @@ export const UserDetailPage = () => {
                         </Col>
                         <Col xs={24} sm={12} md={8}>
                           <Form.Item name="managedClasses" label={<Text strong>{isEnglish ? 'Managed Classes' : 'Số Lớp Đang Điều Phối'}</Text>}>
-                            <InputNumber min={0} style={{ width: '100%', borderRadius: 8 }} placeholder={isEnglish ? '8 classes' : '8 lớp'} />
+                            <InputNumber disabled={!canEditSensitive} min={0} style={{ width: '100%', borderRadius: 8 }} placeholder={isEnglish ? '8 classes' : '8 lớp'} />
                           </Form.Item>
                         </Col>
                         <Col xs={24} sm={12} md={8}>
                           <Form.Item name="completedTasks" label={<Text strong>{isEnglish ? 'Academic KPI Score (%)' : 'KPI Hoàn Thành Học Vụ (%)'}</Text>}>
-                            <InputNumber min={0} max={100} style={{ width: '100%', borderRadius: 8 }} addonAfter="%" />
+                            <InputNumber disabled={!canEditSensitive} min={0} max={100} style={{ width: '100%', borderRadius: 8 }} addonAfter="%" />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1677,7 +2287,7 @@ export const UserDetailPage = () => {
           >
             <Button
               size="large"
-              onClick={() => navigate('/user-management/' + userId)}
+              onClick={() => navigate(baseProfilePath)}
               style={{ borderRadius: 8, minWidth: 120, height: 42, fontWeight: 500 }}
             >
               {isEnglish ? 'Cancel & Return to View' : 'Hủy & Quay Lại Xem'}

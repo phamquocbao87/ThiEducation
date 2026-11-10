@@ -27,6 +27,7 @@ import {
   StopOutlined,
   GoogleOutlined,
   KeyOutlined,
+  GlobalOutlined,
 } from '@ant-design/icons';
 import {
   USER_ROLES,
@@ -35,6 +36,7 @@ import {
   ROLE_COLORS,
   isGmailAddress,
   resolveAuthProvidersByEmail,
+  toEnglishName,
 } from '../models/user.model';
 import { PermissionService } from '../../../core/services/PermissionService';
 import { DriveStorageService } from '../../../core/services/DriveStorageService';
@@ -52,7 +54,10 @@ export const UserProfileEditModal = ({
   currentUser,
 }) => {
   const [form] = Form.useForm();
-  const currentEmail = Form.useWatch('email', form) || user?.email || '';
+  const currentEmail = Form.useWatch('email', form) ?? user?.email ?? '';
+  const currentPhone = Form.useWatch('phoneNumber', form) ?? user?.phoneNumber ?? '';
+  const currentRole = Form.useWatch('role', form) || user?.role || USER_ROLES.STUDENT;
+  const isStudent = currentRole === USER_ROLES.STUDENT;
   const isGmail = isGmailAddress(currentEmail);
 
   const canEdit = user ? PermissionService.canEditUser(currentUser, user) : false;
@@ -64,8 +69,10 @@ export const UserProfileEditModal = ({
     if (user && open) {
       form.setFieldsValue({
         name: user.name,
-        email: user.email,
+        englishName: user.englishName || toEnglishName(user.name) || '',
+        email: user.email || '',
         phoneNumber: user.phoneNumber || '',
+        secondaryPhone: user.secondaryPhone || '',
         role: user.role,
         status: user.status || USER_STATUS.ACTIVE,
         extraInfo: user.extraInfo || '',
@@ -76,7 +83,11 @@ export const UserProfileEditModal = ({
   if (!user) return null;
 
   const handleFinish = (values) => {
-    onSubmit(user, values);
+    const cleanEnglishName = values.englishName?.trim() || toEnglishName(values.name);
+    onSubmit(user, {
+      ...values,
+      englishName: cleanEnglishName,
+    });
   };
 
   const roleColor = ROLE_COLORS[user.role] || 'blue';
@@ -160,58 +171,126 @@ export const UserProfileEditModal = ({
               name="name"
               label={<Text strong>Họ và Tên</Text>}
               rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}
+              style={{ marginBottom: 14 }}
             >
               <Input
                 prefix={<UserOutlined style={{ color: '#94a3b8' }} />}
                 placeholder="Nhập họ và tên..."
-                style={{ borderRadius: 8 }}
+                style={{ width: '100%', height: 38, borderRadius: 8 }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const curEng = form.getFieldValue('englishName');
+                  if (!curEng || curEng === toEnglishName(form.getFieldValue('name'))) {
+                    form.setFieldsValue({ englishName: toEnglishName(val) });
+                  }
+                }}
               />
             </Form.Item>
           </Col>
+
           <Col xs={24} sm={12}>
             <Form.Item
-              name="email"
-              label={<Text strong>Địa Chỉ Email</Text>}
-              rules={[
-                { required: true, message: 'Vui lòng nhập email' },
-                { type: 'email', message: 'Email không hợp lệ' },
-              ]}
+              name="englishName"
+              label={<Text strong>Tên Tiếng Anh (English Name)</Text>}
+              rules={[{ required: true, message: 'Vui lòng nhập tên tiếng Anh' }]}
+              style={{ marginBottom: 14 }}
             >
               <Input
-                prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
-                placeholder="email@lakeducation.com"
-                style={{ borderRadius: 8 }}
+                prefix={<GlobalOutlined style={{ color: '#0284c7' }} />}
+                placeholder="VD: Bao Thu, Leo, Anna..."
+                style={{ width: '100%', height: 38, borderRadius: 8 }}
               />
             </Form.Item>
           </Col>
         </Row>
 
+        {/* Hàng 2: Số Điện Thoại 1 (Chính) + Số Điện Thoại 2 (Phụ) */}
         <Row gutter={16}>
           <Col xs={24} sm={12}>
             <Form.Item
               name="phoneNumber"
-              label={<Text strong>Số Điện Thoại</Text>}
+              label={<Text strong>Số Điện Thoại 1 (Chính - Bắt Buộc)</Text>}
+              rules={[
+                { required: true, message: 'Vui lòng nhập số điện thoại chính' },
+                { pattern: /^[0-9+\s\-().]{8,15}$/, message: 'Số điện thoại không hợp lệ' },
+              ]}
+              style={{ marginBottom: 14 }}
             >
               <Input
-                prefix={<PhoneOutlined style={{ color: '#94a3b8' }} />}
+                prefix={<PhoneOutlined style={{ color: '#0284c7' }} />}
                 placeholder="0909 509 116"
-                style={{ borderRadius: 8 }}
+                style={{ width: '100%', height: 38, borderRadius: 8 }}
               />
             </Form.Item>
           </Col>
+
+          <Col xs={24} sm={12}>
+            <Form.Item
+              name="secondaryPhone"
+              label={<Text strong>Số Điện Thoại 2 (Phụ - Tùy Chọn, Không Dùng Đăng Nhập)</Text>}
+              rules={[]}
+              style={{ marginBottom: 14 }}
+            >
+              <Input
+                prefix={<PhoneOutlined style={{ color: '#64748b' }} />}
+                placeholder="SĐT ba/mẹ thứ 2..."
+                style={{ width: '100%', height: 38, borderRadius: 8 }}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {/* Hàng 3: Email + Vai Trò */}
+        <Row gutter={16}>
+          <Col xs={24} sm={12}>
+            <Form.Item
+              name="email"
+              dependencies={['role']}
+              label={
+                <Text strong>
+                  {isStudent ? 'Địa Chỉ Email (Không bắt buộc)' : 'Địa Chỉ Email Đăng Nhập (Bắt Buộc)'}
+                </Text>
+              }
+              rules={[
+                ...(isStudent ? [] : [{ required: true, message: 'Vui lòng nhập email bắt buộc' }]),
+                {
+                  validator: (_, value) => {
+                    if (!value || !value.trim()) return Promise.resolve();
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(value.trim())) {
+                      return Promise.reject(new Error('Email không hợp lệ'));
+                    }
+                    return Promise.resolve();
+                  },
+                },
+              ]}
+              style={{ marginBottom: 14 }}
+            >
+              <Input
+                prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
+                placeholder={isStudent ? 'hocvien@gmail.com (hoặc để trống)' : 'email@lakeducation.com'}
+                style={{ width: '100%', height: 38, borderRadius: 8 }}
+              />
+            </Form.Item>
+          </Col>
+
           <Col xs={24} sm={12}>
             <Form.Item
               name="role"
               label={<Text strong>Vai Trò Hệ Thống (Role)</Text>}
               tooltip={isAdmin ? 'Chỉ IT Admin được phép đổi vai trò' : 'Bạn không có quyền đổi vai trò'}
+              style={{ marginBottom: 14 }}
             >
               <Select
                 disabled={!isAdmin || user.id === 'ADM001'}
-                style={{ borderRadius: 8 }}
+                style={{ width: '100%', height: 38, borderRadius: 8 }}
               >
                 {Object.values(USER_ROLES).map((role) => (
                   <Option key={role} value={role}>
-                    {ROLE_LABELS.vi[role]}
+                    <Tag color={ROLE_COLORS[role]} style={{ marginRight: 6 }}>
+                      {role.toUpperCase()}
+                    </Tag>
+                    {ROLE_LABELS.vi[role] || role}
                   </Option>
                 ))}
               </Select>
@@ -219,29 +298,28 @@ export const UserProfileEditModal = ({
           </Col>
         </Row>
 
+        {/* Hàng 4: Trạng Thái + Phương Thức Đăng Nhập */}
         <Row gutter={16}>
           <Col xs={24} sm={12}>
             <Form.Item
               name="status"
-              label={<Text strong>Trạng Thái Tài Khoản</Text>}
-              tooltip={canChangeStatus ? 'Kích hoạt hoặc Khóa tài khoản' : 'Bạn không có quyền đổi trạng thái'}
+              label={<Text strong>Trạng Thái Hoạt Động</Text>}
+              style={{ marginBottom: 14 }}
             >
-              <Select disabled={!canChangeStatus} style={{ borderRadius: 8 }}>
+              <Select
+                disabled={!canChangeStatus}
+                style={{ width: '100%', height: 38, borderRadius: 8 }}
+              >
                 <Option value={USER_STATUS.ACTIVE}>
-                  <Space>
-                    <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                    <span>Đang Hoạt Động (Active)</span>
-                  </Space>
+                  <Tag color="green">Đang Hoạt Động</Tag>
                 </Option>
                 <Option value={USER_STATUS.DISABLED}>
-                  <Space>
-                    <StopOutlined style={{ color: '#ff4d4f' }} />
-                    <span>Đã Khóa / Vô Hiệu Hóa (Disabled)</span>
-                  </Space>
+                  <Tag color="red">Đã Khóa / Vô Hiệu</Tag>
                 </Option>
               </Select>
             </Form.Item>
           </Col>
+
           <Col xs={24} sm={12}>
             <Form.Item label={<Text strong>Phương Thức Đăng Nhập</Text>}>
               <div style={{ paddingTop: 4 }}>

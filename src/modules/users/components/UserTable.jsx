@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Table,
   Tag,
@@ -19,10 +19,12 @@ import {
   EditOutlined,
   DeleteOutlined,
   RightOutlined,
+  PhoneOutlined,
 } from '@ant-design/icons';
-import { ROLE_COLORS, USER_STATUS, isGmailAddress } from '../models/user.model';
+import { USER_ROLES, ROLE_COLORS, USER_STATUS, ROLE_LABELS, isGmailAddress, toEnglishName } from '../models/user.model';
 import { PermissionService } from '../../../core/services/PermissionService';
 import { DriveStorageService } from '../../../core/services/DriveStorageService';
+import { useLanguage } from '../../../core/context/LanguageContext';
 
 const { Text } = Typography;
 
@@ -33,11 +35,16 @@ export const UserTable = ({
   onToggleStatus,
   onEditUser,
   onDeleteUser,
-  language = 'vi',
+  language: propLanguage,
+  isEnglish: propIsEnglish,
 }) => {
-  const columns = [
+  const contextLanguage = useLanguage();
+  const isEnglish = propIsEnglish !== undefined ? propIsEnglish : contextLanguage?.isEnglish;
+  const t = contextLanguage?.t || ((key) => key);
+
+  const columns = useMemo(() => [
     {
-      title: 'Thành viên & Avatar',
+      title: t('users.table.colMember'),
       key: 'userProfile',
       width: 250,
       render: (_, record) => {
@@ -62,11 +69,18 @@ export const UserTable = ({
               </Avatar>
             </Badge>
             <div>
-              <Text strong style={{ fontSize: 14, display: 'block', color: '#1e293b' }}>
-                {record.name}
-              </Text>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <Text strong style={{ fontSize: 14, color: '#1e293b' }}>
+                  {record.name}
+                </Text>
+                {(record.englishName || toEnglishName(record.name)) && (
+                  <Tag color="cyan" style={{ fontSize: 11, padding: '1px 6px', margin: 0 }}>
+                    🇬🇧 {record.englishName || toEnglishName(record.name)}
+                  </Tag>
+                )}
+              </div>
               <Text type="secondary" style={{ fontSize: 12 }}>
-                {record.extraInfo || (record.role === 'student' ? 'Học viên trực tuyến' : 'Cán bộ LAK EDUCATION')}
+                {record.extraInfo || (record.role === 'student' ? t('users.table.onlineStudent') : t('users.table.lakStaff'))}
               </Text>
             </div>
           </Space>
@@ -74,7 +88,7 @@ export const UserTable = ({
       },
     },
     {
-      title: 'Liên hệ & Mã',
+      title: t('users.table.colContact'),
       key: 'contactInfo',
       width: 220,
       render: (_, record) => (
@@ -85,35 +99,66 @@ export const UserTable = ({
             </Tag>
             {record.isRootAdmin && (
               <Tag color="gold" style={{ fontSize: 10, margin: 0 }}>
-                ROOT ADMIN
+                {t('users.table.rootAdminTag')}
               </Tag>
             )}
           </div>
-          <Text style={{ fontSize: 13, display: 'block', color: '#334155' }}>
-            {record.email}
-          </Text>
+          {record.email ? (
+            <Text style={{ fontSize: 13, display: 'block', color: '#334155' }}>
+              {record.email}
+            </Text>
+          ) : (
+            <Tag color="cyan" style={{ fontSize: 11, margin: '2px 0' }}>
+              📱 {t('users.table.loginViaPhone')}
+            </Tag>
+          )}
           <Text type="secondary" style={{ fontSize: 11 }}>
-            {record.phoneNumber ? `SĐT: ${record.phoneNumber}` : 'Chưa cập nhật SĐT'}
+            {record.phoneNumber ? `${t('users.table.phonePrefix')}${record.phoneNumber}` : t('users.table.phoneNotUpdated')}
           </Text>
         </div>
       ),
     },
     {
-      title: 'Vai trò (Role)',
+      title: t('users.table.colRole'),
       dataIndex: 'role',
       key: 'role',
       width: 170,
       render: (role, record) => {
         const color = ROLE_COLORS[role] || 'default';
+        const isStudent = role === USER_ROLES.STUDENT;
+        const localizedRole = ROLE_LABELS[isEnglish ? 'en' : 'vi']?.[role] || record.roleLabel || role.toUpperCase();
         return (
-          <Tag color={color} style={{ padding: '3px 8px', fontSize: 12, borderRadius: 4 }}>
-            {record.roleLabel || role.toUpperCase()}
-          </Tag>
+          <div>
+            <Tag color={color} style={{ padding: '3px 8px', fontSize: 12, borderRadius: 4 }}>
+              {localizedRole}
+            </Tag>
+            {isStudent && (
+              <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {Array.isArray(record.enrolledClassIds) && record.enrolledClassIds.length > 0 ? (
+                  <Tag color="cyan" style={{ fontSize: 10, margin: 0 }}>
+                    {record.enrolledClassIds.join(', ')}
+                  </Tag>
+                ) : record.className ? (
+                  <Tag color="cyan" style={{ fontSize: 10, margin: 0 }}>
+                    {record.className}
+                  </Tag>
+                ) : null}
+                <Tag
+                  color={record.tuitionStatus === 'Đã đóng đủ' ? 'green' : 'gold'}
+                  style={{ fontSize: 10, margin: 0, width: 'fit-content' }}
+                >
+                  {record.tuitionStatus === 'Đã đóng đủ'
+                    ? (isEnglish ? 'Paid in Full' : 'Đã đóng đủ')
+                    : (isEnglish ? 'Pending' : (record.tuitionStatus || 'Chờ đối soát'))}
+                </Tag>
+              </div>
+            )}
+          </div>
         );
       },
     },
     {
-      title: 'Đăng nhập',
+      title: t('users.table.colAuth'),
       key: 'authProviders',
       width: 140,
       render: (_, record) => {
@@ -121,23 +166,31 @@ export const UserTable = ({
         return (
           <Space size={4}>
             {isGmail && (
-              <Tooltip title="Gmail: Đăng nhập Google">
+              <Tooltip title={t('users.table.gmailTooltip')}>
                 <Tag icon={<GoogleOutlined />} color="orange" style={{ margin: 0, fontSize: 11 }}>
                   Google
                 </Tag>
               </Tooltip>
             )}
-            <Tooltip title="Đăng nhập Mật khẩu">
-              <Tag icon={<KeyOutlined />} color="default" style={{ margin: 0, fontSize: 11 }}>
-                Pass
-              </Tag>
-            </Tooltip>
+            {record.email ? (
+              <Tooltip title={t('users.table.passwordTooltip')}>
+                <Tag icon={<KeyOutlined />} color="default" style={{ margin: 0, fontSize: 11 }}>
+                  Pass
+                </Tag>
+              </Tooltip>
+            ) : (
+              <Tooltip title={t('users.table.phonePasswordTooltip')}>
+                <Tag icon={<PhoneOutlined />} color="cyan" style={{ margin: 0, fontSize: 11 }}>
+                  SĐT & Pass
+                </Tag>
+              </Tooltip>
+            )}
           </Space>
         );
       },
     },
     {
-      title: 'Kích Hoạt / Khóa',
+      title: t('users.table.colStatus'),
       key: 'status',
       width: 150,
       align: 'center',
@@ -151,12 +204,12 @@ export const UserTable = ({
             <Tooltip
               title={
                 isRootAdmin
-                  ? 'Tài khoản Root Admin tối cao không thể bị khóa'
+                  ? t('users.table.rootAdminNoLockTooltip')
                   : !canChange
-                  ? 'Bạn không có quyền thay đổi trạng thái của tài khoản này'
+                  ? t('users.table.noPermissionTooltip')
                   : isActive
-                  ? 'Gạt sang trái để Khóa tài khoản này'
-                  : 'Gạt sang phải để Kích hoạt tài khoản này'
+                  ? (isEnglish ? 'Switch left to Lock this account' : 'Gạt sang trái để Khóa tài khoản này')
+                  : (isEnglish ? 'Switch right to Activate this account' : 'Gạt sang phải để Kích hoạt tài khoản này')
               }
             >
               <Switch
@@ -177,14 +230,14 @@ export const UserTable = ({
                 fontWeight: 600,
               }}
             >
-              {isActive ? 'HOẠT ĐỘNG' : 'ĐÃ KHÓA'}
+              {isActive ? t('users.table.statusActiveLabel') : t('users.table.statusDisabledLabel')}
             </Text>
           </div>
         );
       },
     },
     {
-      title: 'Hành động',
+      title: t('users.table.colActions'),
       key: 'actions',
       width: 140,
       align: 'center',
@@ -194,19 +247,19 @@ export const UserTable = ({
 
         return (
           <Space size={6}>
-            <Tooltip title={canEdit ? 'Xem chi tiết & chỉnh sửa hồ sơ đầy đủ' : 'Xem thông tin chi tiết'}>
+            <Tooltip title={canEdit ? (isEnglish ? 'View details & edit full profile' : 'Xem chi tiết & chỉnh sửa hồ sơ đầy đủ') : (isEnglish ? 'View details' : 'Xem thông tin chi tiết')}>
               <Button
                 size="small"
                 icon={<EditOutlined />}
                 onClick={() => onEditUser(record)}
                 style={{ borderRadius: 6 }}
               >
-                Chi tiết
+                {t('users.table.btnDetails')}
               </Button>
             </Tooltip>
 
             {canDelete && (
-              <Tooltip title="Xóa tài khoản này (Yêu cầu nhập lý do)">
+              <Tooltip title={isEnglish ? 'Delete this account (Reason required)' : 'Xóa tài khoản này (Yêu cầu nhập lý do)'}>
                 <Button
                   size="small"
                   danger
@@ -220,7 +273,7 @@ export const UserTable = ({
         );
       },
     },
-  ];
+  ], [isEnglish, currentUser, onToggleStatus, onEditUser, onDeleteUser, t]);
 
   return (
     <Table
@@ -246,7 +299,10 @@ export const UserTable = ({
       pagination={{
         pageSize: 10,
         showSizeChanger: true,
-        showTotal: (total) => `Tổng cộng ${total} tài khoản trong hệ thống`,
+        showTotal: (total) =>
+          isEnglish
+            ? `Total ${total} accounts in system`
+            : `Tổng cộng ${total} tài khoản trong hệ thống`,
       }}
       scroll={{ x: 1000 }}
     />

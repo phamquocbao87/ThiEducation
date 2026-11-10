@@ -136,6 +136,55 @@
     - **Zero Timezone UI Clutter:** Khi hệ thống đã tự động xử lý được nghiệp vụ bên dưới (như quy đổi múi giờ theo thiết bị người xem qua `formatScheduleForViewer` / `getViewerUtcOffset`), **TUYỆT ĐỐI KHÔNG** hiển thị các câu giải thích kỹ thuật hay bảng liệt kê múi giờ nhiều quốc gia (`🇻🇳 GMT+7`, `🇵🇭 GMT+8`, `🇬🇧 GMT+0`, `🇦🇺 GMT+10`) hoặc chú thích `(Giờ VN GMT+7 — Gõ/chọn VD: 07:20)` lên màn hình. Nhãn chỉ để ngắn gọn, sạch sẽ: `Giờ vào lớp` (`Start Time`) và `Giờ tan lớp` (`End Time`).
     - **Exact-Minute TimePicker:** Mọi bộ chọn giờ học dùng `<TimePicker format="HH:mm" minuteStep={1} />` để chọn/gõ được từng phút lẻ (`07:20`, `19:10`).
     - **Effective-Dated Schedule History (`buildUpdatedScheduleHistory`):** Mọi thay đổi thời khóa biểu của lớp học đều phải lưu vết theo giai đoạn (`effectiveFrom` $\rightarrow$ `effectiveTo`) trong mảng `scheduleHistory`, tuyệt đối không ghi đè làm mất lịch sử thời khóa biểu cũ của lớp.
+17. **Quy Chuẩn Bất Biến Về Tìm Kiếm Tiếng Việt Có Dấu / Không Dấu 2 Chiều & Chuẩn Wildcard SQL `%like%` (`Universal Diacritics-Insensitive & %like% Search Invariant`):**
+    - **Bộ tiện ích trung tâm bắt buộc:** Mọi chức năng tìm kiếm trong toàn bộ ứng dụng BẮT BUỘC sử dụng các hàm chuẩn hóa từ `src/shared/utils/searchUtils.js`:
+      * `matchLikeSearch(targetStr, queryStr)`: Kiểm tra chuỗi khớp có dấu, không dấu 2 chiều, cú pháp wildcard `%` (như `pham%bao`, `wonders%g1`) và tách token nhiều từ khóa đảo vị trí.
+      * `matchesMultiFields(item, query, fields)`: Quét khớp trên mảng các trường dữ liệu của đối tượng (như `name`, `id`, `code`, `email`, `roleLabel`, `teacherName`, `schedule`...).
+    - **Cấm viết tìm kiếm thô sơ:** TUYỆT ĐỐI CẤM dùng `target.toLowerCase().includes(kw.toLowerCase())` mà không qua chuẩn hóa bỏ dấu tiếng Việt `removeVietnameseTones`.
+    - **Tích hợp đồng bộ:**
+      * Tầng Service: Kế thừa `BaseModuleService.searchByKeyword(records, keyword, fields)` và `searchByFields`.
+      * Tầng Autocomplete Select (`BaseStudentMultiAutocomplete`, `BaseTeacherAutocomplete`): Thuộc tính `filterOption={(input, option) => matchLikeSearch(option?.searchText || '', input)}`.
+18. **Quy Chuẩn Xác Thực Trường Email Tùy Chọn & Bố Cục Form Thu Gọn (Safe Optional Email Validator & Compact Form Layout Invariant):**
+    - **Bẫy Kỹ Thuật Xác Thực Email Tùy Chọn Trên Ant Design (`Safe Optional Email Validator Pattern`):**
+      * Khi trường Email là tùy chọn (`required: false`) như đối với Học viên (`student`), nếu lập trình viên khai báo trực tiếp quy tắc `{ type: 'email' }` của Ant Design, thư viện `async-validator` bên dưới sẽ coi chuỗi rỗng `""` (khi load form từ DB hoặc người dùng xóa text) là chuỗi không hợp lệ, dẫn đến lỗi chặn submit form và báo *"Vui lòng nhập email"*.
+      * **Quy tắc bất biến:** Đối với mọi trường email không bắt buộc, **TUYỆT ĐỐI CẤM** dùng `{ type: 'email' }` đơn thuần. **BẮT BUỘC** sử dụng hàm validator tùy biến kiểm tra chuỗi rỗng:
+        ```javascript
+        rules={[
+          ...(isStudent ? [] : [{ required: true, message: isEnglish ? 'Please enter email' : 'Vui lòng nhập email công vụ' }]),
+          {
+            validator: (_, value) => {
+              if (!value || !value.trim()) return Promise.resolve(); // Bỏ qua kiểm tra nếu rỗng
+              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+              if (!emailRegex.test(value.trim())) {
+                return Promise.reject(new Error(isEnglish ? 'Invalid email format' : 'Email không hợp lệ'));
+              }
+              return Promise.resolve();
+            },
+          },
+        ]}
+        ```
+    - **Quy Chuẩn Công Thái Học Bố Cục Form Thu Gọn (`Compact Form Layout Invariant`):**
+      * **Khoảng cách dọc:** Mọi `Form.Item` trong các trang chi tiết / đăng ký người dùng phải đặt `style={{ marginBottom: 14 }}` (hoặc tối đa `16px`), loại bỏ hoàn toàn khoảng hở thừa `24px` gây loãng giao diện trên màn hình Desktop.
+      * **Chiều cao controls:** Các ô nhập liệu (`Input`, `Select`, `InputNumber`, `DatePicker`) cố định chuẩn Enterprise: `height: 38px - 40px`, `borderRadius: 8px`.
+      * **Trục lưới cân xứng 50/50:** Mọi dòng 2 trường dữ liệu bắt buộc chia đều `Col xs={24} sm={12}` (50% / 50%) và lấp đầy 100% bề rộng cột để mép phải và mép trái thẳng hàng tuyệt đối.
+19. **Kỷ Luật Bất Biến Về Phạm Vi Task & Đánh Giá Tác Động Bắt Buộc (Strict Scope Integrity & Mandatory Impact Assessment Invariant):**
+    - **Nguyên tắc "Đang sửa A tuyệt đối không chạm B":**
+      * Khi nhận yêu cầu sửa chữa, tối ưu hoặc làm mới chức năng A: AI Agent & Developer **CHỈ ĐƯỢC PHÉP THAO TÁC TRONG PHẠM VI CHỨC NĂNG A**.
+      * Tuyệt đối **CẤM** tiện tay sửa đổi, refactor lại mã nguồn, đổi logic nghiệp vụ, xóa bỏ hoặc làm mới bất kỳ chức năng B nào khác nếu chưa có yêu cầu rõ ràng từ Sếp Bảo hoặc chưa thông báo xin phép trước.
+    - **Quy trình 3 bước Đánh giá Tác động (Mandatory Impact Assessment Protocol) trước khi code:**
+      * **Bước 1 — Phân tích phạm vi ảnh hưởng (Impact Scope Analysis):** Xác định rõ các file component, hook, service, model dữ liệu hoặc route nào sẽ bị tác động trực tiếp/gián tiếp.
+      * **Bước 2 — Đánh giá rủi ro hồi quy (Regression Risk & Breaking Change Check):** Phân tích xem thay đổi ở chức năng A có nguy cơ làm gãy (break), lỗi ngầm hoặc thay đổi hành vi các chức năng khác (B, C...) đang dùng chung component/service/state hay không.
+      * **Bước 3 — Báo cáo & Xin phép trước khi can thiệp (Notify & Approval Before Modifying Cross-cutting Code):** Nếu phát hiện chức năng B có lỗi hoặc việc sửa chức năng A buộc phải thay đổi component/service dùng chung (`src/shared/`, `src/core/`), Agent **BẮT BUỘC PHẢI DỪNG LẠI, BÁO CÁO RÕ VỀ IMPACT VÀ XIN Ý KIẾN SẾP BẢO**, chỉ khi Sếp đồng ý mới được đụng vào, tuyệt đối không được tự ý sửa ngầm.
+    - **Báo cáo minh bạch phạm vi thay đổi:** Sau khi hoàn thành, báo cáo phải nêu rõ danh sách file đã thay đổi, khẳng định các chức năng khác được bảo toàn nguyên vẹn 100% không bị ảnh hưởng.
+20. **Quy Chuẩn Bất Biến Về Tập Trung Hóa 100% UI Labels Vào 2 File Từ Điển Ngôn Ngữ (`Centralized i18n Locales Invariant`):**
+    - **Định vị 2 File Từ Điển Trung Tâm:**
+      * 🇬🇧 **Tiếng Anh (Mặc định):** [`src/core/i18n/locales/en.js`](file:///Volumes/DATA/projects/ThiEducation/src/core/i18n/locales/en.js)
+      * 🇻🇳 **Tiếng Việt:** [`src/core/i18n/locales/vi.js`](file:///Volumes/DATA/projects/ThiEducation/src/core/i18n/locales/vi.js)
+    - **Quy tắc bảo trì Single Source of Truth:**
+      * Khi Sếp Bảo hoặc lập trình viên cần chỉnh sửa, thay đổi bất kỳ câu chữ, nhãn menu, tiêu đề cột, nút bấm hoặc thông báo nào trên toàn bộ hệ thống, **CHỈ CẦN VÀO CẬP NHẬT TRỰC TIẾP 2 FILE NÀY**.
+      * Cấu trúc cây đối tượng (`namespaces`) giữa 2 file `en.js` và `vi.js` bắt buộc phải đối xứng 100% (`common`, `menus`, `roles`, `banners`, `pages`, `dashboard`, `users`, `userDetail`, `curriculum`, `courses`, `schedules`, `attendance`, `contracts`, `tuition`).
+      * Các component giao diện gọi chuỗi thông qua `t('<namespace>.<key>')` từ `useLanguage()`.
+      * **Bảo tồn Dữ liệu Nhập của Người Dùng (`User Input Data Integrity`):** Tên học viên, tên giáo viên, email, số điện thoại, ghi chú, nội dung mô tả khóa học do người dùng nhập vào **BẢO TOÀN NGUYÊN VẸN 100%**, tuyệt đối không chạy qua bộ dịch tự động làm biến dạng dữ liệu gốc.
 
 ---
 

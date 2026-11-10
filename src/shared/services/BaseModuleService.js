@@ -1,4 +1,5 @@
 import { PermissionService } from '../../core/services/PermissionService';
+import { matchesMultiFields, matchLikeSearch } from '../utils/searchUtils';
 
 /**
  * Common Base Class for all Module Sub-Feature Services in ThiEducation
@@ -26,7 +27,7 @@ export class BaseModuleService {
         const matchId = item[teacherIdField] && item[teacherIdField] === currentUser.id;
         const matchName =
           item[teacherNameField] &&
-          item[teacherNameField].toLowerCase().includes(currentUser.name.toLowerCase());
+          matchLikeSearch(item[teacherNameField], currentUser.name);
         return matchId || matchName;
       });
     }
@@ -39,7 +40,7 @@ export class BaseModuleService {
         if (currentUser.classId && item[classIdField] === currentUser.classId) {
           return true;
         }
-        if (currentUser.classCode && item.className && item.className.includes(currentUser.classCode)) {
+        if (currentUser.classCode && item.className && matchLikeSearch(item.className, currentUser.classCode)) {
           return true;
         }
         return false;
@@ -50,18 +51,19 @@ export class BaseModuleService {
   }
 
   /**
-   * Case-insensitive keyword search across multiple fields
+   * Universal Vietnamese Diacritics (Có dấu & Không dấu) and Multi-Token %like% search across fields
    */
   static searchByKeyword(records, keyword, fields = []) {
-    if (!keyword || !keyword.trim()) return records;
-    const normalized = keyword.trim().toLowerCase();
-    return records.filter((item) =>
-      fields.some((field) =>
-        String(item[field] || '')
-          .toLowerCase()
-          .includes(normalized)
-      )
-    );
+    if (!keyword || !String(keyword).trim()) return records;
+    if (!Array.isArray(records)) return [];
+    return records.filter((item) => matchesMultiFields(item, keyword, fields));
+  }
+
+  /**
+   * Alias for searchByKeyword for cross-module compatibility
+   */
+  static searchByFields(records, keyword, fields = []) {
+    return this.searchByKeyword(records, keyword, fields);
   }
 
   /**

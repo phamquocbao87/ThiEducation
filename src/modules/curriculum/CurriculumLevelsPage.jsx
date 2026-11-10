@@ -22,7 +22,7 @@ const { Title, Text } = Typography;
 export const CurriculumLevelsPage = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const { isEnglish } = useLanguage();
+  const { isEnglish, t } = useLanguage();
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -80,16 +80,14 @@ export const CurriculumLevelsPage = () => {
             <Space align="center" style={{ marginBottom: 4 }}>
               <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
                 <BookOutlined style={{ color: '#0284c7', marginRight: 8 }} />
-                {isEnglish ? 'Curriculum Levels & Standards' : 'Quản Lý Cấp Độ Giáo Trình'}
+                {t('curriculum.pageTitle')}
               </Title>
               <Tag color="blue" style={{ fontWeight: 700, borderRadius: 6 }}>
                 McGraw-Hill Wonders & CEFR
               </Tag>
             </Space>
             <Text type="secondary" style={{ fontSize: 13, display: 'block' }}>
-              {isEnglish
-                ? 'Manage textbook series, progression roadmaps (GK -> G5), age ranges, and international output benchmarks.'
-                : 'Chuẩn hóa danh mục cấp độ, lộ trình đào tạo từ Mầm non đến Lớp 5 (GK -> G5), độ tuổi và chuẩn đầu ra quốc tế.'}
+              {t('curriculum.pageSubtitle')}
             </Text>
           </div>
         </div>
@@ -103,7 +101,7 @@ export const CurriculumLevelsPage = () => {
               styles={{ body: { padding: '12px 16px' } }}
             >
               <Statistic
-                title={<span style={{ fontSize: 12 }}>{isEnglish ? 'Total Levels' : 'Tổng Cấp Độ'}</span>}
+                title={<span style={{ fontSize: 12 }}>{t('curriculum.stats.total')}</span>}
                 value={stats.total}
                 prefix={<AppstoreOutlined style={{ color: '#3b82f6' }} />}
                 valueStyle={{ color: '#0f172a', fontWeight: 700, fontSize: 22 }}
@@ -118,7 +116,7 @@ export const CurriculumLevelsPage = () => {
               styles={{ body: { padding: '12px 16px' } }}
             >
               <Statistic
-                title={<span style={{ fontSize: 12 }}>{isEnglish ? 'Active in Use' : 'Đang Áp Dụng'}</span>}
+                title={<span style={{ fontSize: 12 }}>{t('curriculum.stats.active')}</span>}
                 value={stats.activeCount}
                 prefix={<CheckCircleOutlined style={{ color: '#10b981' }} />}
                 valueStyle={{ color: '#10b981', fontWeight: 700, fontSize: 22 }}
@@ -133,7 +131,7 @@ export const CurriculumLevelsPage = () => {
               styles={{ body: { padding: '12px 16px' } }}
             >
               <Statistic
-                title={<span style={{ fontSize: 12 }}>{isEnglish ? 'Curriculum Series' : 'Bộ Giáo Trình'}</span>}
+                title={<span style={{ fontSize: 12 }}>{t('curriculum.stats.series')}</span>}
                 value={stats.seriesCount}
                 prefix={<BookOutlined style={{ color: '#8b5cf6' }} />}
                 valueStyle={{ color: '#8b5cf6', fontWeight: 700, fontSize: 22 }}
@@ -148,7 +146,7 @@ export const CurriculumLevelsPage = () => {
               styles={{ body: { padding: '12px 16px' } }}
             >
               <Statistic
-                title={<span style={{ fontSize: 12 }}>{isEnglish ? 'CEFR Coverage' : 'Khung Chuẩn'}</span>}
+                title={<span style={{ fontSize: 12 }}>{t('curriculum.stats.cefr')}</span>}
                 value="Pre-A1 → B1"
                 prefix={<AimOutlined style={{ color: '#f59e0b' }} />}
                 valueStyle={{ color: '#f59e0b', fontWeight: 700, fontSize: 18 }}

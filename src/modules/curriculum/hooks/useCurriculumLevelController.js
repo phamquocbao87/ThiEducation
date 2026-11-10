@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { message } from 'antd';
 import { CurriculumLevelService } from '../services/CurriculumLevelService';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { matchesMultiFields } from '../../../shared/utils/searchUtils';
 
 export const useCurriculumLevelController = () => {
   const { isEnglish } = useLanguage();
@@ -46,14 +47,14 @@ export const useCurriculumLevelController = () => {
   // Bộ lọc tìm kiếm
   const filteredLevels = useMemo(() => {
     return levels.filter((item) => {
-      const kw = searchText.trim().toLowerCase();
-      const matchSearch =
-        !kw ||
-        item.name?.toLowerCase().includes(kw) ||
-        item.code?.toLowerCase().includes(kw) ||
-        item.targetBand?.toLowerCase().includes(kw) ||
-        item.ageRange?.toLowerCase().includes(kw) ||
-        item.description?.toLowerCase().includes(kw);
+      const matchSearch = matchesMultiFields(item, searchText, [
+        'name',
+        'code',
+        'targetBand',
+        'ageRange',
+        'description',
+        'series',
+      ]);
 
       const matchSeries = seriesFilter === 'ALL' || item.series === seriesFilter;
       const matchStatus = statusFilter === 'ALL' || item.status === statusFilter;

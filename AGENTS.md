@@ -57,6 +57,16 @@ ThiEducation/
      - Phân hệ Quản lý Khóa Học & Lớp Học (`src/modules/courses/` — `/courses-classes`): Quản lý danh mục khóa học, lớp học và trang tạo khóa học mới chuyên biệt `/courses-classes/new`.
      - Phân hệ Cấp Độ Giáo Trình (`src/modules/curriculum/` — `/curriculum-levels`): Khung chuẩn ELA & Wonders (GK - G6), CEFR, độ tuổi, liên kết trực tiếp khi tạo khóa học mới.
      - Phân hệ Thời Khóa Biểu Zoom (`src/modules/schedules/` — `/zoom-schedules`): Lịch học & thời khóa biểu phòng học trực tuyến Live Zoom Calendar View.
+6. **Kỷ Luật Bất Biến Về Phạm Vi Task & Đánh Giá Tác Động Bắt Buộc (Strict Scope Integrity & Mandatory Impact Assessment Invariant):**
+   - **Tuyệt đối không tự ý thay đổi chức năng khác khi chưa có yêu cầu / thông báo:**
+     * Đang thực hiện sửa chữa, tối ưu hoặc phát triển cho chức năng A thì **CHỈ ĐƯỢC PHÉP THAO TÁC TRONG PHẠM VI CHỨC NĂNG A**.
+     * Tuyệt đối **CẤM** tiện tay sửa đổi, refactor, đổi logic, xóa hoặc làm mới bất kỳ chức năng B nào khác khi chưa có yêu cầu rõ ràng từ Sếp Bảo hoặc chưa thông báo xin phép trước.
+   - **Quy trình 3 bước Đánh giá Tác động (Mandatory 3-Step Impact Assessment Protocol) trước khi code:**
+     * **Bước 1 — Xác định phạm vi ảnh hưởng (Impact Scope Analysis):** Phân tích rõ các file component, hook, service, model dữ liệu hoặc route nào sẽ bị tác động trực tiếp/gián tiếp.
+     * **Bước 2 — Đánh giá rủi ro hồi quy (Regression Risk & Breaking Change Check):** Phân tích xem thay đổi ở chức năng A có nguy cơ làm gãy (break), lỗi ngầm hoặc thay đổi hành vi các chức năng khác (B, C...) đang dùng chung component/service/state hay không.
+     * **Bước 3 — Báo cáo & Xin phép trước khi can thiệp (Notify & Approval Before Modifying Cross-cutting Code):** Nếu phát hiện chức năng B có lỗi hoặc việc sửa chức năng A buộc phải thay đổi component/service dùng chung (`src/shared/`, `src/core/`), Agent **BẮT BUỘC PHẢI DỪNG LẠI, BÁO CÁO RÕ VỀ IMPACT VÀ XIN Ý KIẾN SẾP BẢO**, chỉ khi Sếp đồng ý mới được đụng vào, tuyệt đối không được tự ý sửa ngầm.
+   - **Kỷ luật Báo cáo Minh bạch Phạm vi (Scope Transparency):**
+     * Sau khi hoàn thành, báo cáo phải nêu rõ danh sách file đã thay đổi, khẳng định các chức năng khác được bảo toàn nguyên vẹn 100% không bị ảnh hưởng.
 
 ---
 
@@ -76,11 +86,20 @@ ThiEducation/
      - 🎓 **Giáo vụ (`academic`):** Chỉ có quyền Active / Deactive đối với Giáo viên (`teacher`), Học viên (`student`). Tuyệt đối không can thiệp Admin, Giám đốc hoặc Giáo vụ khác.
      - 🛠️ **IT Admin (`admin`):** Toàn quyền đối với mọi tài khoản (trừ tài khoản của chính mình và Root Admin).
      - Nút Switch trên giao diện phải liên kết với `PermissionService.canChangeUserStatus`; khi không đủ quyền thì `disabled` kèm Tooltip song ngữ giải thích lý do.
-4. **Cơ chế Giả lập Xem Tài khoản Thông minh chỉ dành cho IT Admin (`Admin-Only User Impersonation / View-As Any User`):**
-   - Trong [`src/core/context/AuthContext.jsx`](file:///Volumes/DATA/projects/ThiEducation/src/core/context/AuthContext.jsx), luôn tách biệt **`authenticatedUser`** (phiên đăng nhập gốc) và **`impersonatedUser`** (tài khoản mục tiêu đang xem hộ), với `currentUser = impersonatedUser || authenticatedUser`.
-   - **Chỉ duy nhất `authenticatedUser.role === 'admin'`** (`canImpersonateUsers === true`) mới được hiển thị nút & Modal **"Giả Lập Xem Tài Khoản"** trên Header ([`src/core/layout/AppLayout.jsx`](file:///Volumes/DATA/projects/ThiEducation/src/core/layout/AppLayout.jsx)) để chuyển sang **bất kỳ tài khoản cụ thể nào** trong toàn hệ thống (`ADM001`, `DIR001`, `ACA001..ACA003`, `GV001..GV007`, `ACC001`, `HV001..HV005`) và kiểm tra màn hình/dữ liệu cô lập (`teacherId` / `studentId`) của chính user đó.
-   - Các vai trò khác (`director`, `academic`, `teacher`, `accountant`, `student`) khi đăng nhập thật sẽ có `canImpersonateUsers === false` và tuyệt đối không nhìn thấy chức năng chuyển đổi tài khoản này.
+4. **Kỷ Luật Vận Hành 100% Dữ Liệu Thực Tế & Gỡ Bỏ Cơ Chế Giả Lập Tài Khoản (Pure Real Data & Zero Impersonation Simulation Invariant):**
+   - Theo chỉ đạo trực tiếp của Sếp Bảo: Hệ thống **VẬN HÀNH 100% TRÊN DỮ LIỆU THỰC TẾ** từ Cloud Firestore (`lakeducationdb`), tuyệt đối **KHÔNG** dùng mock data hay trộn danh bạ giả lập.
+   - Cơ chế giả lập / Impersonation (*"Admin Xem Dưới Tên User"*) và Modal chuyển đổi vai trò demo trên Header đã được **gỡ bỏ hoàn toàn**.
+   - Mỗi người dùng đăng nhập và làm việc trực tiếp bằng tài khoản thật của mình (Google OAuth hoặc Email/Mật khẩu).
+   - Toàn bộ các tài khoản mẫu (`ACA001..ACA003`, `ACC001`, `GV002..GV007`, `HV001..HV005`) đã được loại bỏ khỏi danh sách hoạt động; giao diện Quản trị người dùng (`/user-management`) và Hồ sơ cá nhân (`/my-profile`) chỉ hiển thị người dùng thực tế:
+     * 🛠️ **`ADM001` — Phạm Quốc Bảo:** IT Quản Trị Hệ Thống (`phamquocbao87@gmail.com` / `0898794116`)
+     * 👑 **`DIR505` — Phạm Hiếu Thi:** Giám Đốc Điều Hành & Sáng Lập (`lakvietnam@lakeducation.com` / `0908794116`)
+     * 💰 **`ACC330` — Lê Thị Mỹ Dung:** Kế Toán Tài Chính (`lemydung49@gmail.com` / `0983548212`)
+     * Và các Cán bộ / Giáo viên / Học viên thực tế được đăng ký mới qua form.
 5. **Chuẩn Đa Ngôn Ngữ (`Localization / i18n` — Mặc định Tiếng Anh `en`, Thứ hai Tiếng Việt `vi`):**
+   - **Tập trung hóa 100% UI Labels vào 2 File Từ Điển Độc Lập:**
+     * 🇬🇧 **Tiếng Anh (Mặc định):** [`src/core/i18n/locales/en.js`](file:///Volumes/DATA/projects/ThiEducation/src/core/i18n/locales/en.js)
+     * 🇻🇳 **Tiếng Việt:** [`src/core/i18n/locales/vi.js`](file:///Volumes/DATA/projects/ThiEducation/src/core/i18n/locales/vi.js)
+     * Khi cần thêm mới hoặc thay đổi bất kỳ câu chữ, nhãn menu, tiêu đề cột, nút bấm nào trên toàn bộ hệ thống, **CHỈ CẦN VÀO CẬP NHẬT 2 FILE NÀY**.
    - Sử dụng `i18next` + `react-i18next` ([`src/core/i18n/i18n.js`](file:///Volumes/DATA/projects/ThiEducation/src/core/i18n/i18n.js)) kết hợp Ant Design `ConfigProvider` (`enUS` / `viVN`) trong [`src/core/context/LanguageContext.jsx`](file:///Volumes/DATA/projects/ThiEducation/src/core/context/LanguageContext.jsx).
    - **Chế độ mặc định (`DEFAULT_LANGUAGE = 'en'`):** Tiếng Anh (`🇬🇧 EN`), chế độ thứ 2 là Tiếng Việt (`🇻🇳 VI`), lưu tại `localStorage` (`lak_app_language`).
    - **Phạm vi dịch:** Chỉ dịch **Label hiển thị của ứng dụng (`UI Labels`)** (Menu, Tiêu đề trang, Cột bảng, Thẻ thống kê, Nút bấm, Nhãn trạng thái); **dữ liệu do người dùng nhập vào (`User Input Data`)** phải giữ nguyên vẹn 100%.
@@ -111,6 +130,18 @@ ThiEducation/
     - **Tự động quy đổi múi giờ ngầm (`formatScheduleForViewer` trong `src/shared/utils/scheduleUtils.js`):** Hệ thống lưu giờ gốc theo múi giờ chuẩn Việt Nam (`GMT+7`) và tự động nhận diện múi giờ thiết bị/hồ sơ người xem (`getViewerUtcOffset`: Việt Nam `GMT+7`, Philippines `GMT+8`...) để quy đổi ngầm ngay tại mục `Lịch học:`. **TUYỆT ĐỐI CẤM** hiển thị các dòng chú thích múi giờ thừa (như `(Giờ VN GMT+7 — Gõ/chọn VD: 07:20)`) hoặc bảng quy đổi nhiều múi giờ rườm rà lên giao diện Form/Card/Drawer.
     - **Chọn giờ từng phút (`minuteStep={1}`):** Ô `Giờ vào lớp` và `Giờ tan lớp` bắt buộc dùng `<TimePicker format="HH:mm" minuteStep={1} />` cho phép gõ hoặc chọn chính xác từng phút (`07:20`, `10:30`, `19:10`).
     - **Bảo toàn Lịch sử Thời khóa biểu khi đổi lịch (`scheduleHistory`):** Khi lớp học đổi lịch từ một ngày áp dụng mới (`scheduleEffectiveFrom`), hệ thống tự động đóng giai đoạn cũ vào ngày liền trước (`effectiveFrom - 1 day`, trạng thái `ARCHIVED`) và mở giai đoạn mới (`ACTIVE`), giữ nguyên 100% lịch sử các giai đoạn thời khóa biểu trước đó.
+11. **Quy Chuẩn Bất Biến Về Tìm Kiếm Tiếng Việt Có Dấu / Không Dấu 2 Chiều & Wildcard SQL `%like%` (`Universal Search Invariant`):**
+    - Tất cả các ô tìm kiếm trên Header, Filter Bar, Bảng dữ liệu và Bộ chọn Autocomplete (`src/shared/components/controls/`) BẮT BUỘC hỗ trợ tìm kiếm tiếng Việt 2 chiều (gõ không dấu ra có dấu và ngược lại) cùng cú pháp đại diện SQL `%like%` (như `pham%bao`, `wonders%g1`, `giao%vien`) qua bộ tiện ích `src/shared/utils/searchUtils.js`.
+    - **CẤM** sử dụng raw `.toLowerCase().includes(...)` gây lỗi tìm kiếm không ra kết quả tiếng Việt.
+    - Mọi Service Module kế thừa `BaseModuleService` bắt buộc dùng `searchByKeyword` hoặc `searchByFields`.
+12. **Quy Chuẩn 2 Số Điện Thoại, Cụm Gia Đình (`familyId`) & Bộ Chuyển Đổi Hồ Sơ Con 1 Chạm (`Family Switcher`):**
+    - **Ràng buộc định danh:** Cán bộ/Giáo viên bắt buộc 100% có Email công vụ + 1 SĐT chính; Học viên cho phép để trống Email nếu đã cung cấp SĐT (tối thiểu 1 SĐT chính, tối đa 2 SĐT: SĐT 1 Chính & SĐT 2 Phụ). Cả 2 SĐT dùng chung 1 mật khẩu.
+    - **Tên tiếng Anh bắt buộc (`englishName`):** Mọi tài khoản bắt buộc có `englishName`, tự động sinh bằng `toEnglishName(name)` lọc sạch dấu tiếng Việt.
+    - **Cụm gia đình (`familyId` & `parentUserId`):** Anh chị em ruột dùng chung SĐT phụ huynh được gắn chung `familyId` (`FAM_<sđt_chính>`), cho phép chia sẻ SĐT mà không bị chặn trùng lặp. Con của Cán bộ/Giáo viên liên kết qua `parentUserId`.
+    - **Chọn hồ sơ con khi login & Switcher 1 chạm:** Khi đăng nhập bằng SĐT chung, hệ thống hiển thị Modal chọn con (`Profile Candidate Selector Modal`). Trên thanh Header có nút **`Switch Child / Đổi Hồ Sơ`** cho phép chuyển đổi tức thì (0ms phản hồi).
+13. **Quy Chuẩn Xác Thực Email Tùy Chọn & Bố Cục Form Thu Gọn (Safe Optional Email Validator & Compact Form Layout):**
+    - **Safe Optional Email Validator:** Khi Email là tùy chọn (như Học viên), **TUYỆT ĐỐI CẤM** dùng `{ type: 'email' }` đơn thuần để tránh lỗi thư viện chặn chuỗi rỗng `""`. Bắt buộc dùng validator kiểm tra `if (!value || !value.trim()) return Promise.resolve()`.
+    - **Compact Form Layout Invariant:** Khoảng cách dòng `Form.Item` dùng `marginBottom: 14px` (hoặc tối đa `16px`), chiều cao controls `38px - 40px`, chia đều cột 50/50 (`Col xs={24} sm={12}`).
 
 ---
 

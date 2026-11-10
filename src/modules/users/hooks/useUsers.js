@@ -4,6 +4,7 @@ import { useAuth } from '../../../core/context/AuthContext';
 import { UserService } from '../services/UserService';
 import { UserAuditService } from '../services/UserAuditService';
 import { USER_STATUS } from '../models/user.model';
+import { matchesMultiFields } from '../../../shared/utils/searchUtils';
 
 export const useUsers = () => {
   const { currentUser } = useAuth();
@@ -170,14 +171,18 @@ export const useUsers = () => {
     return users.filter((u) => {
       const matchRole = roleFilter === 'ALL' || u.role === roleFilter;
       const matchStatus = statusFilter === 'ALL' || u.status === statusFilter;
-      const kw = searchText.trim().toLowerCase();
-      const matchKeyword =
-        !kw ||
-        u.name?.toLowerCase().includes(kw) ||
-        u.id?.toLowerCase().includes(kw) ||
-        u.code?.toLowerCase().includes(kw) ||
-        u.email?.toLowerCase().includes(kw) ||
-        u.roleLabel?.toLowerCase().includes(kw);
+      const matchKeyword = matchesMultiFields(u, searchText, [
+        'name',
+        'englishName',
+        'id',
+        'code',
+        'email',
+        'roleLabel',
+        'phoneNumber',
+        'extraInfo',
+        'department',
+        'position',
+      ]);
 
       return matchRole && matchStatus && matchKeyword;
     });

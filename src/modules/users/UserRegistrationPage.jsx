@@ -34,11 +34,18 @@ import {
   ReloadOutlined,
   HomeOutlined,
   CalendarOutlined,
+  GlobalOutlined,
+  TeamOutlined,
+  SyncOutlined,
+  ClockCircleOutlined,
+  WarningOutlined,
+  TrophyOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../core/context/AuthContext';
 import { useLanguage } from '../../core/context/LanguageContext';
 import { PermissionService } from '../../core/services/PermissionService';
 import { UserService } from './services/UserService';
+import { findScheduleConflictsInClassList } from '../../shared/utils/scheduleUtils';
 import {
   USER_ROLES,
   USER_STATUS,
@@ -46,7 +53,58 @@ import {
   ROLE_COLORS,
   isGmailAddress,
   resolveAuthProvidersByEmail,
+  toEnglishName,
+  generateFamilyId,
+  normalizePhoneNumber,
 } from './models/user.model';
+
+export const DEFAULT_ACTIVE_CLASSES = [
+  {
+    id: 'LH001',
+    name: 'Wonders G1 - Lớp Khởi Động Sáng Tạo (Zoom)',
+    courseId: 'KH-WONDERS-G1',
+    courseLevel: 'WONDERS-G1',
+    schedule: 'Thứ 2, Thứ 4 (18:00 - 19:30)',
+    teacherName: 'Mr. David Smith (USA 🇺🇸)',
+    studentIds: [],
+  },
+  {
+    id: 'LH002',
+    name: 'Wonders G1 - Lớp Nâng Cao Buổi Chiều (Zoom)',
+    courseId: 'KH-WONDERS-G1',
+    courseLevel: 'WONDERS-G1',
+    schedule: 'Thứ 3, Thứ 5 (18:00 - 19:30)',
+    teacherName: 'Ms. Sarah Connor (UK 🇬🇧)',
+    studentIds: [],
+  },
+  {
+    id: 'LH003',
+    name: 'Wonders G2 - Khám Phá Thế Giới (Zoom)',
+    courseId: 'KH-WONDERS-G2',
+    courseLevel: 'WONDERS-G2',
+    schedule: 'Thứ 6, Chủ Nhật (19:30 - 21:00)',
+    teacherName: 'Mr. John Williams (Canada 🇨🇦)',
+    studentIds: [],
+  },
+  {
+    id: 'LH004',
+    name: 'Wonders G4 - Đọc Sâu & Viết Luận (Zoom)',
+    courseId: 'KH-WONDERS-G4',
+    courseLevel: 'WONDERS-G4',
+    schedule: 'Thứ 7, Chủ Nhật (09:00 - 10:30)',
+    teacherName: 'Ms. Emma Watson (UK 🇬🇧)',
+    studentIds: [],
+  },
+  {
+    id: 'LH005',
+    name: 'Wonders G1 - Lớp Tăng Tốc (Zoom Trùng Giờ LH001)',
+    courseId: 'KH-WONDERS-G1',
+    courseLevel: 'WONDERS-G1',
+    schedule: 'Thứ 2, Thứ 4 (18:30 - 20:00)',
+    teacherName: 'Mr. Robert Brown (Australia 🇦🇺)',
+    studentIds: [],
+  },
+];
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -54,7 +112,7 @@ const { TextArea } = Input;
 
 export const UserRegistrationPage = () => {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, allSystemUsers } = useAuth();
   const { isEnglish } = useLanguage();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
@@ -69,10 +127,119 @@ export const UserRegistrationPage = () => {
   // Vai trò mặc định ban đầu
   const defaultRole = allowedRoles[allowedRoles.length - 1] || USER_ROLES.STUDENT;
 
+  // Danh sách các lớp học đang hoạt động trong hệ thống
+  const [availableClasses] = useState(() => {
+    try {
+      const saved = localStorage.getItem('lak_erp_classes');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_ACTIVE_CLASSES;
+  });
+
   // Theo dõi giá trị realtime của form
   const watchedEmail = Form.useWatch('email', form) || '';
   const watchedRole = Form.useWatch('role', form) || defaultRole;
+  const watchedPhone = Form.useWatch('phoneNumber', form) || '';
+  const watchedSecondaryPhone = Form.useWatch('secondaryPhone', form) || '';
+  const watchedEnrolledClassIds = Form.useWatch('enrolledClassIds', form) || [];
+  const isTargetStudent = watchedRole === USER_ROLES.STUDENT;
   const isGmail = isGmailAddress(watchedEmail);
+
+  // Kiểm tra trùng lịch học online thời gian thực
+  const scheduleConflictInfo = useMemo(() => {
+    return findScheduleConflictsInClassList(watchedEnrolledClassIds, availableClasses);
+  }, [watchedEnrolledClassIds, availableClasses]);
+
+  // Cấp độ tự động nhận diện theo các lớp học đã chọn
+  const derivedLevels = useMemo(() => {
+    if (!watchedEnrolledClassIds || watchedEnrolledClassIds.length === 0) return [];
+    const set = new Set();
+    watchedEnrolledClassIds.forEach((clsId) => {
+      const cls = availableClasses.find((c) => c.id === clsId || c.classId === clsId);
+      if (cls) {
+        const lvl = cls.courseLevel || cls.level || cls.courseName || 'Wonders G1';
+        set.add(lvl);
+      }
+    });
+    return Array.from(set);
+  }, [watchedEnrolledClassIds, availableClasses]);
+
+  // Tự động đồng bộ Số Điện Thoại Phụ Huynh mặc định bằng Số Điện Thoại 1 chính
+  useEffect(() => {
+    if (isTargetStudent && watchedPhone) {
+      const currentParent = form.getFieldValue('parentPhone');
+      if (!currentParent || currentParent === watchedPhone) {
+        form.setFieldsValue({ parentPhone: watchedPhone });
+      }
+    }
+  }, [watchedPhone, isTargetStudent, form]);
+
+  // Tự động nhận diện Cụm gia đình (anh/chị/em ruột) qua SĐT chính & SĐT phụ
+  const [detectedSiblings, setDetectedSiblings] = useState([]);
+  useEffect(() => {
+    let active = true;
+    const checkSiblings = async () => {
+      const p1 = normalizePhoneNumber(watchedPhone);
+      const p2 = normalizePhoneNumber(watchedSecondaryPhone);
+      if (!isTargetStudent || (!p1 && !p2)) {
+        if (active) setDetectedSiblings([]);
+        return;
+      }
+      try {
+        const found = [];
+        if (p1) {
+          const list1 = await UserService.findStudentsByParentPhone(p1);
+          found.push(...list1);
+        }
+        if (p2) {
+          const list2 = await UserService.findStudentsByParentPhone(p2);
+          found.push(...list2);
+        }
+        const unique = [];
+        const seen = new Set();
+        for (const s of found) {
+          const sid = s.firestoreDocId || s.id || s.code;
+          if (sid && !seen.has(sid)) {
+            seen.add(sid);
+            unique.push(s);
+          }
+        }
+        if (active) setDetectedSiblings(unique);
+      } catch {
+        if (active) setDetectedSiblings([]);
+      }
+    };
+    const t = setTimeout(checkSiblings, 350);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
+  }, [watchedPhone, watchedSecondaryPhone, isTargetStudent]);
+
+  // Chốt chặn an ninh: Phát hiện SĐT thuộc Cán bộ / Lãnh đạo khi người tạo không phải Admin
+  const detectedStaffOwner = useMemo(() => {
+    const p1 = normalizePhoneNumber(watchedPhone);
+    if (!p1 || !allSystemUsers) return null;
+    const actorId = (currentUser?.id || currentUser?.code || '').toUpperCase();
+    const isActorAdmin = currentUser?.role === 'admin' || actorId === 'ADM001';
+    if (isActorAdmin) return null; // Admin tối cao được phép
+
+    const staffMatch = allSystemUsers.find((u) => {
+      if (u.isDeleted || u.role === USER_ROLES.STUDENT) return false;
+      const uPhone = normalizePhoneNumber(u.phoneNumber);
+      return uPhone && uPhone === p1;
+    });
+
+    if (staffMatch) {
+      const staffId = (staffMatch.id || staffMatch.code || '').toUpperCase();
+      if (actorId && actorId === staffId) return null; // Chính Cán bộ đó được phép
+      return staffMatch;
+    }
+    return null;
+  }, [watchedPhone, allSystemUsers, currentUser]);
 
   // Giá trị mặc định ban đầu (Khởi tạo 1 lần qua initialValues của Ant Design Form)
   const initialValues = useMemo(() => ({
@@ -81,9 +248,7 @@ export const UserRegistrationPage = () => {
     password: 'LakEducation@2026',
     gender: 'Nam',
     city: 'TP. Hồ Chí Minh',
-    level: 'G1',
-    className: 'G1-A',
-    tuitionStatus: 'Đã đóng đủ',
+    enrolledClassIds: [],
     nationality: 'Việt Nam',
     certificate: 'TESOL / CELTA',
     hourlyRate: 450000,
@@ -114,12 +279,69 @@ export const UserRegistrationPage = () => {
       setSubmitting(true);
 
       const targetRole = values.role;
-      const cleanEmail = values.email.trim().toLowerCase();
+      const cleanEmail = values.email ? values.email.trim().toLowerCase() : '';
+      const cleanPhone = normalizePhoneNumber(values.phoneNumber);
+      const cleanSecondary = normalizePhoneNumber(values.secondaryPhone);
+      const cleanEnglish = (values.englishName || toEnglishName(values.name)).trim();
+
+      // 0. Chốt chặn bảo mật: Nếu SĐT thuộc Cán bộ mà người tạo không có thẩm quyền
+      if (detectedStaffOwner) {
+        throw new Error(
+          `CẢNH BÁO BẢO MẬT: Số điện thoại '${cleanPhone}' thuộc về Cán bộ/Lãnh đạo ${detectedStaffOwner.name} (${detectedStaffOwner.roleLabel || detectedStaffOwner.role}). Bạn không có quyền sử dụng số điện thoại của Cán bộ để đăng ký tài khoản.`
+        );
+      }
+
+      // 1. Kiểm tra Số điện thoại 1 (Chính) bắt buộc cho mọi tài khoản
+      if (!cleanPhone) {
+        throw new Error('Số điện thoại 1 (Chính) là thông tin bắt buộc đối với tất cả các tài khoản.');
+      }
+
+      // 2. Tên Tiếng Anh (English Name) là BẮT BUỘC cho tất cả các tài khoản
+      if (!cleanEnglish) {
+        throw new Error('Tên tiếng Anh (English Name) là thông tin bắt buộc.');
+      }
+
+      // 3. Cán bộ / GV bắt buộc Email, Học viên cho phép để trống nếu đã có SĐT
+      if (targetRole !== USER_ROLES.STUDENT && !cleanEmail) {
+        throw new Error(`Tài khoản vai trò '${ROLE_LABELS.vi[targetRole] || targetRole}' bắt buộc phải có địa chỉ Email công vụ.`);
+      }
+
+      // 4. Chốt chặn va chạm lịch học: Không cho phép đăng ký nếu có lớp trùng khung giờ học online
+      if (targetRole === USER_ROLES.STUDENT && scheduleConflictInfo.hasConflict) {
+        throw new Error(
+          `Không thể tạo tài khoản do trùng khung giờ học online giữa các lớp đã chọn: ${scheduleConflictInfo.conflicts.map((c) => c.message).join(' | ')}`
+        );
+      }
+
+      // 5. Xác định Cụm Gia Đình (Family Cluster):
+      // Ưu tiên liên kết với familyId của anh/chị/em ruột đã có trong hệ thống
+      let resolvedFamilyId = '';
+      if (targetRole === USER_ROLES.STUDENT) {
+        const siblingWithFamily = detectedSiblings.find((s) => s.familyId);
+        resolvedFamilyId = siblingWithFamily ? siblingWithFamily.familyId : generateFamilyId(cleanPhone);
+      }
+
+      const enrolledClasses = targetRole === USER_ROLES.STUDENT ? watchedEnrolledClassIds : [];
+      const resolvedClassName = targetRole === USER_ROLES.STUDENT
+        ? enrolledClasses
+            .map((cid) => {
+              const c = availableClasses.find((cls) => cls.id === cid || cls.classId === cid);
+              return c ? c.name : cid;
+            })
+            .join(', ') || ''
+        : values.className || '';
+      const resolvedLevel = targetRole === USER_ROLES.STUDENT
+        ? (derivedLevels.join(', ') || 'Wonders ELA')
+        : (values.level || 'G1');
 
       const payload = {
         name: values.name.trim(),
+        englishName: cleanEnglish,
         email: cleanEmail,
-        phoneNumber: values.phoneNumber?.trim() || '',
+        phoneNumber: cleanPhone,
+        secondaryPhone: cleanSecondary || '',
+        familyId: resolvedFamilyId,
+        parentUserId: values.parentUserId || '',
         role: targetRole,
         roleLabel: ROLE_LABELS.vi[targetRole] || targetRole,
         password: values.password || 'LakEducation@2026',
@@ -133,12 +355,13 @@ export const UserRegistrationPage = () => {
         address: values.address || '',
         city: values.city || 'TP. Hồ Chí Minh',
         // Nghiệp vụ theo role
-        className: values.className || '',
-        level: values.level || 'G1',
+        className: resolvedClassName,
+        enrolledClassIds: enrolledClasses,
+        level: resolvedLevel,
         parentName: values.parentName || '',
-        parentPhone: values.parentPhone || '',
-        tuitionStatus: values.tuitionStatus || 'Đã đóng đủ',
-        academicNotes: values.academicNotes || '',
+        parentPhone: values.parentPhone || cleanPhone,
+        tuitionStatus: targetRole === USER_ROLES.STUDENT ? 'Chờ đối soát' : (values.tuitionStatus || 'Đã đóng đủ'),
+        academicNotes: '',
         nationality: values.nationality || 'Việt Nam',
         certificate: values.certificate || 'TESOL / CELTA',
         hourlyRate: values.hourlyRate ? Number(values.hourlyRate) : 450000,
@@ -213,11 +436,12 @@ export const UserRegistrationPage = () => {
               type="primary"
               icon={<CheckCircleOutlined />}
               loading={submitting}
+              disabled={submitting || Boolean(detectedStaffOwner)}
               onClick={handleSubmit}
               style={{
                 borderRadius: 8,
-                backgroundColor: '#1890ff',
-                boxShadow: '0 2px 8px rgba(24,144,255,0.35)',
+                backgroundColor: detectedStaffOwner ? '#d9d9d9' : '#1890ff',
+                boxShadow: detectedStaffOwner ? 'none' : '0 2px 8px rgba(24,144,255,0.35)',
                 fontWeight: 600,
               }}
             >
@@ -261,17 +485,18 @@ export const UserRegistrationPage = () => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
           }}
         >
+          {/* Hàng 1: Vai Trò + Họ và Tên */}
           <Row gutter={[16, 12]}>
             <Col xs={24} md={12}>
               <Form.Item
                 name="role"
                 label={<Text strong>Vai Trò Phân Quyền (Role RBAC)</Text>}
                 rules={[{ required: true, message: 'Vui lòng chọn vai trò phân quyền' }]}
+                style={{ marginBottom: 14 }}
               >
                 <Select
-                  size="large"
                   placeholder="Chọn vai trò"
-                  style={{ width: '100%', borderRadius: 8 }}
+                  style={{ width: '100%', height: 40, borderRadius: 8 }}
                   options={allowedRoles.map((role) => ({
                     value: role,
                     label: (
@@ -292,28 +517,106 @@ export const UserRegistrationPage = () => {
                 name="name"
                 label={<Text strong>Họ và Tên Đầy Đủ</Text>}
                 rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}
+                style={{ marginBottom: 14 }}
               >
                 <Input
-                  size="large"
                   prefix={<UserOutlined style={{ color: '#94a3b8' }} />}
                   placeholder="VD: Nguyễn Văn An"
-                  style={{ width: '100%', borderRadius: 8 }}
+                  style={{ width: '100%', height: 40, borderRadius: 8 }}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const currentEng = form.getFieldValue('englishName');
+                    if (!currentEng || currentEng === toEnglishName(form.getFieldValue('name'))) {
+                      form.setFieldsValue({ englishName: toEnglishName(val) });
+                    }
+                  }}
                 />
               </Form.Item>
             </Col>
           </Row>
 
+          {/* Hàng 2: Tên Tiếng Anh + Số Điện Thoại 1 (Chính - Bắt Buộc) */}
           <Row gutter={[16, 12]}>
             <Col xs={24} md={12}>
               <Form.Item
-                name="email"
-                label={<Text strong>Địa Chỉ Email Đăng Nhập</Text>}
+                name="englishName"
+                label={<Text strong>Tên Tiếng Anh (English Name)</Text>}
+                rules={[{ required: true, message: 'Vui lòng nhập tên tiếng Anh' }]}
+                style={{ marginBottom: 14 }}
+              >
+                <Input
+                  prefix={<GlobalOutlined style={{ color: '#0284c7' }} />}
+                  placeholder="VD: Bao Thu, Leo, Cowboy, Anna..."
+                  style={{ width: '100%', height: 40, borderRadius: 8 }}
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="phoneNumber"
+                label={<Text strong>Số Điện Thoại 1 (Chính - Bắt Buộc)</Text>}
                 rules={[
-                  { required: true, message: 'Vui lòng nhập địa chỉ email' },
-                  { type: 'email', message: 'Email không hợp lệ' },
+                  { required: true, message: 'Vui lòng nhập số điện thoại chính' },
+                  { pattern: /^[0-9+\s\-().]{8,15}$/, message: 'Số điện thoại không hợp lệ' },
                 ]}
+                style={{ marginBottom: 14 }}
+              >
+                <Input
+                  prefix={<PhoneOutlined style={{ color: '#0284c7' }} />}
+                  placeholder="0989 557 230"
+                  style={{ width: '100%', height: 40, borderRadius: 8 }}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* Hàng 3: Số Điện Thoại 2 (Phụ - Tùy Chọn) + Địa Chỉ Email */}
+          <Row gutter={[16, 12]}>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="secondaryPhone"
+                label={<Text strong>Số Điện Thoại 2 (Phụ - Tùy Chọn, Không Dùng Đăng Nhập)</Text>}
+                rules={[]}
+                style={{ marginBottom: 14 }}
+              >
+                <Input
+                  prefix={<PhoneOutlined style={{ color: '#16a34a' }} />}
+                  placeholder="VD: 0989 557 230 (SĐT Bố/Mẹ 2)"
+                  style={{ width: '100%', height: 40, borderRadius: 8 }}
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="email"
+                dependencies={['role']}
+                label={
+                  <Text strong>
+                    {isTargetStudent ? 'Địa Chỉ Email (Không bắt buộc)' : 'Địa Chỉ Email Đăng Nhập (Bắt Buộc)'}
+                  </Text>
+                }
+                rules={[
+                  ...(isTargetStudent ? [] : [{ required: true, message: 'Vui lòng nhập địa chỉ email' }]),
+                  {
+                    validator: (_, value) => {
+                      if (!value || !value.trim()) return Promise.resolve();
+                      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                      if (!emailRegex.test(value.trim())) {
+                        return Promise.reject(new Error('Email không hợp lệ'));
+                      }
+                      return Promise.resolve();
+                    },
+                  },
+                ]}
+                style={{ marginBottom: 14 }}
                 extra={
-                  watchedEmail ? (
+                  isTargetStudent ? (
+                    <span style={{ color: '#16a34a', fontSize: 12 }}>
+                      💡 Học viên có thể để trống Email nếu đã có Số điện thoại (dùng SĐT + Mật khẩu đăng nhập).
+                    </span>
+                  ) : watchedEmail ? (
                     isGmail ? (
                       <span style={{ color: '#d97706', fontSize: 12 }}>
                         ✨ <b>Gmail:</b> Đăng nhập Google hoặc Mật khẩu
@@ -331,14 +634,73 @@ export const UserRegistrationPage = () => {
                 }
               >
                 <Input
-                  size="large"
                   prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
-                  placeholder="email@gmail.com hoặc staff@lakeducation.com"
-                  style={{ borderRadius: 8 }}
+                  placeholder={isTargetStudent ? 'hocvien@gmail.com (hoặc để trống)' : 'email@gmail.com hoặc staff@lakeducation.com'}
+                  style={{ width: '100%', height: 40, borderRadius: 8 }}
                 />
               </Form.Item>
             </Col>
+          </Row>
 
+          {/* CẢNH BÁO BẢO MẬT: NẾU SĐT THUỘC CÁN BỘ / LÃNH ĐẠO */}
+          {detectedStaffOwner && (
+            <Alert
+              type="error"
+              showIcon
+              style={{
+                marginBottom: 16,
+                borderRadius: 8,
+                backgroundColor: '#fff2f0',
+                border: '1.5px solid #ff4d4f',
+              }}
+              message={
+                <div>
+                  <Text strong style={{ color: '#cf1322', fontSize: 13 }}>
+                    ⛔ CẢNH BÁO BẢO MẬT (CHẶN ĐỨNG LEO THANG ĐẶC QUYỀN):
+                  </Text>
+                  <div style={{ marginTop: 4, color: '#434343', fontSize: 13, lineHeight: '1.5' }}>
+                    Số điện thoại này thuộc về Cán bộ/Lãnh đạo <b>{detectedStaffOwner.name}</b> ({detectedStaffOwner.roleLabel || detectedStaffOwner.role}).
+                    Giáo vụ không có quyền sử dụng số điện thoại của Cán bộ để tạo tài khoản mới. Vui lòng sử dụng số điện thoại chính thức của phụ huynh học viên.
+                  </div>
+                </div>
+              }
+            />
+          )}
+
+          {/* Sibling detection alert */}
+          {detectedSiblings.length > 0 && !detectedStaffOwner && (
+            <Alert
+              type="success"
+              showIcon
+              icon={<TeamOutlined style={{ color: '#16a34a' }} />}
+              style={{
+                marginBottom: 16,
+                borderRadius: 8,
+                backgroundColor: '#f6ffed',
+                border: '1px solid #b7eb8f',
+              }}
+              message={
+                <div>
+                  <Text strong style={{ color: '#16a34a' }}>
+                    Phát hiện Cụm Gia Đình có anh/chị/em:
+                  </Text>
+                  <div style={{ marginTop: 4 }}>
+                    {detectedSiblings.map((s) => (
+                      <Tag key={s.id || s.code} color="cyan" style={{ fontSize: 12, padding: '2px 8px' }}>
+                        {s.name} ({s.code || s.id})
+                      </Tag>
+                    ))}
+                    <span style={{ fontSize: 12, color: '#475569', marginLeft: 6 }}>
+                      Tài khoản mới sẽ tự động được liên kết vào Cụm Gia Đình và dùng chung SĐT & Mật khẩu phụ huynh.
+                    </span>
+                  </div>
+                </div>
+              }
+            />
+          )}
+
+          {/* Hàng 4: Mật Khẩu + Trạng Thái */}
+          <Row gutter={[16, 12]} align="middle">
             <Col xs={24} md={12}>
               <Form.Item
                 name="password"
@@ -357,37 +719,23 @@ export const UserRegistrationPage = () => {
                   { required: true, message: 'Vui lòng nhập mật khẩu khởi tạo' },
                   { min: 6, message: 'Mật khẩu tối thiểu 6 ký tự' },
                 ]}
+                style={{ marginBottom: 14 }}
                 extra={<span style={{ color: '#94a3b8', fontSize: 12 }}>Mặc định khuyến nghị: LakEducation@2026</span>}
               >
                 <Input.Password
-                  size="large"
                   prefix={<LockOutlined style={{ color: '#94a3b8' }} />}
                   placeholder="LakEducation@2026"
-                  style={{ borderRadius: 8 }}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={[16, 12]} align="middle">
-            <Col xs={24} sm={12} md={8}>
-              <Form.Item
-                name="phoneNumber"
-                label={<Text strong>Số Điện Thoại Liên Hệ</Text>}
-              >
-                <Input
-                  prefix={<PhoneOutlined style={{ color: '#94a3b8' }} />}
-                  placeholder="0909 509 116"
-                  style={{ borderRadius: 8 }}
+                  style={{ width: '100%', height: 40, borderRadius: 8 }}
                 />
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={12} md={8}>
+            <Col xs={24} md={12}>
               <Form.Item
                 name="status"
                 label={<Text strong>Trạng Thái Tài Khoản</Text>}
                 valuePropName="checked"
+                style={{ marginBottom: 14 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 4 }}>
                   <Switch defaultChecked />
@@ -471,7 +819,7 @@ export const UserRegistrationPage = () => {
             title={
               <Space>
                 <BookOutlined style={{ color: '#52c41a' }} />
-                <span style={{ fontWeight: 700 }}>3. Thông Tin Học Vụ & Phụ Huynh (Dành Cho Học Viên)</span>
+                <span style={{ fontWeight: 700 }}>3. Thông Tin Học Vụ & Lớp Học Trực Tuyến</span>
               </Space>
             }
             bordered={false}
@@ -482,59 +830,178 @@ export const UserRegistrationPage = () => {
               borderTop: '3px solid #52c41a',
             }}
           >
+            {/* Lớp Học Online Ghi Danh (Nhiều Lớp - Chống Trùng Khung Giờ) */}
             <Row gutter={[16, 12]}>
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item name="className" label={<Text strong>Lớp Học Dự Kiến</Text>}>
-                  <Input placeholder="VD: G1-A, G2-B" style={{ borderRadius: 8 }} />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item name="level" label={<Text strong>Cấp Độ (Level)</Text>}>
-                  <Select placeholder="Chọn Level" style={{ borderRadius: 8 }}>
-                    <Option value="GK">GK (Mầm non)</Option>
-                    <Option value="G1">G1 (Lớp 1)</Option>
-                    <Option value="G2">G2 (Lớp 2)</Option>
-                    <Option value="G3">G3 (Lớp 3)</Option>
-                    <Option value="G4">G4 (Lớp 4)</Option>
-                    <Option value="G5">G5 (Lớp 5)</Option>
-                    <Option value="IELTS">IELTS Foundation</Option>
+              <Col span={24}>
+                <Form.Item
+                  name="enrolledClassIds"
+                  label={
+                    <Space size={6}>
+                      <Text strong>Lớp Học Online Ghi Danh (Enrolled Classes)</Text>
+                      <Tag color="blue" style={{ fontSize: 11, fontWeight: 600 }}>Nhiều Lớp</Tag>
+                    </Space>
+                  }
+                  rules={[]}
+                  style={{ marginBottom: 14 }}
+                  extra={
+                    <span style={{ fontSize: 12, color: '#64748b' }}>
+                      💡 Mỗi học viên có thể đăng ký nhiều lớp học online. Hệ thống sẽ tự động phát hiện và chặn trùng khung giờ học trực tuyến Zoom.
+                    </span>
+                  }
+                >
+                  <Select
+                    mode="multiple"
+                    placeholder="Chọn 1 hoặc nhiều lớp học Zoom tham gia..."
+                    style={{ width: '100%', minHeight: 40, borderRadius: 8 }}
+                    allowClear
+                    optionLabelProp="label"
+                  >
+                    {availableClasses.map((cls) => (
+                      <Option
+                        key={cls.id}
+                        value={cls.id}
+                        label={`${cls.id} — ${cls.name}`}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0' }}>
+                          <Space size={8}>
+                            <Tag color="blue" style={{ fontWeight: 700, margin: 0 }}>{cls.id}</Tag>
+                            <span style={{ fontWeight: 600, color: '#0f172a' }}>{cls.name}</span>
+                          </Space>
+                          <Space size={6}>
+                            <Tag color="cyan" icon={<ClockCircleOutlined />} style={{ margin: 0 }}>
+                              {cls.schedule}
+                            </Tag>
+                            <Tag color="purple" style={{ margin: 0 }}>
+                              {cls.teacherName || 'GV Bản Xứ'}
+                            </Tag>
+                          </Space>
+                        </div>
+                      </Option>
+                    ))}
                   </Select>
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item name="parentName" label={<Text strong>Họ Tên Phụ Huynh</Text>}>
-                  <Input placeholder="VD: Trần Thị Mai" style={{ borderRadius: 8 }} />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item name="parentPhone" label={<Text strong>SĐT Phụ Huynh</Text>}>
-                  <Input
-                    prefix={<PhoneOutlined style={{ color: '#94a3b8' }} />}
-                    placeholder="0918 123 456"
-                    style={{ borderRadius: 8 }}
-                  />
                 </Form.Item>
               </Col>
             </Row>
 
+            {/* CẢNH BÁO TRÙNG KHUNG GIỜ HỌC ONLINE */}
+            {scheduleConflictInfo.hasConflict && (
+              <Alert
+                type="error"
+                showIcon
+                icon={<WarningOutlined style={{ color: '#ff4d4f' }} />}
+                style={{
+                  marginBottom: 16,
+                  borderRadius: 8,
+                  backgroundColor: '#fff2f0',
+                  border: '1.5px solid #ff4d4f',
+                }}
+                message={
+                  <div>
+                    <Text strong style={{ color: '#cf1322', fontSize: 13 }}>
+                      ⛔ PHÁT HIỆN TRÙNG KHUNG GIỜ HỌC ONLINE:
+                    </Text>
+                    <ul style={{ margin: '6px 0 0 18px', padding: 0, color: '#434343', fontSize: 13 }}>
+                      {scheduleConflictInfo.conflicts.map((c, idx) => (
+                        <li key={idx} style={{ marginTop: 2 }}>{c.message}</li>
+                      ))}
+                    </ul>
+                    <div style={{ marginTop: 6, fontSize: 12, color: '#cf1322', fontWeight: 500 }}>
+                      Vui lòng bỏ chọn một trong hai lớp trùng giờ ở trên trước khi hoàn tất đăng ký tài khoản.
+                    </div>
+                  </div>
+                }
+              />
+            )}
+
+            {/* Cấp Độ & Tình Trạng Học Phí: TỰ ĐỘNG (READ-ONLY) */}
             <Row gutter={[16, 12]}>
               <Col xs={24} sm={12}>
-                <Form.Item name="tuitionStatus" label={<Text strong>Trạng Thái Học Phí Khởi Tạo</Text>}>
-                  <Select style={{ borderRadius: 8 }}>
-                    <Option value="Đã đóng đủ">Đã đóng đủ học phí</Option>
-                    <Option value="Chờ đối soát">Chờ đối soát kế toán</Option>
-                    <Option value="Chưa hoàn thành">Chưa hoàn thành</Option>
-                    <Option value="Miễn giảm">Học bổng / Miễn giảm</Option>
-                  </Select>
+                <Form.Item
+                  label={<Text strong>Cấp Độ Chương Trình (Tự Động Theo Lớp Học)</Text>}
+                  style={{ marginBottom: 14 }}
+                  extra={<span style={{ fontSize: 12, color: '#64748b' }}>Cấp độ đi liền với lớp học đã chọn, không cần chọn thủ công.</span>}
+                >
+                  <div
+                    style={{
+                      minHeight: 40,
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '4px 11px',
+                      background: '#f8fafc',
+                      border: '1px solid #d9d9d9',
+                      borderRadius: 8,
+                      flexWrap: 'wrap',
+                      gap: 6,
+                    }}
+                  >
+                    {derivedLevels.length > 0 ? (
+                      derivedLevels.map((lvl) => (
+                        <Tag key={lvl} color="purple" style={{ margin: 0, fontWeight: 600, padding: '2px 8px' }}>
+                          {lvl}
+                        </Tag>
+                      ))
+                    ) : (
+                      <Text type="secondary" style={{ fontSize: 13 }}>
+                        Chưa chọn lớp (Hệ thống sẽ tự nhận diện theo lớp ghi danh)
+                      </Text>
+                    )}
+                  </div>
                 </Form.Item>
               </Col>
 
               <Col xs={24} sm={12}>
-                <Form.Item name="academicNotes" label={<Text strong>Ghi Chú Học Vụ Ban Đầu</Text>}>
-                  <Input placeholder="VD: Cần hỗ trợ thêm kỹ năng Speaking..." style={{ borderRadius: 8 }} />
+                <Form.Item
+                  label={<Text strong>Tình Trạng Học Phí (Hệ Thống Kế Toán Tự Động Tính)</Text>}
+                  style={{ marginBottom: 14 }}
+                  extra={<span style={{ fontSize: 12, color: '#64748b' }}>Trạng thái sẽ được đối soát tự động từ phân hệ Thu Học Phí.</span>}
+                >
+                  <div
+                    style={{
+                      height: 40,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0 11px',
+                      background: '#f8fafc',
+                      border: '1px solid #d9d9d9',
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Tag color="gold" style={{ margin: 0, fontWeight: 600, padding: '2px 8px' }}>
+                      Chờ đối soát
+                    </Tag>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Khởi tạo mặc định
+                    </Text>
+                  </div>
+                </Form.Item>
+              </Col>
+            </Row>
+
+            {/* Họ Tên Phụ Huynh & SĐT Phụ Huynh (Mặc định SĐT 1) */}
+            <Row gutter={[16, 12]}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="parentName"
+                  label={<Text strong>Họ Tên Phụ Huynh / Người Giám Hộ</Text>}
+                  style={{ marginBottom: 14 }}
+                >
+                  <Input placeholder="VD: Trần Thị Mai (Phụ huynh)" style={{ width: '100%', height: 40, borderRadius: 8 }} />
+                </Form.Item>
+              </Col>
+
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="parentPhone"
+                  label={<Text strong>Số Điện Thoại Phụ Huynh (Mặc Định Là SĐT 1)</Text>}
+                  style={{ marginBottom: 14 }}
+                  extra={<span style={{ fontSize: 12, color: '#16a34a' }}>Tự động đồng bộ với Số Điện Thoại 1 chính.</span>}
+                >
+                  <Input
+                    prefix={<PhoneOutlined style={{ color: '#0284c7' }} />}
+                    placeholder="0989 557 230"
+                    style={{ width: '100%', height: 40, borderRadius: 8 }}
+                  />
                 </Form.Item>
               </Col>
             </Row>

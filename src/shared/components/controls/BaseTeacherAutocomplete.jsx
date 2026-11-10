@@ -3,6 +3,7 @@ import { Select, Space, Avatar, Tag, Alert, Typography } from 'antd';
 import { UserOutlined, WarningOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { findTeacherScheduleConflicts } from '../../utils/scheduleUtils';
+import { matchLikeSearch } from '../../utils/searchUtils';
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -61,10 +62,9 @@ export const BaseTeacherAutocomplete = ({
             : 'Gõ tên/mã GV để tìm kiếm, hoặc để trống cho GV tự đăng ký dạy...'
         }
         optionFilterProp="searchText"
-        filterOption={(input, option) => {
-          const searchStr = String(option?.searchText || '').toLowerCase();
-          return searchStr.includes(input.toLowerCase().trim());
-        }}
+        filterOption={(input, option) =>
+          matchLikeSearch(option?.searchText || '', input)
+        }
         style={{ width: '100%', height: 40, borderRadius: 8, ...style }}
       >
         <Option

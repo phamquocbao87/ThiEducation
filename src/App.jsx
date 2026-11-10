@@ -151,6 +151,22 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path={`/${MODULE_SLUGS.profile}`}
+            element={
+              <ProtectedRoute moduleKey="profile">
+                <UsersModule isSelfProfile={true} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.profile}/:action`}
+            element={
+              <ProtectedRoute moduleKey="profile">
+                <UsersModule isSelfProfile={true} />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<Navigate to={`/${MODULE_SLUGS.dashboard}`} replace />} />
         </Routes>
       </AppLayout>

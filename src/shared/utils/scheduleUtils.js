@@ -442,3 +442,47 @@ export const findStudentScheduleConflicts = (
     return hasScheduleOverlap(targetSchedule, cls.scheduleData || cls.schedule);
   });
 };
+
+/**
+ * Check if a list of selected class IDs has any timetable conflicts with each other
+ * Returns { hasConflict: boolean, conflicts: Array<{ classA, classB, message }> }
+ */
+export const findScheduleConflictsInClassList = (classIds = [], allClasses = []) => {
+  if (!Array.isArray(classIds) || classIds.length < 2) {
+    return { hasConflict: false, conflicts: [] };
+  }
+
+  const selectedClasses = classIds
+    .map((id) => allClasses.find((c) => c.id === id || c.classId === id))
+    .filter(Boolean);
+
+  const conflicts = [];
+  const seenPair = new Set();
+
+  for (let i = 0; i < selectedClasses.length; i++) {
+    for (let j = i + 1; j < selectedClasses.length; j++) {
+      const classA = selectedClasses[i];
+      const classB = selectedClasses[j];
+      const pairKey = [classA.id, classB.id].sort().join('__');
+
+      if (seenPair.has(pairKey)) continue;
+
+      const schedA = classA.scheduleData || classA.schedule;
+      const schedB = classB.scheduleData || classB.schedule;
+
+      if (hasScheduleOverlap(schedA, schedB)) {
+        seenPair.add(pairKey);
+        conflicts.push({
+          classA,
+          classB,
+          message: `Lớp [${classA.id} - ${classA.name}] và [${classB.id} - ${classB.name}] bị trùng khung giờ học online! (${classA.schedule || ''} vs ${classB.schedule || ''})`,
+        });
+      }
+    }
+  }
+
+  return {
+    hasConflict: conflicts.length > 0,
+    conflicts,
+  };
+};

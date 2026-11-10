@@ -81,7 +81,7 @@ export const ClassManagementTab = ({
   onRejectStudentRequest,
   isMobile = false,
 }) => {
-  const { isEnglish } = useLanguage();
+  const { isEnglish, t } = useLanguage();
   const isTeacherRole = currentUser?.role === 'teacher';
   const isStudentRole = currentUser?.role === 'student';
 
@@ -94,7 +94,7 @@ export const ClassManagementTab = ({
             <Col xs={24} sm={10} md={9}>
               <Input
                 prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                placeholder={isEnglish ? 'Search classes, teachers...' : 'Tìm theo mã lớp, tên lớp, GV...'}
+                placeholder={t('courses.classes.searchPlaceholder')}
                 value={search}
                 onChange={(e) => onSearchChange(e.target.value)}
                 style={{ width: '100%', height: 40, borderRadius: 8 }}
@@ -107,7 +107,7 @@ export const ClassManagementTab = ({
                 onChange={onCourseFilterChange}
                 style={{ width: '100%', height: 40 }}
               >
-                <Option value="ALL">{isEnglish ? 'All Courses' : 'Tất Cả Khóa Học'}</Option>
+                <Option value="ALL">{t('courses.classes.allCourses')}</Option>
                 {courses.map((c) => (
                   <Option key={c.id} value={c.id}>
                     {c.name}
@@ -121,9 +121,9 @@ export const ClassManagementTab = ({
                 onChange={onTeacherFilterChange}
                 style={{ width: '100%', height: 40 }}
               >
-                <Option value="ALL">{isEnglish ? 'All Teachers' : 'Tất Cả Giáo Viên'}</Option>
+                <Option value="ALL">{t('courses.classes.allTeachers')}</Option>
                 <Option value="UNASSIGNED">
-                  🟠 {isEnglish ? 'Open / Unassigned Teacher' : 'Lớp Chưa Có GV (Mở Đăng Ký)'}
+                  🟠 {t('courses.classes.openUnassignedTeacher')}
                 </Option>
                 {teachers.map((t) => (
                   <Option key={t.id} value={t.id}>
@@ -151,7 +151,7 @@ export const ClassManagementTab = ({
                 boxShadow: '0 2px 8px rgba(24,144,255,0.3)',
               }}
             >
-              {isEnglish ? 'Create New Class' : 'Tạo Lớp Học Mới'}
+              {t('courses.classes.createBtn')}
             </Button>
           </Col>
         )}
@@ -163,12 +163,10 @@ export const ClassManagementTab = ({
           description={
             <div style={{ padding: '12px 0' }}>
               <Text strong style={{ fontSize: 15, display: 'block', color: '#475569' }}>
-                {isEnglish ? 'No classes found' : 'Chưa có lớp học nào'}
+                {t('courses.classes.noClassesFound')}
               </Text>
               <Text type="secondary" style={{ fontSize: 13 }}>
-                {isEnglish
-                  ? 'Create a new class and configure weekly recurring schedule.'
-                  : 'Bấm nút "Tạo Lớp Học Mới" để thiết lập lớp và lịch học tuần hoàn.'}
+                {t('courses.classes.noClassesDesc')}
               </Text>
             </div>
           }
@@ -180,7 +178,7 @@ export const ClassManagementTab = ({
               onClick={onOpenCreate}
               style={{ height: 40, borderRadius: 8, backgroundColor: '#1890ff', fontWeight: 600 }}
             >
-              {isEnglish ? 'Create First Class' : 'Tạo Lớp Học Đầu Tiên'}
+              {t('courses.classes.createFirst')}
             </Button>
           )}
         </Empty>
@@ -271,15 +269,11 @@ export const ClassManagementTab = ({
                       </Tag>
                       {canManage && onDeleteClass && (
                         <Popconfirm
-                          title={isEnglish ? 'Delete this class?' : 'Xóa lớp học này?'}
-                          description={
-                            isEnglish
-                              ? 'Are you sure you want to delete this class?'
-                              : 'Bạn có chắc chắn muốn xóa lớp học này?'
-                          }
+                          title={t('courses.classes.deleteConfirmTitle')}
+                          description={t('courses.classes.deleteConfirmDesc')}
                           onConfirm={() => onDeleteClass(record.id)}
-                          okText={isEnglish ? 'Delete' : 'Xóa'}
-                          cancelText={isEnglish ? 'Cancel' : 'Hủy'}
+                          okText={t('common.delete')}
+                          cancelText={t('common.cancel')}
                           okButtonProps={{ danger: true }}
                         >
                           <Button
@@ -346,13 +340,11 @@ export const ClassManagementTab = ({
                       <Space size={6}>
                         <BellOutlined style={{ color: '#d48806' }} />
                         <Text strong style={{ fontSize: 12, color: '#d48806' }}>
-                          {isEnglish
-                            ? `${totalPending} Pending Approval(s)`
-                            : `${totalPending} yêu cầu chờ Giáo vụ duyệt`}
+                          {totalPending} {t('courses.classes.pendingApprovals')}
                         </Text>
                       </Space>
                       <Tag color="gold" style={{ margin: 0, fontSize: 11 }}>
-                        {canManage ? (isEnglish ? 'Review' : 'Duyệt ngay') : (isEnglish ? 'Pending' : 'Chờ duyệt')}
+                        {canManage ? t('courses.classes.reviewNow') : t('courses.classes.pendingTag')}
                       </Tag>
                     </div>
                   )}
@@ -388,7 +380,7 @@ export const ClassManagementTab = ({
 
                       {isUnassignedTeacher ? (
                         <Tag color="warning" style={{ margin: 0, fontWeight: 600 }}>
-                          {isEnglish ? 'Open for Registration' : 'Chưa có GV (Mở ĐK)'}
+                          {t('courses.classes.openForRegistration')}
                         </Tag>
                       ) : (
                         <Space size={6} style={{ overflow: 'hidden' }}>
@@ -422,10 +414,10 @@ export const ClassManagementTab = ({
                     >
                       <Space size={6}>
                         <TeamOutlined style={{ color: '#52c41a' }} />
-                        <Text type="secondary">{isEnglish ? 'Class Roster:' : 'Sĩ số lớp:'}</Text>
+                        <Text type="secondary">{t('courses.classes.rosterLabel')}</Text>
                       </Space>
                       <Text strong style={{ color: '#16a34a', whiteSpace: 'nowrap' }}>
-                        {studentCount} {isEnglish ? 'students' : 'học viên'}
+                        {studentCount} {t('courses.classes.studentsCount')}
                       </Text>
                     </div>
 
@@ -442,7 +434,7 @@ export const ClassManagementTab = ({
                         <Space size={6}>
                           <ClockCircleOutlined style={{ color: '#0ea5e9' }} />
                           <Text type="secondary">
-                            {isEnglish ? 'Start Date:' : 'Ngày bắt đầu:'}
+                            {t('courses.classes.startDateLabel')}
                           </Text>
                         </Space>
                         <Text strong style={{ color: '#0284c7', whiteSpace: 'nowrap' }}>
@@ -481,7 +473,7 @@ export const ClassManagementTab = ({
                             <Space size={6} style={{ flexShrink: 0 }}>
                               <CalendarOutlined style={{ color: '#fa8c16' }} />
                               <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
-                                {isEnglish ? 'Schedule:' : 'Lịch học:'}
+                                {t('courses.classes.scheduleLabel')}
                               </Text>
                             </Space>
                             <Text
@@ -497,13 +489,13 @@ export const ClassManagementTab = ({
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'space-between',
+                                justifycontent: 'space-between',
                                 fontSize: 11,
                                 paddingLeft: 18,
                               }}
                             >
                               <Text type="secondary" style={{ fontSize: 11 }}>
-                                {isEnglish ? 'Schedule History:' : 'Lịch sử đổi lịch:'}
+                                {t('courses.classes.scheduleHistoryLabel')}
                               </Text>
                               <Tag
                                 color="blue"
@@ -515,7 +507,7 @@ export const ClassManagementTab = ({
                                   whiteSpace: 'nowrap',
                                 }}
                               >
-                                📜 {historyCount} {isEnglish ? 'periods' : 'giai đoạn TKB'}
+                                📜 {historyCount} {t('courses.classes.periodsCount')}
                               </Tag>
                             </div>
                           )}
@@ -562,7 +554,7 @@ export const ClassManagementTab = ({
                       >
                         <Space size={6}>
                           <MessageOutlined style={{ color: '#0068ff' }} />
-                          <Text type="secondary">{isEnglish ? 'Zalo Chat:' : 'Nhóm Zalo:'}</Text>
+                          <Text type="secondary">{t('courses.classes.zaloChatLabel')}</Text>
                         </Space>
                         <Tag
                           color="blue"
@@ -575,7 +567,7 @@ export const ClassManagementTab = ({
                           }}
                         >
                           <MessageOutlined style={{ marginRight: 4 }} />
-                          {isEnglish ? 'Join Zalo Group' : 'Mở Nhóm Zalo'}
+                          {t('courses.classes.joinZaloGroup')}
                         </Tag>
                       </div>
                     )}
@@ -595,9 +587,7 @@ export const ClassManagementTab = ({
                             borderRadius: 6,
                           }}
                         >
-                          {isEnglish
-                            ? 'Teaching Request Sent (Pending Academic Approval)'
-                            : 'Đã gửi ĐK dạy — Chờ Giáo vụ duyệt'}
+                          {t('courses.classes.teacherPendingNotice')}
                         </Tag>
                       ) : (
                         <Button
@@ -615,11 +605,9 @@ export const ClassManagementTab = ({
                             fontSize: 12,
                           }}
                         >
-                          {isEnglish ? 'Apply to Teach Class' : 'Đăng Ký Nhận Dạy Lớp Này'}
+                          {t('courses.classes.applyToTeach')}
                           {myTeacherConflicts.length > 0
-                            ? isEnglish
-                              ? ' (⚠️ Conflict)'
-                              : ' (⚠️ Trùng lịch)'
+                            ? ` (⚠️ ${t('courses.classes.conflictNotice')})`
                             : ''}
                         </Button>
                       )}
@@ -640,7 +628,7 @@ export const ClassManagementTab = ({
                             borderRadius: 6,
                           }}
                         >
-                          {isEnglish ? 'Enrolled in this Class' : 'Bạn đang học lớp này'}
+                          {t('courses.classes.studentEnrolledNotice')}
                         </Tag>
                       ) : myStudentPending ? (
                         <Tag
@@ -653,9 +641,7 @@ export const ClassManagementTab = ({
                             borderRadius: 6,
                           }}
                         >
-                          {isEnglish
-                            ? 'Enrollment Pending Academic Approval'
-                            : 'Đã đăng ký học — Chờ Giáo vụ duyệt'}
+                          {t('courses.classes.studentPendingNotice')}
                         </Tag>
                       ) : (
                         <Button
@@ -673,11 +659,9 @@ export const ClassManagementTab = ({
                             fontSize: 12,
                           }}
                         >
-                          {isEnglish ? 'Request Class Enrollment' : 'Đăng Ký Tham Gia Lớp Học'}
+                          {t('courses.classes.requestEnrollment')}
                           {myStudentConflicts.length > 0
-                            ? isEnglish
-                              ? ' (⚠️ Timetable Conflict)'
-                              : ' (⚠️ Trùng TKB)'
+                            ? ` (⚠️ ${t('courses.classes.conflictNotice')})`
                             : ''}
                         </Button>
                       )}
@@ -704,7 +688,7 @@ export const ClassManagementTab = ({
                         fontWeight: 500,
                       }}
                     >
-                      {isEnglish ? 'Details' : 'Chi Tiết'} ({studentCount})
+                      {t('common.details')} ({studentCount})
                       {canManage && totalPending > 0 ? ` • 🔔${totalPending}` : ''}
                     </Button>
 
@@ -721,7 +705,7 @@ export const ClassManagementTab = ({
                           fontWeight: 500,
                         }}
                       >
-                        {isEnglish ? 'Edit' : 'Chỉnh Sửa'}
+                        {t('common.edit')}
                       </Button>
                     )}
                   </div>

@@ -15,7 +15,6 @@ import {
 import {
   UserAddOutlined,
   HistoryOutlined,
-  CloudUploadOutlined,
   SearchOutlined,
   TeamOutlined,
   CheckCircleOutlined,
@@ -31,6 +30,7 @@ import { UserDeleteModal } from './components/UserDeleteModal';
 import { UserAuditLogDrawer } from './components/UserAuditLogDrawer';
 import { USER_ROLES, USER_STATUS, ROLE_LABELS } from './models/user.model';
 import { PermissionService } from '../../core/services/PermissionService';
+import { useLanguage } from '../../core/context/LanguageContext';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -38,6 +38,7 @@ const { useBreakpoint } = Grid;
 
 export const UsersPage = () => {
   const navigate = useNavigate();
+  const { language, isEnglish, t } = useLanguage();
   const screens = useBreakpoint();
   const isMobile = screens.xs || (screens.sm && !screens.md); // < 768px
 
@@ -99,10 +100,10 @@ export const UsersPage = () => {
         <div>
           <Title level={3} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
             <SafetyCertificateOutlined style={{ color: '#1890ff' }} />
-            <span>Quản Trị Người Dùng & Phân Quyền RBAC</span>
+            <span>{t('users.pageTitle')}</span>
           </Title>
           <Text type="secondary" style={{ fontSize: 13 }}>
-            Quản lý tài khoản 6 Roles, cấp quyền, kích hoạt/khóa và nhật ký kiểm toán LAK EDUCATION
+            {t('users.pageSubtitle')}
           </Text>
         </div>
 
@@ -112,18 +113,8 @@ export const UsersPage = () => {
             onClick={openAuditDrawer}
             style={{ borderRadius: 6 }}
           >
-            Nhật Ký Kiểm Toán
+            {t('users.btnAuditLog')}
           </Button>
-
-          {isAdmin && (
-            <Button
-              icon={<CloudUploadOutlined />}
-              onClick={handleSeedToFirestore}
-              style={{ borderRadius: 6 }}
-            >
-              Đồng Bộ Dữ Liệu
-            </Button>
-          )}
 
           {canManage && (
             <Button
@@ -137,7 +128,7 @@ export const UsersPage = () => {
                 fontWeight: 600,
               }}
             >
-              + Tạo & Đăng Ký Tài Khoản Mới
+              {t('users.btnAddUser')}
             </Button>
           )}
         </Space>
@@ -148,7 +139,7 @@ export const UsersPage = () => {
         <Col xs={12} sm={8} md={5}>
           <Card bordered={false} style={{ borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
             <Statistic
-              title={<span style={{ fontSize: 12 }}>Tổng Tài Khoản</span>}
+              title={<span style={{ fontSize: 12 }}>{t('users.stats.total')}</span>}
               value={stats.total}
               prefix={<TeamOutlined style={{ color: '#1890ff' }} />}
             />
@@ -157,7 +148,7 @@ export const UsersPage = () => {
         <Col xs={12} sm={8} md={5}>
           <Card bordered={false} style={{ borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
             <Statistic
-              title={<span style={{ fontSize: 12 }}>Đang Hoạt Động</span>}
+              title={<span style={{ fontSize: 12 }}>{t('users.stats.active')}</span>}
               value={stats.active}
               valueStyle={{ color: '#52c41a' }}
               prefix={<CheckCircleOutlined />}
@@ -167,7 +158,7 @@ export const UsersPage = () => {
         <Col xs={12} sm={8} md={4}>
           <Card bordered={false} style={{ borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
             <Statistic
-              title={<span style={{ fontSize: 12 }}>Đã Khóa</span>}
+              title={<span style={{ fontSize: 12 }}>{t('users.stats.disabled')}</span>}
               value={stats.disabled}
               valueStyle={{ color: '#ff4d4f' }}
               prefix={<StopOutlined />}
@@ -177,7 +168,7 @@ export const UsersPage = () => {
         <Col xs={12} sm={8} md={5}>
           <Card bordered={false} style={{ borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
             <Statistic
-              title={<span style={{ fontSize: 12 }}>Học Viên (HV)</span>}
+              title={<span style={{ fontSize: 12 }}>{t('users.stats.students')}</span>}
               value={stats.students}
               prefix={<BookOutlined style={{ color: '#52c41a' }} />}
             />
@@ -186,7 +177,7 @@ export const UsersPage = () => {
         <Col xs={12} sm={8} md={5}>
           <Card bordered={false} style={{ borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
             <Statistic
-              title={<span style={{ fontSize: 12 }}>Cán Bộ & Giáo Viên</span>}
+              title={<span style={{ fontSize: 12 }}>{t('users.stats.staff')}</span>}
               value={stats.staff}
               prefix={<IdcardOutlined style={{ color: '#722ed1' }} />}
             />
@@ -207,7 +198,7 @@ export const UsersPage = () => {
           <Col xs={24} md={10}>
             <Input
               prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-              placeholder="Tìm theo Tên, Mã (HV001, GV002...), Email hoặc SĐT..."
+              placeholder={t('users.filters.searchPlaceholder')}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               allowClear
@@ -220,10 +211,10 @@ export const UsersPage = () => {
               value={roleFilter}
               onChange={setRoleFilter}
             >
-              <Option value="ALL">Tất Cả Vai Trò (6 Roles)</Option>
+              <Option value="ALL">{t('users.filters.allRoles')}</Option>
               {Object.values(USER_ROLES).map((role) => (
                 <Option key={role} value={role}>
-                  {ROLE_LABELS.vi[role]}
+                  {ROLE_LABELS[isEnglish ? 'en' : 'vi'][role] || role}
                 </Option>
               ))}
             </Select>
@@ -234,9 +225,9 @@ export const UsersPage = () => {
               value={statusFilter}
               onChange={setStatusFilter}
             >
-              <Option value="ALL">Tất Cả Trạng Thái</Option>
-              <Option value={USER_STATUS.ACTIVE}>Đang Hoạt Động</Option>
-              <Option value={USER_STATUS.DISABLED}>Đã Khóa / Vô Hiệu Hóa</Option>
+              <Option value="ALL">{t('users.filters.allStatuses')}</Option>
+              <Option value={USER_STATUS.ACTIVE}>{t('users.filters.statusActive')}</Option>
+              <Option value={USER_STATUS.DISABLED}>{t('users.filters.statusDisabled')}</Option>
             </Select>
           </Col>
         </Row>
@@ -260,7 +251,7 @@ export const UsersPage = () => {
               height: 44,
             }}
           >
-            + Tạo & Đăng Ký Tài Khoản Mới
+            {t('users.btnAddUser')}
           </Button>
         )}
         <UserCardList
@@ -270,6 +261,8 @@ export const UsersPage = () => {
           onEditUser={handleSelectUser}
           onToggleStatus={handleToggleStatus}
           onDeleteUser={openDeleteModal}
+          language={language}
+          isEnglish={isEnglish}
         />
       </div>
 
@@ -289,6 +282,8 @@ export const UsersPage = () => {
             onToggleStatus={handleToggleStatus}
             onEditUser={handleSelectUser}
             onDeleteUser={openDeleteModal}
+            language={language}
+            isEnglish={isEnglish}
           />
         </Card>
       </div>
@@ -301,6 +296,8 @@ export const UsersPage = () => {
         loading={deleteLoading}
         onCancel={closeDeleteModal}
         onConfirm={handleConfirmDeleteUser}
+        language={language}
+        isEnglish={isEnglish}
       />
 
       {/* Drawer Nhật ký kiểm toán */}
@@ -309,6 +306,8 @@ export const UsersPage = () => {
         onClose={() => setIsAuditDrawerOpen(false)}
         auditLogs={auditLogs}
         loading={auditLoading}
+        language={language}
+        isEnglish={isEnglish}
       />
     </div>
   );

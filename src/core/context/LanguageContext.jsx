@@ -37,12 +37,34 @@ export const LanguageProvider = ({ children }) => {
     return localStorage.getItem(STORAGE_LANG_KEY) || DEFAULT_LANGUAGE;
   });
 
+  // Khóa triệt để tính năng Google Translate / Trình duyệt tự dịch đè lên i18n
+  const syncHtmlLangAttributes = useCallback((lang) => {
+    if (typeof document !== 'undefined') {
+      const rootHtml = document.documentElement;
+      rootHtml.lang = lang;
+      rootHtml.setAttribute('translate', 'no');
+      rootHtml.classList.add('notranslate');
+
+      if (document.body) {
+        document.body.setAttribute('translate', 'no');
+        document.body.classList.add('notranslate');
+      }
+
+      const rootDiv = document.getElementById('root');
+      if (rootDiv) {
+        rootDiv.setAttribute('translate', 'no');
+        rootDiv.classList.add('notranslate');
+      }
+    }
+  }, []);
+
   const setLanguage = useCallback((lang) => {
     const normalized = lang === 'vi' ? 'vi' : 'en';
     setLanguageState(normalized);
     localStorage.setItem(STORAGE_LANG_KEY, normalized);
     i18n.changeLanguage(normalized);
-  }, []);
+    syncHtmlLangAttributes(normalized);
+  }, [syncHtmlLangAttributes]);
 
   const toggleLanguage = useCallback(() => {
     setLanguage(language === 'en' ? 'vi' : 'en');
@@ -62,6 +84,8 @@ export const LanguageProvider = ({ children }) => {
 
   // Đồng bộ an toàn các UI Label tĩnh (Chỉ chạy khi đổi ngôn ngữ hoặc chuyển tab/click, tuyệt đối không dùng MutationObserver gây vòng lặp)
   useEffect(() => {
+    syncHtmlLangAttributes(language);
+
     const applyUiLabelLocalization = () => {
       const dictionary = language === 'en' ? VI_TO_EN_UI_LABELS : EN_TO_VI_UI_LABELS;
       const elements = document.querySelectorAll(UI_LABEL_SELECTORS);

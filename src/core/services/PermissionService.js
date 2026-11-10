@@ -37,6 +37,7 @@ export class PermissionService {
       contracts: ['admin', 'director', 'academic', 'teacher', 'accountant'],
       tuition: ['director', 'academic', 'accountant', 'student'],
       users: ['admin', 'director', 'academic'],
+      profile: ['admin', 'director', 'academic', 'teacher', 'accountant', 'student'],
     };
     return (accessMatrix[moduleKey] || []).includes(role);
   }
@@ -55,9 +56,28 @@ export class PermissionService {
 
   /**
    * Quyền upload & cập nhật ảnh đại diện lên Google Drive:
-   * - Chỉ có Admin, Giám đốc (Director) và Giáo vụ (Academic) mới có quyền
+   * - Admin, Giám đốc (Director) và Giáo vụ (Academic) có quyền cập nhật cho các tài khoản quản lý
+   * - Bất kỳ người dùng nào thuộc 6 Roles đều được phép tự cập nhật / cắt lại ảnh đại diện của chính mình
    */
-  static canUploadAvatar(role) {
+  static canUploadAvatar(actor, target = null) {
+    const actorRole = typeof actor === 'object' ? actor?.role : actor;
+    if ([this.ROLES.ADMIN, this.ROLES.DIRECTOR, this.ROLES.ACADEMIC].includes(actorRole)) {
+      return true;
+    }
+    if (typeof actor === 'object' && target && typeof target === 'object') {
+      if (actor.id && target.id && actor.id === target.id) return true;
+      if (actor.email && target.email && actor.email.toLowerCase() === target.email.toLowerCase()) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Quyền chỉnh sửa các trường nghiệp vụ nhạy cảm (Đơn giá lương giờ, Trạng thái học phí, Cấp độ, Lớp học, KPI):
+   * - Chỉ Admin, Giám đốc và Giáo vụ được chỉnh sửa
+   * - Giáo viên / Học viên / Kế toán khi tự sửa Profile cá nhân (/my-profile/edit) sẽ thấy các trường này ở chế độ Read-Only
+   */
+  static canEditSensitiveFields(actorRole) {
+    const role = typeof actorRole === 'object' ? actorRole?.role : actorRole;
     return [this.ROLES.ADMIN, this.ROLES.DIRECTOR, this.ROLES.ACADEMIC].includes(role);
   }
 

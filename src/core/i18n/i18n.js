@@ -1,5 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import enTranslation from './locales/en';
+import viTranslation from './locales/vi';
 
 export const STORAGE_LANG_KEY = 'lak_app_language';
 export const DEFAULT_LANGUAGE = 'en'; // Mặc định là Tiếng Anh (English)
@@ -202,7 +204,67 @@ export const VI_TO_EN_UI_LABELS = {
   'Quá hạn': 'Overdue',
   'Tất cả trạng thái': 'All Payment Statuses',
 
-  // 8. Authentication & System Alerts
+  // 8. User Management & RBAC Module Labels
+  'Quản Trị Người Dùng & Phân Quyền RBAC': 'User Management & RBAC Permissions',
+  'Quản lý tài khoản 6 Roles, cấp quyền, kích hoạt/khóa và nhật ký kiểm toán LAK EDUCATION':
+    'Manage 6-role accounts, permissions, account status toggle, and audit logs',
+  'Nhật Ký Kiểm Toán': 'Audit Log',
+  '+ Tạo & Đăng Ký Tài Khoản Mới': '+ Add & Register New User',
+  'Tổng Tài Khoản': 'Total Users',
+  'Đang Hoạt Động': 'Active',
+  'Đã Khóa': 'Disabled',
+  'Học Viên (HV)': 'Students (HV)',
+  'Cán Bộ & Giáo Viên': 'Staff & Teachers',
+  'Tìm theo Tên, Mã (HV001, GV002...), Email hoặc SĐT...':
+    'Search by Name, Code (HV001, GV002...), Email or Phone...',
+  'Tất Cả Vai Trò (6 Roles)': 'All Roles (6 Roles)',
+  'Tất Cả Trạng Thái': 'All Statuses',
+  'Đã Khóa / Vô Hiệu Hóa': 'Disabled / Suspended',
+  'Thành viên & Avatar': 'Member & Avatar',
+  'Liên hệ & Mã': 'Contact & Code',
+  'Vai trò (Role)': 'Role',
+  'Đăng nhập': 'Sign-In',
+  'Kích Hoạt / Khóa': 'Active / Disabled',
+  'Hành động': 'Actions',
+  'Chi tiết': 'Details',
+  'HOẠT ĐỘNG': 'ACTIVE',
+  'TẠM KHÓA': 'DISABLED',
+  'Học viên trực tuyến': 'Online Student',
+  'Cán bộ LAK EDUCATION': 'LAK Staff',
+  'Đăng nhập bằng SĐT': 'Sign in via Phone',
+  'Chưa cập nhật SĐT': 'Phone not updated',
+  'SĐT:': 'Phone:',
+  'Gmail: Đăng nhập Google': 'Gmail: Google Sign-in',
+  'Đăng nhập Mật khẩu': 'Password Sign-in',
+  'Học viên: Đăng nhập bằng Số điện thoại + Mật khẩu': 'Student: Phone + Password Sign-in',
+  'Tài khoản Root Admin tối cao không thể bị khóa': 'Root Admin account cannot be locked',
+  'Bạn không có quyền thay đổi trạng thái của tài khoản này':
+    'You do not have permission to change this account status',
+  'Xác nhận khóa tài khoản': 'Confirm Lock Account',
+  'Xác nhận kích hoạt tài khoản': 'Confirm Activate Account',
+  'Bạn có chắc chắn muốn khóa tài khoản này?': 'Are you sure you want to lock this account?',
+  'Bạn có chắc chắn muốn kích hoạt tài khoản này?': 'Are you sure you want to activate this account?',
+  'Đang tải danh sách tài khoản...': 'Loading users directory...',
+  'Không tìm thấy tài khoản người dùng nào phù hợp': 'No matching users found',
+  'Nhật Ký Kiểm Toán & Phân Quyền (Audit Logs)': 'Audit Logs & RBAC Permissions',
+  'Ghi nhận toàn bộ thao tác Tạo mới, Cập nhật thông tin, Kích hoạt và Vô hiệu hóa tài khoản trong hệ thống.':
+    'Full history of user creation, updates, activation, and suspension across the system.',
+  'Đang tải nhật ký kiểm toán...': 'Loading audit logs...',
+  'Chưa có nhật ký thao tác nào': 'No audit logs recorded yet',
+  'Xác Nhận Xóa Tài Khoản': 'Confirm User Account Deletion',
+  'Tài khoản này sẽ bị xóa và ngừng quyền truy cập vào hệ thống':
+    'This user account will be permanently removed and access revoked.',
+  'Vui lòng nhập lý do xóa tài khoản.': 'Please enter a reason for deletion.',
+  'Lý do xóa cần tối thiểu 3 ký tự.': 'Reason must be at least 3 characters.',
+  'Lý do xóa tài khoản...': 'Reason for deleting account...',
+  'Hủy Bỏ': 'Cancel',
+  'Xác Nhận Xóa': 'Confirm Delete',
+  'Xóa': 'Delete',
+  'Sửa': 'Edit',
+  'Lưu': 'Save',
+  'Đóng': 'Close',
+
+  // 9. Authentication & System Alerts
   'Tài khoản hoặc mật khẩu không đúng.': 'Incorrect email or password.',
   'Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.': 'Sign in failed. Please check your credentials.',
   'Đăng nhập thất bại': 'Sign in failed',
@@ -289,166 +351,10 @@ export const localizeSystemMessage = (rawMessage, targetLanguage = 'en') => {
 
 export const resources = {
   en: {
-    translation: {
-      appTitle: 'LAK EDUCATION',
-      footerText: 'LAK EDUCATION (lakeducation.com) ©2026',
-      langSwitchLabel: 'Language',
-      langEn: '🇬🇧 English (Default)',
-      langVi: '🇻🇳 Tiếng Việt',
-      menuHeaderPrefix: 'WORKSPACE MENU FOR',
-      adminViewAsBtn: 'Admin View-As:',
-      exitViewAsBtn: 'Exit View-As → Back to IT Admin',
-      impersonationBannerPrefix:
-        '[Admin Account Inspector] You ({{adminName}} - IT Admin) are viewing the exact screen & data of:',
-      switchAnotherAccountBtn: 'Switch to another account',
-      returnToAdminBtn: 'Return to IT Admin View',
-      impersonateModalTitle:
-        'IT Admin Privilege: Impersonate & Inspect Any User Account ({{count}} Accounts)',
-      impersonateModalAlert:
-        'This tool is strictly visible only to IT Admin (admin). It allows inspecting the exact UI, scoped data, and permissions of any Director, Academic Staff, Accountant, Foreign Teacher, or Student without their password.',
-      impersonateSearchPlaceholder: 'Search by Name, ID (GV001, HV003, ACA002...) or Email...',
-      menus: {
-        dashboard: 'Dashboard Overview',
-        courses: 'Courses & Classes',
-        schedules: 'Live Zoom Schedules',
-        attendance: 'Attendance & Evaluation',
-        contracts: 'Contracts & Payroll',
-        tuition: 'Tuition & Billing',
-        users: 'User Management & Audit',
-      },
-      roles: {
-        admin: 'IT System Administrator',
-        director: 'Executive Director',
-        academic: 'Academic Coordinator',
-        teacher: 'Native Foreign Teacher',
-        accountant: 'Finance & Accountant',
-        student: 'Student / Learner',
-      },
-      banners: {
-        hello: 'Welcome',
-        adminTitle: 'IT System Administration & Security Center',
-        adminDesc:
-          'Monitor server health (System Health), domain configuration (lakeducation.com), Firebase/Google Drive API status, and on-demand database backups.',
-        directorTitle: 'Executive Director Dashboard',
-        directorDesc:
-          'Full visibility across the center: 520 Students, 68 Foreign Teachers, Academic Staff KPIs, active courses, and monthly Tuition & Payroll summary.',
-        academicTitle: 'Academic Operations Hub',
-        academicDesc:
-          'Manage courses, class schedules, live classroom operations, teacher/student profiles, attendance, tuition reminders, and teacher timesheets.',
-        teacherTitle: 'Native Teacher Portal — Classroom, Check-in & Student Evaluation',
-        teacherDesc:
-          'Check in to your assigned Zoom classes, view student profiles, take attendance, and write per-student evaluations & homework feedback.',
-        accountantTitle: 'Finance & Payroll Reconciliation Center',
-        accountantDesc:
-          'Monitor and reconcile foreign teacher payrolls, academic staff salaries, and student tuition payments.',
-        studentTitle: 'Student Learning Portal',
-        studentDesc:
-          'View your personal profile, enrolled classes, homework assignments, native teacher evaluations, and personal tuition status.',
-      },
-      pages: {
-        contractsTitle: 'Teacher Contracts & Payroll Management',
-        contractsSub:
-          'Manage foreign teacher contracts, reconcile monthly teaching sessions, and process payroll disbursements for Teachers and Academic Staff.',
-        createContractBtn: 'Create Teacher Contract',
-        tabTeacherPayrolls: 'Teacher Payrolls',
-        tabTeacherContracts: 'Teacher Contracts',
-        tabStaffPayrolls: 'Academic Staff Payrolls',
-        schedulesTitle: 'Course Catalog & Online Class Schedule',
-        schedulesSub:
-          'Manage active training courses, Zoom teaching timetables, and live classroom check-in status.',
-        scheduleNewSlotBtn: 'Schedule New Class Slot',
-        attendanceTitle: 'Classroom Operations, Student Profiles & Evaluations',
-        attendanceSub:
-          'Check in to live classes, manage individual student profiles, take attendance, rate 4 skills, and review homework.',
-        tabEvaluations: 'Attendance & Session Evaluations',
-        tabHomeworks: 'Homework Assignments',
-        tuitionTitleManager: 'Tuition Collection & Billing Reconciliation',
-        tuitionTitleStudent: 'My Personal Tuition & Billing Status',
-        tuitionSub:
-          'Track monthly tuition collection progress, send automated payment reminders, and confirm student payments.',
-      },
-    },
+    translation: enTranslation,
   },
   vi: {
-    translation: {
-      appTitle: 'LAK EDUCATION',
-      footerText: 'LAK EDUCATION (lakeducation.com) ©2026',
-      langSwitchLabel: 'Ngôn ngữ',
-      langEn: '🇬🇧 English (Default)',
-      langVi: '🇻🇳 Tiếng Việt',
-      menuHeaderPrefix: 'MENU CỦA',
-      adminViewAsBtn: 'Admin Xem Dưới Tên User:',
-      exitViewAsBtn: 'Thoát xem hộ → Về IT Admin',
-      impersonationBannerPrefix:
-        '[Chế Độ Admin Kiểm Tra Tài Khoản] Bạn ({{adminName}} - IT Admin) đang xem màn hình chính xác của tài khoản:',
-      switchAnotherAccountBtn: 'Đổi sang tài khoản khác',
-      returnToAdminBtn: 'Quay về màn hình IT Admin',
-      impersonateModalTitle:
-        'Đặc Quyền IT Admin: Chuyển Sang Xem Màn Hình Của Bất Kỳ Tài Khoản Nào ({{count}} tài khoản)',
-      impersonateModalAlert:
-        'Tính năng này chỉ hiển thị cho duy nhất Role IT Admin (admin). Giúp Admin kiểm tra trực tiếp màn hình, dữ liệu và phân quyền của bất kỳ Giám đốc, Giáo vụ, Kế toán, Giáo viên hay Học viên nào mà không cần mật khẩu.',
-      impersonateSearchPlaceholder: 'Tìm theo Tên, Mã (GV001, HV003, ACA002...) hoặc Email...',
-      menus: {
-        dashboard: 'Tổng Quan (Dashboard)',
-        courses: 'Khóa Học & Lớp Học',
-        schedules: 'Thời Khóa Biểu Zoom',
-        attendance: 'Điểm Danh & Đánh Giá',
-        contracts: 'Hợp Đồng & Bảng Lương',
-        tuition: 'Quản Lý Đóng Học Phí',
-        users: 'Quản Lý Người Dùng & Nhật Ký',
-      },
-      roles: {
-        admin: 'IT Quản Trị Hệ Thống',
-        director: 'Giám Đốc Điều Hành',
-        academic: 'Giáo Vụ Đào Tạo',
-        teacher: 'Giáo Viên Bản Xứ',
-        accountant: 'Kế Toán Tài Chính',
-        student: 'Học Viên',
-      },
-      banners: {
-        hello: 'Xin chào',
-        adminTitle: 'Trung Tâm Quản Trị Kỹ Thuật & Bảo Mật Hệ Thống (IT System Admin)',
-        adminDesc:
-          'Theo dõi sức khỏe máy chủ (System Health), cấu hình tên miền lakeducation.com, trạng thái kết nối Firebase/Google Drive API và sao lưu dữ liệu theo yêu cầu.',
-        directorTitle: 'Bảng Điều Hành Giám Đốc (Executive Director Dashboard)',
-        directorDesc:
-          'Toàn cảnh hoạt động trung tâm: 520 Học viên, 68 Giáo viên bản xứ, hiệu suất đội ngũ Giáo vụ, thông tin các khóa học và tổng hợp Thu học phí - Chi lương.',
-        academicTitle: 'Trung Tâm Điều Phối Giáo Vụ (Academic Operations Hub)',
-        academicDesc:
-          'Quản lý khóa học, xếp thời khóa biểu, giám sát tình trạng vận hành các lớp học, quản lý hồ sơ GV/HV, điểm danh và theo dõi đóng học phí & chấm công lương GV.',
-        teacherTitle: 'Cổng Giảng Dạy Giáo Viên Bản Xứ — Lớp Học, Check-in & Đánh Giá Học Viên',
-        teacherDesc:
-          'Check-in phòng học Zoom được phân công, xem hồ sơ học viên, điểm danh và chấm điểm nhận xét từng học viên sau buổi học.',
-        accountantTitle: 'Trung Tâm Kiểm Soát Tài Chính & Kế Toán (Finance & Payroll Control)',
-        accountantDesc:
-          'Theo dõi và đối soát toàn bộ quá trình trả lương Giáo viên bản xứ, trả lương nhân viên Giáo vụ và thu học phí Học viên.',
-        studentTitle: 'Cổng Thông Tin Học Viên (Student Learning Portal)',
-        studentDesc:
-          'Xem hồ sơ cá nhân, các lớp đang tham gia, bài tập về nhà, nhận xét đánh giá từ Giáo viên nước ngoài và thông tin đóng học phí cá nhân.',
-      },
-      pages: {
-        contractsTitle: 'Quản Lý Hợp Đồng & Đối Soát Lương',
-        contractsSub:
-          'Quản lý hợp đồng giảng dạy, đối soát chi trả lương Giáo viên bản xứ và đội ngũ Giáo vụ.',
-        createContractBtn: 'Tạo Hợp Đồng Giáo Viên',
-        tabTeacherPayrolls: 'Bảng Lương Giáo Viên',
-        tabTeacherContracts: 'Hợp Đồng Giáo Viên',
-        tabStaffPayrolls: 'Bảng Lương Nhân Viên Giáo Vụ',
-        schedulesTitle: 'Khóa Học & Thời Khóa Biểu Trực Tuyến',
-        schedulesSub:
-          'Quản lý danh mục khóa học, lịch giảng dạy Zoom và trạng thái Check-in phòng học.',
-        scheduleNewSlotBtn: 'Xếp Lịch Lớp Học Mới',
-        attendanceTitle: 'Vận Hành Lớp Học, Hồ Sơ Học Viên & Điểm Danh Đánh Giá',
-        attendanceSub:
-          'Check-in lớp học, quản lý hồ sơ từng học viên, điểm danh, nhận xét sau buổi học và quản lý bài tập.',
-        tabEvaluations: 'Nhật Ký Điểm Danh & Đánh Giá Buổi Học',
-        tabHomeworks: 'Bài Tập Về Nhà',
-        tuitionTitleManager: 'Quản Lý & Đối Soát Thu Học Phí',
-        tuitionTitleStudent: 'Thông Tin Đóng Học Phí Cá Nhân',
-        tuitionSub:
-          'Theo dõi tiến độ đóng học phí, gửi nhắc phí tự động và đối soát thanh toán.',
-      },
-    },
+    translation: viTranslation,
   },
 };
 

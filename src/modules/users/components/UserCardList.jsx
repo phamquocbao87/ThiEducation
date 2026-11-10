@@ -27,6 +27,7 @@ import {
 import { ROLE_COLORS, USER_STATUS, ROLE_LABELS, isGmailAddress } from '../models/user.model';
 import { PermissionService } from '../../../core/services/PermissionService';
 import { DriveStorageService } from '../../../core/services/DriveStorageService';
+import { useLanguage } from '../../../core/context/LanguageContext';
 
 const { Text, Title } = Typography;
 
@@ -37,11 +38,17 @@ export const UserCardList = ({
   onEditUser,
   onToggleStatus,
   onDeleteUser,
+  language: propLanguage,
+  isEnglish: propIsEnglish,
 }) => {
+  const contextLanguage = useLanguage();
+  const isEnglish = propIsEnglish !== undefined ? propIsEnglish : contextLanguage?.isEnglish;
+  const t = contextLanguage?.t || ((key) => key);
+
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '40px 16px' }}>
-        <Spin size="large" description="Đang tải danh sách tài khoản..." />
+        <Spin size="large" description={t('users.loadingUsers')} />
       </div>
     );
   }
@@ -49,7 +56,7 @@ export const UserCardList = ({
   if (users.length === 0) {
     return (
       <Empty
-        description="Không tìm thấy tài khoản người dùng nào phù hợp"
+        description={t('users.emptyUsers')}
         style={{ padding: '32px 16px' }}
       />
     );
@@ -120,13 +127,13 @@ export const UserCardList = ({
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                   <Tag color={roleColor} style={{ fontSize: 11, margin: 0 }}>
-                    {user.roleLabel || ROLE_LABELS.vi[user.role] || user.role}
+                    {ROLE_LABELS[isEnglish ? 'en' : 'vi']?.[user.role] || user.roleLabel || user.role}
                   </Tag>
                   <Tag
                     color={isActive ? 'success' : 'error'}
                     style={{ fontSize: 11, margin: 0 }}
                   >
-                    {isActive ? 'Hoạt Động' : 'Đã Khóa'}
+                    {isActive ? t('users.table.statusActiveLabel') : t('users.table.statusDisabledLabel')}
                   </Tag>
                 </div>
               </div>
@@ -146,7 +153,7 @@ export const UserCardList = ({
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#334155', marginBottom: 4 }}>
                 <MailOutlined style={{ color: '#1890ff', fontSize: 14 }} />
-                <span style={{ wordBreak: 'break-all' }}>{user.email || 'Chưa cập nhật'}</span>
+                <span style={{ wordBreak: 'break-all' }}>{user.email || (isEnglish ? 'Not updated' : 'Chưa cập nhật')}</span>
               </div>
               {user.phoneNumber && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#334155', marginBottom: 4 }}>
@@ -160,19 +167,19 @@ export const UserCardList = ({
                 </div>
               )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                <Text type="secondary" style={{ fontSize: 11 }}>Đăng nhập:</Text>
+                <Text type="secondary" style={{ fontSize: 11 }}>{isEnglish ? 'Sign-in:' : 'Đăng nhập:'}</Text>
                 {isGmailAddress(user.email) ? (
                   <>
                     <Tag icon={<GoogleOutlined />} color="orange" style={{ fontSize: 10, padding: '0 4px', margin: 0 }}>
                       Google
                     </Tag>
                     <Tag icon={<KeyOutlined />} color="default" style={{ fontSize: 10, padding: '0 4px', margin: 0 }}>
-                      Mật khẩu
+                      Pass
                     </Tag>
                   </>
                 ) : (
                   <Tag icon={<KeyOutlined />} color="default" style={{ fontSize: 10, padding: '0 4px', margin: 0 }}>
-                    Mật khẩu
+                    Pass
                   </Tag>
                 )}
               </div>
@@ -194,12 +201,12 @@ export const UserCardList = ({
                 <Tooltip
                   title={
                     isRootAdmin
-                      ? 'Root Admin không thể bị khóa'
+                      ? t('users.table.rootAdminNoLockTooltip')
                       : !canChangeStatus
-                      ? 'Bạn không có quyền khóa tài khoản này'
+                      ? t('users.table.noPermissionTooltip')
                       : isActive
-                      ? 'Gạt để khóa'
-                      : 'Gạt để kích hoạt'
+                      ? (isEnglish ? 'Switch left to Lock' : 'Gạt để khóa')
+                      : (isEnglish ? 'Switch right to Activate' : 'Gạt để kích hoạt')
                   }
                 >
                   <Switch
@@ -213,7 +220,7 @@ export const UserCardList = ({
                   />
                 </Tooltip>
                 <Text style={{ fontSize: 12, color: isActive ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
-                  {isActive ? 'BẬT' : 'KHÓA'}
+                  {isActive ? t('users.table.statusActiveLabel') : t('users.table.statusDisabledLabel')}
                 </Text>
               </div>
 
@@ -225,7 +232,7 @@ export const UserCardList = ({
                   onClick={() => onEditUser(user)}
                   style={{ borderRadius: 6, fontSize: 12 }}
                 >
-                  Chi tiết
+                  {t('users.table.btnDetails')}
                 </Button>
 
                 {canDelete && (
@@ -235,9 +242,7 @@ export const UserCardList = ({
                     icon={<DeleteOutlined />}
                     onClick={() => onDeleteUser(user)}
                     style={{ borderRadius: 6, fontSize: 12 }}
-                  >
-                    Xóa
-                  </Button>
+                  />
                 )}
               </Space>
             </div>

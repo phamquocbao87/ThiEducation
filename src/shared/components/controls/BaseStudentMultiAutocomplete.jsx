@@ -3,6 +3,7 @@ import { Select, Space, Avatar, Tag, Alert, Typography } from 'antd';
 import { UserOutlined, WarningOutlined } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { findStudentScheduleConflicts } from '../../utils/scheduleUtils';
+import { matchLikeSearch } from '../../utils/searchUtils';
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -63,10 +64,9 @@ export const BaseStudentMultiAutocomplete = ({
             : 'Gõ tên học viên, biệt danh tiếng Anh hoặc mã HV (HV001) để tìm và gán vào lớp...'
         }
         optionFilterProp="searchText"
-        filterOption={(input, option) => {
-          const searchStr = String(option?.searchText || '').toLowerCase();
-          return searchStr.includes(input.toLowerCase().trim());
-        }}
+        filterOption={(input, option) =>
+          matchLikeSearch(option?.searchText || '', input)
+        }
         maxTagCount="responsive"
         style={{ width: '100%', borderRadius: 8, ...style }}
       >

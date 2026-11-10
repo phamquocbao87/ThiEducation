@@ -10,8 +10,11 @@ import { UserRegistrationPage } from './UserRegistrationPage';
  * - Nếu URL có :userId cụ thể (ví dụ /user-management/HV001) -> Hiển thị trang UserDetailPage chi tiết
  * - Mặc định -> Hiển thị trang UsersPage tổng quan (Bảng Desktop / Thẻ Card Mobile)
  */
-export default function UsersModule() {
+export default function UsersModule({ isSelfProfile = false }) {
   const { userId } = useParams();
+  if (isSelfProfile) {
+    return <UserDetailPage isSelfProfile={true} />;
+  }
   if (userId === 'new' || userId === 'create' || userId === 'register') {
     return <UserRegistrationPage />;
   }

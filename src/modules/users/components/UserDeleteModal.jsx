@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { ROLE_COLORS, ROLE_LABELS } from '../models/user.model';
 import { DriveStorageService } from '../../../core/services/DriveStorageService';
+import { useLanguage } from '../../../core/context/LanguageContext';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -23,7 +24,13 @@ export const UserDeleteModal = ({
   onCancel,
   onConfirm,
   loading = false,
+  language: propLanguage,
+  isEnglish: propIsEnglish,
 }) => {
+  const contextLanguage = useLanguage();
+  const isEnglish = propIsEnglish !== undefined ? propIsEnglish : contextLanguage?.isEnglish;
+  const t = contextLanguage?.t || ((key) => key);
+
   const [reason, setReason] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -42,11 +49,11 @@ export const UserDeleteModal = ({
   const handleConfirm = () => {
     const cleanReason = reason.trim();
     if (!cleanReason) {
-      setErrorMsg('Vui lòng nhập lý do xóa tài khoản.');
+      setErrorMsg(t('users.deleteModal.emptyReasonError'));
       return;
     }
     if (cleanReason.length < 3) {
-      setErrorMsg('Lý do xóa cần tối thiểu 3 ký tự.');
+      setErrorMsg(t('users.deleteModal.minReasonError'));
       return;
     }
     onConfirm(user, cleanReason);
@@ -68,10 +75,10 @@ export const UserDeleteModal = ({
         <ExclamationCircleFilled style={{ color: '#ff4d4f', fontSize: 24 }} />
         <div>
           <Title level={4} style={{ margin: 0, color: '#dc2626' }}>
-            Xác Nhận Xóa Tài Khoản
+            {t('users.deleteModal.title')}
           </Title>
           <Text type="secondary" style={{ fontSize: 13 }}>
-            Tài khoản này sẽ bị xóa và ngừng quyền truy cập vào hệ thống
+            {t('users.deleteModal.subtitle')}
           </Text>
         </div>
       </div>
@@ -114,7 +121,7 @@ export const UserDeleteModal = ({
           </div>
           <div style={{ marginTop: 4 }}>
             <Tag color={roleColor} style={{ margin: 0 }}>
-              {ROLE_LABELS.vi[user.role] || user.role}
+              {ROLE_LABELS[isEnglish ? 'en' : 'vi']?.[user.role] || user.role}
             </Tag>
           </div>
         </div>
@@ -124,7 +131,7 @@ export const UserDeleteModal = ({
       <div style={{ marginBottom: 20 }}>
         <div style={{ marginBottom: 6 }}>
           <Text strong style={{ color: '#1e293b' }}>
-            Lý do xóa tài khoản <span style={{ color: '#ef4444' }}>*</span>
+            {isEnglish ? 'Reason for deletion' : 'Lý do xóa tài khoản'} <span style={{ color: '#ef4444' }}>*</span>
           </Text>
         </div>
         <TextArea
@@ -134,7 +141,7 @@ export const UserDeleteModal = ({
             setReason(e.target.value);
             if (errorMsg) setErrorMsg('');
           }}
-          placeholder="Nhập lý do xóa (ví dụ: Học viên đã thôi học / hoàn tất khóa, Nhân sự nghỉ việc, Tạo nhầm...)"
+          placeholder={isEnglish ? 'Enter reason (e.g., student graduated, staff left, duplicated...)' : 'Nhập lý do xóa (ví dụ: Học viên đã thôi học / hoàn tất khóa, Nhân sự nghỉ việc, Tạo nhầm...)'}
           style={{ borderRadius: 8 }}
           maxLength={300}
           showCount
@@ -149,7 +156,7 @@ export const UserDeleteModal = ({
       {/* 4. Nút Hành Động Ở Chân Modal */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
         <Button onClick={onCancel} style={{ borderRadius: 8 }}>
-          Hủy Bỏ
+          {t('users.deleteModal.cancelBtn')}
         </Button>
         <Button
           type="primary"
@@ -160,7 +167,7 @@ export const UserDeleteModal = ({
           onClick={handleConfirm}
           style={{ borderRadius: 8 }}
         >
-          Xác Nhận Xóa
+          {t('users.deleteModal.confirmBtn')}
         </Button>
       </div>
     </Modal>

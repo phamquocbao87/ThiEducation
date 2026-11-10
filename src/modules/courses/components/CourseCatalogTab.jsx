@@ -27,7 +27,7 @@ export const CourseCatalogTab = ({
   onClearAll,
   isMobile = false,
 }) => {
-  const { isEnglish } = useLanguage();
+  const { isEnglish, t } = useLanguage();
 
   return (
     <div>
@@ -44,7 +44,7 @@ export const CourseCatalogTab = ({
       >
         <Input
           prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-          placeholder={isEnglish ? 'Search courses by name, level, code...' : 'Tìm khóa học theo tên, mã, trình độ...'}
+          placeholder={t('courses.catalog.searchPlaceholder')}
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           style={{
@@ -67,15 +67,15 @@ export const CourseCatalogTab = ({
           >
             {courses.length > 0 && onClearAll && (
               <Popconfirm
-                title={isEnglish ? 'Clear all course data?' : 'Xóa sạch toàn bộ khóa học?'}
+                title={t('courses.catalog.clearConfirmTitle')}
                 description={
                   isEnglish
                     ? 'Are you sure you want to delete all courses?'
                     : 'Bạn có chắc chắn muốn xóa hết tất cả khóa học?'
                 }
                 onConfirm={onClearAll}
-                okText={isEnglish ? 'Yes, Delete All' : 'Xóa Hết'}
-                cancelText={isEnglish ? 'Cancel' : 'Hủy'}
+                okText={t('common.yesDeleteAll')}
+                cancelText={t('common.cancel')}
                 okButtonProps={{ danger: true }}
               >
                 <Button
@@ -83,7 +83,7 @@ export const CourseCatalogTab = ({
                   icon={<DeleteOutlined />}
                   style={{ height: 40, borderRadius: 8, flex: isMobile ? 1 : undefined }}
                 >
-                  {isEnglish ? 'Clear All Data' : 'Xóa Toàn Bộ Dữ Liệu'}
+                  {t('courses.catalog.clearAll')}
                 </Button>
               </Popconfirm>
             )}
@@ -101,7 +101,7 @@ export const CourseCatalogTab = ({
                 boxShadow: '0 2px 8px rgba(24,144,255,0.3)',
               }}
             >
-              {isEnglish ? 'Create New Course' : 'Tạo Khóa Học Mới'}
+              {t('courses.catalog.createBtn')}
             </Button>
           </Space>
         )}
@@ -272,7 +272,7 @@ export const CourseCatalogTab = ({
                       fontWeight: 500,
                     }}
                   >
-                    {isEnglish ? 'View Details' : 'Chi Tiết'}
+                    {t('courses.catalog.btnView')}
                   </Button>
                   {canManage && onEditCourse && (
                     <Button
@@ -287,7 +287,7 @@ export const CourseCatalogTab = ({
                         fontWeight: 500,
                       }}
                     >
-                      {isEnglish ? 'Edit' : 'Chỉnh Sửa'}
+                      {t('courses.catalog.btnEdit')}
                     </Button>
                   )}
                 </div>

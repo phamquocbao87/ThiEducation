@@ -1,4 +1,5 @@
 import { BaseModuleService } from '../../../shared/services/BaseModuleService';
+import { matchesMultiFields } from '../../../shared/utils/searchUtils';
 import {
   parseScheduleToStructured,
   findTeacherScheduleConflicts,
@@ -379,13 +380,15 @@ export class ClassService extends BaseModuleService {
       if (!matchCourse || !matchTeacher) return false;
       if (!keyword) return true;
 
-      const kw = keyword.toLowerCase().trim();
-      return (
-        cls.id?.toLowerCase().includes(kw) ||
-        cls.name?.toLowerCase().includes(kw) ||
-        cls.teacherName?.toLowerCase().includes(kw) ||
-        cls.schedule?.toLowerCase().includes(kw)
-      );
+      return matchesMultiFields(cls, keyword, [
+        'id',
+        'name',
+        'teacherName',
+        'schedule',
+        'courseName',
+        'subject',
+        'room',
+      ]);
     });
   }
 }

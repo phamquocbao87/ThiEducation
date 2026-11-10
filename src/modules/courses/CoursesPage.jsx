@@ -14,7 +14,7 @@ const { Title, Text } = Typography;
 
 export const CoursesPage = () => {
   const navigate = useNavigate();
-  const { isEnglish } = useLanguage();
+  const { isEnglish, t } = useLanguage();
   const [isMobile, setIsMobile] = React.useState(
     () => typeof window !== 'undefined' && window.innerWidth < 768
   );
@@ -73,7 +73,7 @@ export const CoursesPage = () => {
       {/* 1. Header Tiêu Đề */}
       <div style={{ marginBottom: 20 }}>
         <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
-          {isEnglish ? 'Courses & Classes Management' : 'Quản Lý Khóa Học & Lớp Học'}
+          {t('courses.pageTitle')}
         </Title>
         <Text type="secondary">
           {isEnglish
@@ -87,7 +87,7 @@ export const CoursesPage = () => {
         <Col xs={12} sm={6}>
           <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
             <Statistic
-              title={isEnglish ? 'Course Programs' : 'Khóa Học Đang Mở'}
+              title={t('courses.stats.programs')}
               value={allCourses.length}
               prefix={<BookOutlined style={{ color: '#1890ff' }} />}
             />
@@ -96,7 +96,7 @@ export const CoursesPage = () => {
         <Col xs={12} sm={6}>
           <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
             <Statistic
-              title={isEnglish ? 'Active Online Classes' : 'Lớp Học Trực Tuyến'}
+              title={t('courses.stats.activeClasses')}
               value={allClasses.length}
               prefix={<CalendarOutlined style={{ color: '#722ed1' }} />}
             />
@@ -105,7 +105,7 @@ export const CoursesPage = () => {
         <Col xs={12} sm={6}>
           <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
             <Statistic
-              title={isEnglish ? 'Native Teachers Assigned' : 'Giáo Viên Bản Xứ'}
+              title={t('courses.stats.teachers')}
               value={teachers.length}
               prefix={<UserOutlined style={{ color: '#52c41a' }} />}
             />
@@ -114,7 +114,7 @@ export const CoursesPage = () => {
         <Col xs={12} sm={6}>
           <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
             <Statistic
-              title={isEnglish ? 'Total Students' : 'Tổng Học Viên'}
+              title={t('courses.stats.students')}
               value={allStudents.length}
               prefix={<TeamOutlined style={{ color: '#fa8c16' }} />}
             />
@@ -142,8 +142,8 @@ export const CoursesPage = () => {
                 <span style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600 }}>
                   <BookOutlined style={{ marginRight: 6 }} />
                   {isMobile
-                    ? (isEnglish ? 'Courses' : 'Khóa Học')
-                    : (isEnglish ? 'Course Programs Catalog' : 'Danh Mục Khóa Học')}{' '}
+                    ? t('courses.tabs.catalogShort')
+                    : t('courses.tabs.catalog')}{' '}
                   ({allCourses.length})
                 </span>
               ),
@@ -170,8 +170,8 @@ export const CoursesPage = () => {
                 <span style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600 }}>
                   <TeamOutlined style={{ marginRight: 6 }} />
                   {isMobile
-                    ? (isEnglish ? 'Classes' : 'Lớp Học')
-                    : (isEnglish ? 'Class Management & Roster' : 'Quản Lý Lớp Học & Phân Bổ')}{' '}
+                    ? t('courses.tabs.classesShort')
+                    : t('courses.tabs.classes')}{' '}
                   ({allClasses.length})
                 </span>
               ),
