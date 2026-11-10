@@ -19,12 +19,12 @@ export class PermissionService {
   };
 
   static ROLE_METADATA = {
-    admin: { color: 'red', label: 'IT Quản Trị Hệ Thống (System Admin)', shortLabel: 'IT ADMIN' },
-    director: { color: 'purple', label: 'Giám Đốc Điều Hành (Director)', shortLabel: 'DIRECTOR' },
-    academic: { color: 'cyan', label: 'Giáo Vụ Đào Tạo (Academic)', shortLabel: 'GIÁO VỤ' },
-    teacher: { color: 'blue', label: 'Giáo Viên Bản Xứ (Native Teacher)', shortLabel: 'TEACHER' },
-    accountant: { color: 'gold', label: 'Kế Toán Tài Chính (Accountant)', shortLabel: 'KẾ TOÁN' },
-    student: { color: 'green', label: 'Học Viên (Student)', shortLabel: 'HỌC VIÊN' },
+    admin: { color: 'red', label: 'IT Quản Trị Hệ Thống (System Admin)', shortLabel: 'IT ADMIN', shortLabelEn: 'IT ADMIN' },
+    director: { color: 'purple', label: 'Giám Đốc Điều Hành (Director)', shortLabel: 'DIRECTOR', shortLabelEn: 'DIRECTOR' },
+    academic: { color: 'cyan', label: 'Giáo Vụ Đào Tạo (Academic)', shortLabel: 'GIÁO VỤ', shortLabelEn: 'ACADEMIC' },
+    teacher: { color: 'blue', label: 'Giáo Viên Bản Xứ (Native Teacher)', shortLabel: 'GIÁO VIÊN', shortLabelEn: 'TEACHER' },
+    accountant: { color: 'gold', label: 'Kế Toán Tài Chính (Accountant)', shortLabel: 'KẾ TOÁN', shortLabelEn: 'ACCOUNTANT' },
+    student: { color: 'green', label: 'Học Viên (Student)', shortLabel: 'HỌC VIÊN', shortLabelEn: 'STUDENT' },
   };
 
   static canAccessModule(role, moduleKey) {
@@ -35,7 +35,7 @@ export class PermissionService {
       schedules: ['admin', 'director', 'academic', 'teacher', 'student'],
       attendance: ['admin', 'director', 'academic', 'teacher', 'student'],
       contracts: ['admin', 'director', 'academic', 'teacher', 'accountant'],
-      tuition: ['director', 'academic', 'accountant', 'student'],
+      tuition: ['admin', 'director', 'academic', 'accountant', 'student'],
       users: ['admin', 'director', 'academic'],
       profile: ['admin', 'director', 'academic', 'teacher', 'accountant', 'student'],
     };

@@ -11,6 +11,7 @@ import {
   EyeOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { formatLocalizedAgeRange, formatLocalizedDuration } from '../../../shared/utils/taxonomyUtils';
 
 const { Text } = Typography;
 
@@ -108,7 +109,7 @@ export const CurriculumLevelTable = ({
         render: (_, record) => (
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 4 }}>
-              👶 {record.ageRange}
+              👶 {formatLocalizedAgeRange(record.ageRange, isEnglish)}
             </div>
             <Tag color="cyan" style={{ fontSize: 11, fontWeight: 600, borderRadius: 4 }}>
               <AimOutlined style={{ marginRight: 4 }} />
@@ -145,7 +146,7 @@ export const CurriculumLevelTable = ({
               📚 {record.totalUnits} {t('curriculum.table.unitsCount')}
             </div>
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-              ⏱️ {record.recommendedDuration}
+              ⏱️ {formatLocalizedDuration(record.recommendedDuration, isEnglish)}
             </div>
           </div>
         ),

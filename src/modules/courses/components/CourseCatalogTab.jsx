@@ -11,6 +11,7 @@ import {
   EditOutlined,
 } from '@ant-design/icons';
 import { formatCurrency } from '../../../shared/utils/formatter';
+import { formatLocalizedAgeRange } from '../../../shared/utils/taxonomyUtils';
 import { useLanguage } from '../../../core/context/LanguageContext';
 
 const { Title, Text, Paragraph } = Typography;
@@ -209,7 +210,7 @@ export const CourseCatalogTab = ({
                   </Tag>
                   {course.targetAge && (
                     <Tag color="default" style={{ borderRadius: 4, color: '#64748b' }}>
-                      {course.targetAge}
+                      {formatLocalizedAgeRange(course.targetAge, isEnglish)}
                     </Tag>
                   )}
                 </div>

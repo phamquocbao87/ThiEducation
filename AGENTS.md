@@ -94,7 +94,19 @@ ThiEducation/
      * 🛠️ **`ADM001` — Phạm Quốc Bảo:** IT Quản Trị Hệ Thống (`phamquocbao87@gmail.com` / `0898794116`)
      * 👑 **`DIR505` — Phạm Hiếu Thi:** Giám Đốc Điều Hành & Sáng Lập (`lakvietnam@lakeducation.com` / `0908794116`)
      * 💰 **`ACC330` — Lê Thị Mỹ Dung:** Kế Toán Tài Chính (`lemydung49@gmail.com` / `0983548212`)
+     * 🎓 **`ACA545` — Ngọc Nhi & `ACA404` — Diễm Quỳnh:** Điều Phối Viên Giáo Vụ Đào Tạo
+     * 👨‍🏫 **`GV791` — Hellen:** Giáo Viên Bản Xứ (Teacher)
      * Và các Cán bộ / Giáo viên / Học viên thực tế được đăng ký mới qua form.
+   - **Quy Chuẩn Kiến Trúc Sub-Feature Service Kết Nối 100% Cloud Firestore:**
+     * **Khóa học (`courses`):** [`CourseService.js`](file:///Volumes/DATA/projects/ThiEducation/src/modules/courses/services/CourseService.js) (`getAllCourses`, `saveCourse`, `deleteCourse` trên Firestore `courses`).
+     * **Lớp học (`classes`):** [`ClassService.js`](file:///Volumes/DATA/projects/ThiEducation/src/modules/courses/services/ClassService.js) (`getAllClasses`, `saveClass`, `deleteClass` trên Firestore `classes`).
+     * **Hợp đồng Giáo viên (`contracts`):** [`TeacherContractService.js`](file:///Volumes/DATA/projects/ThiEducation/src/modules/contracts/services/TeacherContractService.js) (`getAllContracts`, `saveContract`, `deleteContract` trên Firestore `contracts`).
+     * **Bảng lương Giáo viên (`payrolls`):** [`TeacherPayrollService.js`](file:///Volumes/DATA/projects/ThiEducation/src/modules/contracts/services/TeacherPayrollService.js) (`getAllPayrolls`, `savePayroll`, `approvePayroll`, `disbursePayroll` trên Firestore `payrolls`).
+     * **Bảng lương Giáo vụ (`staffPayrolls`):** [`StaffPayrollService.js`](file:///Volumes/DATA/projects/ThiEducation/src/modules/contracts/services/StaffPayrollService.js) trích xuất động từ Cán bộ Giáo vụ thật trong Firestore `users`.
+     * **Thống kê Dashboard:** [`ExecutiveAnalyticsService.js`](file:///Volumes/DATA/projects/ThiEducation/src/modules/dashboard/services/ExecutiveAnalyticsService.js) tính toán động từ tổng số học viên, giáo viên, lớp học thực tế trong Firestore thay vì đọc số tĩnh `INITIAL_STATS`.
+     * **Dọn sạch rác `localStorage`:** Khi ứng dụng khởi chạy, tự động purge (`localStorage.removeItem`) các key rác cũ (`lak_erp_classes`, `lak_erp_timetable`, `lak_erp_courses`) để tránh tình trạng dữ liệu rác cũ (như *"Súng Bắn Ốc, Vặn Vít"*, *"erw"*, *"a223"*) bị sống lại.
+     * **Dropdown Modal liên kết danh bạ thật:** Mọi ô chọn Giáo viên / Học viên khi tạo hợp đồng hoặc phân công giảng dạy bắt buộc trích xuất từ danh bạ Firestore `allSystemUsers` (`GV791`...), tuyệt đối cấm ô input nhập text tự do hoặc gán giáo viên demo cũ.
+     * **Kiểm toán Tự Động Playwright E2E Khẳng Định Dữ Liệu Thật (`Automated Real-DB Assertion`):** Trước khi bàn giao nghiệm thu bất kỳ phân hệ nào, bắt buộc chạy kiểm thử Playwright tự động để kiểm tra: ASSERT TRUE (dữ liệu nhân sự thật hiển thị đầy đủ: `GV791 Hellen`, `ACA545 Ngọc Nhi`, `ACA404 Diễm Quỳnh`...) và ASSERT FALSE (hoàn toàn không còn xuất hiện bất kỳ nhân sự mock giả lập nào: `David Smith`, `Emma Watson`, `Trần Thu Hà`, `Nguyễn Phương Thảo`...).
 5. **Chuẩn Đa Ngôn Ngữ (`Localization / i18n` — Mặc định Tiếng Anh `en`, Thứ hai Tiếng Việt `vi`):**
    - **Tập trung hóa 100% UI Labels vào 2 File Từ Điển Độc Lập:**
      * 🇬🇧 **Tiếng Anh (Mặc định):** [`src/core/i18n/locales/en.js`](file:///Volumes/DATA/projects/ThiEducation/src/core/i18n/locales/en.js)

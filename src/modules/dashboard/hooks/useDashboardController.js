@@ -1,14 +1,42 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { message } from 'antd';
 import { useAuth } from '../../../core/context/AuthContext';
 import { ROLE_BANNERS } from '../models/dashboard.model';
 import { SystemHealthService } from '../services/SystemHealthService';
 import { ExecutiveAnalyticsService } from '../services/ExecutiveAnalyticsService';
 import { PersonalPortalService } from '../services/PersonalPortalService';
+import { CourseService } from '../../courses/services/CourseService';
+import { ClassService } from '../../courses/services/ClassService';
 
 export const useDashboardController = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, allSystemUsers } = useAuth();
   const role = currentUser.role;
+
+  const [courses, setCourses] = useState([]);
+  const [classes, setClasses] = useState([]);
+
+  // Tải dữ liệu thực tế từ Cloud Firestore: Khóa học & Lớp học
+  useEffect(() => {
+    let isMounted = true;
+    const fetchRealDbData = async () => {
+      try {
+        const [cList, clsList] = await Promise.all([
+          CourseService.getAllCourses(),
+          ClassService.getAllClasses(),
+        ]);
+        if (isMounted) {
+          setCourses(cList);
+          setClasses(clsList);
+        }
+      } catch (err) {
+        console.error('Error fetching dashboard real DB data:', err);
+      }
+    };
+    fetchRealDbData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const [healthData, setHealthData] = useState(() =>
     SystemHealthService.getSystemHealthOverview()
@@ -20,9 +48,15 @@ export const useDashboardController = () => {
 
   const bannerInfo = ROLE_BANNERS[role] || ROLE_BANNERS.director;
 
+  // Tính toán số liệu thống kê Dashboard 100% từ dữ liệu thực tế Firestore
   const executiveSummary = useMemo(
-    () => ExecutiveAnalyticsService.getExecutiveSummary(),
-    []
+    () =>
+      ExecutiveAnalyticsService.getExecutiveSummary({
+        users: allSystemUsers,
+        courses,
+        classes,
+      }),
+    [allSystemUsers, courses, classes]
   );
 
   const teacherWorkspaceData = useMemo(
@@ -89,3 +123,5 @@ export const useDashboardController = () => {
     handleCutoffYearToDrive,
   };
 };
+
+export default useDashboardController;

@@ -16,6 +16,7 @@ export const ContractPayrollPage = () => {
   const { t, translateLabel } = useLanguage();
   const {
     currentUser,
+    realTeachers,
     scopedContracts,
     scopedPayrolls,
     staffPayrolls,
@@ -40,7 +41,7 @@ export const ContractPayrollPage = () => {
       label: (
         <Space>
           <DollarOutlined />
-          <span>{`${t('pages.tabTeacherPayrolls')} (${scopedPayrolls.length})`}</span>
+          <span>{`${t('contracts.tabs.teacherPayrolls')} (${scopedPayrolls.length})`}</span>
         </Space>
       ),
       children: (
@@ -59,7 +60,7 @@ export const ContractPayrollPage = () => {
       label: (
         <Space>
           <FileTextOutlined />
-          <span>{`${t('pages.tabTeacherContracts')} (${scopedContracts.length})`}</span>
+          <span>{`${t('contracts.tabs.teacherContracts')} (${scopedContracts.length})`}</span>
         </Space>
       ),
       children: <TeacherContractTable contracts={scopedContracts} />,
@@ -72,7 +73,7 @@ export const ContractPayrollPage = () => {
       label: (
         <Space>
           <TeamOutlined />
-          <span>{`${t('pages.tabStaffPayrolls')} (${staffPayrolls.length})`}</span>
+          <span>{`${t('contracts.tabs.staffPayrolls')} (${staffPayrolls.length})`}</span>
         </Space>
       ),
       children: (
@@ -92,14 +93,19 @@ export const ContractPayrollPage = () => {
       <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
         <Col>
           <Title level={3} style={{ margin: 0 }}>
-            {t('pages.contractsTitle')} ({translateLabel(currentUser.roleLabel)})
+            {t('contracts.pageTitle')} ({translateLabel(currentUser.roleLabel)})
           </Title>
           <Text type="secondary">{t('pages.contractsSub')}</Text>
         </Col>
         {permissions.canManageContracts && (
           <Col>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsContractModalOpen(true)}>
-              {t('pages.createContractBtn')}
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setIsContractModalOpen(true)}
+              style={{ borderRadius: 8 }}
+            >
+              {t('contracts.btnCreateContract')}
             </Button>
           </Col>
         )}
@@ -118,6 +124,7 @@ export const ContractPayrollPage = () => {
         open={isContractModalOpen}
         onCancel={() => setIsContractModalOpen(false)}
         onSubmit={handleCreateContract}
+        realTeachers={realTeachers}
       />
 
       <PaySlipModal
@@ -129,3 +136,5 @@ export const ContractPayrollPage = () => {
     </div>
   );
 };
+
+export default ContractPayrollPage;

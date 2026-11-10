@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Row, Col, Card, Statistic, Tag, Progress, Table, Button, Space, Typography } from 'antd';
 import {
   TeamOutlined,
@@ -10,79 +10,197 @@ import {
   UserSwitchOutlined,
 } from '@ant-design/icons';
 import { formatCurrency } from '../../../shared/utils/formatter';
+import { useLanguage } from '../../../core/context/LanguageContext';
 
 const { Text } = Typography;
 
 export const ExecutiveOverviewPanel = ({ summary, role, setActiveTab }) => {
-  const courseColumns = [
-    { title: 'Mã KH', dataIndex: 'id', key: 'id', render: (v) => <Text strong>{v}</Text> },
-    { title: 'Tên Khóa Học', dataIndex: 'name', key: 'name', render: (v) => <Text strong style={{ color: '#1890ff' }}>{v}</Text> },
-    { title: 'Trình Độ', dataIndex: 'level', key: 'level', render: (v) => <Tag color="blue">{v}</Tag> },
-    { title: 'Số Lớp Đang Mở', dataIndex: 'activeClasses', key: 'activeClasses', render: (v) => `${v} lớp` },
-    { title: 'Học Viên', dataIndex: 'enrolledStudents', key: 'enrolledStudents', render: (v) => <Tag color="purple">{v} HV</Tag> },
-    { title: 'Học Phí / Tháng', dataIndex: 'feePerMonth', key: 'feePerMonth', render: (v) => formatCurrency(v) },
-  ];
+  const { isEnglish, language, t } = useLanguage();
 
-  const staffColumns = [
-    { title: 'Mã NV', dataIndex: 'id', key: 'id' },
-    { title: 'Nhân Viên Giáo Vụ', dataIndex: 'name', key: 'name', render: (v) => <Text strong>{v}</Text> },
-    { title: 'Vị Trí Phụ Trách', dataIndex: 'position', key: 'position' },
-    { title: 'Lớp Quản Lý', dataIndex: 'managedClasses', key: 'managedClasses', render: (v) => <Tag color="cyan">{v} lớp</Tag> },
-    { title: 'Học Viên Phụ Trách', dataIndex: 'managedStudents', key: 'managedStudents', render: (v) => `${v} HV` },
-    { title: 'Tỷ Lệ Hoàn Thành KPI', dataIndex: 'completedTasks', key: 'completedTasks', render: (v) => <Progress percent={v} size="small" /> },
-    { title: 'Tổng Lương Tháng', dataIndex: 'totalSalary', key: 'totalSalary', render: (v) => <Text strong style={{ color: '#722ed1' }}>{formatCurrency(v)}</Text> },
-  ];
+  const courseColumns = useMemo(
+    () => [
+      {
+        title: t('dashboard.executive.tableCourseCode'),
+        dataIndex: 'id',
+        key: 'id',
+        render: (v) => <Text strong>{v}</Text>,
+      },
+      {
+        title: t('dashboard.executive.tableCourseName'),
+        dataIndex: 'name',
+        key: 'name',
+        render: (v) => (
+          <Text strong style={{ color: '#1890ff' }}>
+            {v}
+          </Text>
+        ),
+      },
+      {
+        title: t('dashboard.executive.tableLevel'),
+        dataIndex: 'level',
+        key: 'level',
+        render: (v) => <Tag color="blue">{v}</Tag>,
+      },
+      {
+        title: t('dashboard.executive.tableActiveClasses'),
+        dataIndex: 'activeClasses',
+        key: 'activeClasses',
+        render: (v) => `${v} ${t('dashboard.executive.unitClasses')}`,
+      },
+      {
+        title: t('dashboard.executive.tableEnrolledStudents'),
+        dataIndex: 'enrolledStudents',
+        key: 'enrolledStudents',
+        render: (v) => (
+          <Tag color="purple">
+            {v} {t('dashboard.executive.unitStudents')}
+          </Tag>
+        ),
+      },
+      {
+        title: t('dashboard.executive.tableFeePerMonth'),
+        dataIndex: 'feePerMonth',
+        key: 'feePerMonth',
+        render: (v) => formatCurrency(v),
+      },
+    ],
+    [isEnglish, language, t]
+  );
+
+  const staffColumns = useMemo(
+    () => [
+      {
+        title: t('dashboard.executive.tableStaffCode'),
+        dataIndex: 'id',
+        key: 'id',
+      },
+      {
+        title: t('dashboard.executive.tableStaffName'),
+        dataIndex: 'name',
+        key: 'name',
+        render: (v) => <Text strong>{v}</Text>,
+      },
+      {
+        title: t('dashboard.executive.tableStaffPosition'),
+        dataIndex: 'position',
+        key: 'position',
+      },
+      {
+        title: t('dashboard.executive.tableManagedClasses'),
+        dataIndex: 'managedClasses',
+        key: 'managedClasses',
+        render: (v) => (
+          <Tag color="cyan">
+            {v} {t('dashboard.executive.unitClasses')}
+          </Tag>
+        ),
+      },
+      {
+        title: t('dashboard.executive.tableManagedStudents'),
+        dataIndex: 'managedStudents',
+        key: 'managedStudents',
+        render: (v) => `${v} ${t('dashboard.executive.unitStudents')}`,
+      },
+      {
+        title: t('dashboard.executive.tableKpiRate'),
+        dataIndex: 'completedTasks',
+        key: 'completedTasks',
+        render: (v) => <Progress percent={v} size="small" />,
+      },
+      {
+        title: t('dashboard.executive.tableTotalSalary'),
+        dataIndex: 'totalSalary',
+        key: 'totalSalary',
+        render: (v) => (
+          <Text strong style={{ color: '#722ed1' }}>
+            {formatCurrency(v)}
+          </Text>
+        ),
+      },
+    ],
+    [isEnglish, language, t]
+  );
 
   return (
     <div>
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card hoverable style={{ borderColor: '#1890ff', borderRadius: 8 }} onClick={() => setActiveTab('attendance')}>
+          <Card
+            hoverable
+            style={{ borderColor: '#1890ff', borderRadius: 8 }}
+            onClick={() => setActiveTab('attendance')}
+          >
             <Statistic
-              title="Tổng Học Viên & Lớp Học"
+              title={t('dashboard.executive.statsStudentsClasses')}
               value={summary.totalStudents}
               prefix={<TeamOutlined style={{ color: '#1890ff' }} />}
-              suffix="HV"
+              suffix={t('dashboard.executive.unitStudents')}
               styles={{ content: { color: '#1890ff', fontWeight: 'bold' } }}
             />
-            <Text type="secondary" style={{ fontSize: 12 }}>{summary.totalClasses} lớp thuộc {summary.totalCourses} khóa học</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {summary.totalClasses} {t('dashboard.executive.unitClasses')}{' '}
+              {isEnglish
+                ? `in ${summary.totalCourses} courses`
+                : `thuộc ${summary.totalCourses} khóa học`}
+            </Text>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card hoverable style={{ borderColor: '#52c41a', borderRadius: 8 }} onClick={() => setActiveTab('contracts')}>
+          <Card
+            hoverable
+            style={{ borderColor: '#52c41a', borderRadius: 8 }}
+            onClick={() => setActiveTab('contracts')}
+          >
             <Statistic
-              title="Đội Ngũ GV & Giáo Vụ"
+              title={t('dashboard.executive.statsTeachersStaff')}
               value={summary.totalTeachers}
               prefix={<GlobalOutlined style={{ color: '#52c41a' }} />}
-              suffix="GV Native"
+              suffix={t('dashboard.executive.nativeTeachersSuffix')}
               styles={{ content: { color: '#52c41a', fontWeight: 'bold' } }}
             />
-            <Text type="secondary" style={{ fontSize: 12 }}>+ {summary.totalAcademicStaff} Chuyên viên Giáo vụ</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              + {summary.totalAcademicStaff}{' '}
+              {isEnglish ? 'Academic Specialists' : 'Chuyên viên Giáo vụ'}
+            </Text>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card hoverable style={{ borderColor: '#722ed1', borderRadius: 8 }} onClick={() => setActiveTab('tuition')}>
+          <Card
+            hoverable
+            style={{ borderColor: '#722ed1', borderRadius: 8 }}
+            onClick={() => setActiveTab('tuition')}
+          >
             <Statistic
-              title="Thu Học Phí Tháng Này"
+              title={t('dashboard.executive.statsTuitionMonth')}
               value={summary.monthlyTuitionCollected}
               formatter={(val) => formatCurrency(val)}
               prefix={<DollarOutlined style={{ color: '#722ed1' }} />}
               styles={{ content: { color: '#722ed1', fontWeight: 'bold', fontSize: 19 } }}
             />
-            <Progress percent={summary.tuitionCollectionRate} size="small" strokeColor="#722ed1" />
+            <Progress
+              percent={summary.tuitionCollectionRate}
+              size="small"
+              strokeColor="#722ed1"
+            />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card hoverable style={{ borderColor: '#fa8c16', borderRadius: 8 }} onClick={() => setActiveTab('contracts')}>
+          <Card
+            hoverable
+            style={{ borderColor: '#fa8c16', borderRadius: 8 }}
+            onClick={() => setActiveTab('contracts')}
+          >
             <Statistic
-              title="Tổng Chi Lương (GV & Giáo Vụ)"
+              title={t('dashboard.executive.statsTotalSalary')}
               value={summary.monthlyPayrollTotal + summary.monthlyStaffPayrollTotal}
               formatter={(val) => formatCurrency(val)}
               prefix={<FileDoneOutlined style={{ color: '#fa8c16' }} />}
               styles={{ content: { color: '#fa8c16', fontWeight: 'bold', fontSize: 19 } }}
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
-              GV: {formatCurrency(summary.monthlyPayrollTotal)} | Giáo vụ: {formatCurrency(summary.monthlyStaffPayrollTotal)}
+              {isEnglish ? 'Teachers' : 'GV'}: {formatCurrency(summary.monthlyPayrollTotal)} |{' '}
+              {isEnglish ? 'Staff' : 'Giáo vụ'}:{' '}
+              {formatCurrency(summary.monthlyStaffPayrollTotal)}
             </Text>
           </Card>
         </Col>
@@ -90,14 +208,23 @@ export const ExecutiveOverviewPanel = ({ summary, role, setActiveTab }) => {
 
       <Card
         style={{ marginTop: 20 }}
-        title={<Space><BookOutlined style={{ color: '#1890ff' }} /><Text strong>Danh Mục Khóa Học & Tình Trạng Vận Hành Các Lớp</Text></Space>}
+        title={
+          <Space>
+            <BookOutlined style={{ color: '#1890ff' }} />
+            <Text strong>{t('dashboard.executive.courseCatalogCardTitle')}</Text>
+          </Space>
+        }
         extra={
           <Space>
-            <Button size="small" icon={<CalendarOutlined />} onClick={() => setActiveTab('schedules')}>
-              Quản Lý Khóa Học & TKB
+            <Button
+              size="small"
+              icon={<CalendarOutlined />}
+              onClick={() => setActiveTab('schedules')}
+            >
+              {t('dashboard.executive.btnManageSchedules')}
             </Button>
             <Button size="small" type="primary" onClick={() => setActiveTab('attendance')}>
-              Giám Sát Lớp Học & Điểm Danh
+              {t('dashboard.executive.btnMonitorAttendance')}
             </Button>
           </Space>
         }
@@ -115,10 +242,15 @@ export const ExecutiveOverviewPanel = ({ summary, role, setActiveTab }) => {
       {(role === 'director' || role === 'accountant' || role === 'academic') && (
         <Card
           style={{ marginTop: 20 }}
-          title={<Space><UserSwitchOutlined style={{ color: '#722ed1' }} /><Text strong>Hoạt Động Vận Hành & Bảng Lương Đội Ngũ Nhân Viên Giáo Vụ</Text></Space>}
+          title={
+            <Space>
+              <UserSwitchOutlined style={{ color: '#722ed1' }} />
+              <Text strong>{t('dashboard.executive.staffPerformanceTitle')}</Text>
+            </Space>
+          }
           extra={
             <Button size="small" onClick={() => setActiveTab('contracts')}>
-              Đối Soát Lương Giáo Vụ & GV
+              {isEnglish ? 'Reconcile Staff & Teacher Payroll' : 'Đối Soát Lương Giáo Vụ & GV'}
             </Button>
           }
         >
@@ -136,3 +268,4 @@ export const ExecutiveOverviewPanel = ({ summary, role, setActiveTab }) => {
   );
 };
 
+export default ExecutiveOverviewPanel;

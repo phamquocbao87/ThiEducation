@@ -27,6 +27,7 @@ import {
 } from '@ant-design/icons';
 import { useAuth } from '../../core/context/AuthContext';
 import { useLanguage } from '../../core/context/LanguageContext';
+import { formatLocalizedAgeRange, formatLocalizedDuration } from '../../shared/utils/taxonomyUtils';
 import { PermissionService } from '../../core/services/PermissionService';
 import { CurriculumLevelService } from './services/CurriculumLevelService';
 import { LEVEL_STATUS } from './models/curriculumLevel.model';
@@ -166,7 +167,7 @@ export const CurriculumLevelViewPage = () => {
                   {isEnglish ? 'Target Age Group' : 'Độ Tuổi Khuyến Nghị'}
                 </Text>
                 <Title level={4} style={{ margin: 0, color: '#15803d' }}>
-                  {level.ageRange || (isEnglish ? 'All Ages' : 'Mọi độ tuổi')}
+                  {formatLocalizedAgeRange(level.ageRange, isEnglish)}
                 </Title>
               </div>
             </div>
@@ -298,7 +299,7 @@ export const CurriculumLevelViewPage = () => {
           <Descriptions.Item label={isEnglish ? 'Recommended Duration' : 'Thời Lượng Đào Tạo Đề Xuất'}>
             <Space size={6}>
               <CalendarOutlined style={{ color: '#0ea5e9' }} />
-              <span>{level.recommendedDuration || (isEnglish ? '9 months (72 sessions)' : '9 tháng (72 buổi)')}</span>
+              <span>{formatLocalizedDuration(level.recommendedDuration, isEnglish)}</span>
             </Space>
           </Descriptions.Item>
 

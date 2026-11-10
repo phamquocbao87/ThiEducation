@@ -1,39 +1,93 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { message } from 'antd';
 import { useAuth } from '../../../core/context/AuthContext';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { PermissionService } from '../../../core/services/PermissionService';
-import {
-  MOCK_COURSES,
-  MOCK_CLASSES,
-  MOCK_TEACHERS,
-  MOCK_STUDENTS,
-} from '../../../shared/data/mockData';
 import { CourseService } from '../services/CourseService';
 import { ClassService } from '../services/ClassService';
 
 export const useCoursesController = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, allSystemUsers } = useAuth();
   const { isEnglish } = useLanguage();
 
   const [activeTab, setActiveTab] = useState('courses');
-  const [courses, setCourses] = useState(() => {
-    try {
-      const saved = localStorage.getItem('lak_erp_courses');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+  const [courses, setCourses] = useState([]);
+  const [classes, setClasses] = useState([]);
+
+  // Lấy danh sách Giáo viên Bản Xứ thực tế từ Firestore
+  const teachers = useMemo(() => {
+    return (allSystemUsers || [])
+      .filter(
+        (u) =>
+          (u.role || '').toLowerCase() === 'teacher' &&
+          u.status !== 'deleted' &&
+          !u.isDeleted
+      )
+      .map((u) => ({
+        id: u.id || u.code,
+        name: u.name,
+        englishName: u.englishName || u.name,
+        nationality: u.nationality || 'Foreign Native',
+        email: u.email,
+        phone: u.phoneNumber || u.phone,
+        avatar: u.avatar || '',
+        ratePerSession: u.hourlyRate || 450000,
+        status: u.status || 'Active',
+      }));
+  }, [allSystemUsers]);
+
+  // Lấy danh sách Học viên thực tế từ Firestore
+  const students = useMemo(() => {
+    return (allSystemUsers || [])
+      .filter(
+        (u) =>
+          (u.role || '').toLowerCase() === 'student' &&
+          u.status !== 'deleted' &&
+          !u.isDeleted
+      )
+      .map((u) => ({
+        id: u.id || u.code,
+        name: u.name,
+        englishName: u.englishName || u.name,
+        age: u.age || 7,
+        level: u.level || 'WONDERS-G1',
+        phone: u.phoneNumber || u.phone,
+        email: u.email,
+        parentName: u.parentName || '',
+        tuitionStatus: u.tuitionStatus || 'PAID',
+        amountDue: u.amountDue || 0,
+        attendanceRate: 100,
+      }));
+  }, [allSystemUsers]);
+
+  // Đọc dữ liệu từ Cloud Firestore khi mount & Dọn dẹp cache rác cũ
+  useEffect(() => {
+    let isMounted = true;
+    const fetchData = async () => {
+      try {
+        const [cList, clsList] = await Promise.all([
+          CourseService.getAllCourses(),
+          ClassService.getAllClasses(),
+        ]);
+        if (isMounted) {
+          setCourses(cList);
+          setClasses(clsList);
+          // Dọn sạch rác dummy trong localStorage (như "Súng Bắn Ốc, Vặn Vít", "erw", "a223")
+          try {
+            localStorage.removeItem('lak_erp_classes');
+            localStorage.removeItem('lak_erp_timetable');
+            localStorage.removeItem('lak_erp_courses');
+          } catch {}
+        }
+      } catch (err) {
+        console.error('Error fetching courses/classes from Firestore:', err);
       }
-    } catch (e) {
-      console.warn('Error reading lak_erp_courses:', e);
-    }
-    return MOCK_COURSES;
-  });
-  const [classes, setClasses] = useState(() => {
-    const saved = localStorage.getItem('lak_erp_classes');
-    return saved !== null ? JSON.parse(saved) : MOCK_CLASSES;
-  });
-  const [students] = useState(MOCK_STUDENTS);
+    };
+    fetchData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Filters
   const [courseSearch, setCourseSearch] = useState('');
@@ -67,29 +121,39 @@ export const useCoursesController = () => {
     });
   }, [classes, classSearch, selectedCourseFilter, selectedTeacherFilter]);
 
-  const syncUpdatedClasses = (updatedList, targetClassId = null) => {
+  const syncUpdatedClasses = async (updatedList, targetClassId = null) => {
     setClasses(updatedList);
-    localStorage.setItem('lak_erp_classes', JSON.stringify(updatedList));
-    if (targetClassId && rosterClass?.id === targetClassId) {
+    if (targetClassId) {
       const refreshed = updatedList.find((c) => c.id === targetClassId);
-      if (refreshed) setRosterClass(refreshed);
+      if (refreshed) {
+        if (rosterClass?.id === targetClassId) setRosterClass(refreshed);
+        try {
+          await ClassService.saveClass(refreshed);
+        } catch (e) {
+          console.warn('Error saving updated class to Firestore:', e);
+        }
+      }
     }
   };
 
-  const handleCreateCourse = (courseData) => {
+  const handleCreateCourse = async (courseData) => {
     const updated = CourseService.createCourse(courseData, courses);
+    const newCourse = updated[0];
     setCourses(updated);
-    localStorage.setItem('lak_erp_courses', JSON.stringify(updated));
     setIsCourseModalOpen(false);
-    message.success(
-      isEnglish ? 'New course created successfully!' : 'Tạo khóa học mới thành công!'
-    );
+    try {
+      await CourseService.saveCourse(newCourse);
+      message.success(
+        isEnglish ? 'New course created successfully!' : 'Tạo khóa học mới thành công!'
+      );
+    } catch (err) {
+      message.error(isEnglish ? 'Failed to save course: ' + err.message : 'Lỗi lưu khóa học: ' + err.message);
+    }
   };
 
-  const handleUpdateCourse = (courseId, updatedValues) => {
+  const handleUpdateCourse = async (courseId, updatedValues) => {
     const updated = CourseService.updateCourse(courseId, updatedValues, courses);
     setCourses(updated);
-    localStorage.setItem('lak_erp_courses', JSON.stringify(updated));
 
     const updatedCourseObj = updated.find((c) => c.id === courseId);
     if (updatedCourseObj) {
@@ -100,9 +164,13 @@ export const useCoursesController = () => {
         const nextClasses = prevClasses.map((cls) =>
           cls.courseId === courseId ? { ...cls, courseName: updatedCourseObj.name } : cls
         );
-        localStorage.setItem('lak_erp_classes', JSON.stringify(nextClasses));
         return nextClasses;
       });
+      try {
+        await CourseService.saveCourse(updatedCourseObj);
+      } catch (err) {
+        console.warn('Error updating course in Firestore:', err);
+      }
     }
 
     setEditingCourse(null);
@@ -111,14 +179,15 @@ export const useCoursesController = () => {
     );
   };
 
-  const handleCreateClass = (classData) => {
+  const handleCreateClass = async (classData) => {
     const updated = ClassService.createClass(
       classData,
       classes,
-      MOCK_TEACHERS,
+      teachers,
       courses
     );
-    syncUpdatedClasses(updated);
+    const newClass = updated[0];
+    setClasses(updated);
 
     setCourses((prev) => {
       const nextCourses = prev.map((c) =>
@@ -126,51 +195,73 @@ export const useCoursesController = () => {
           ? { ...c, activeClasses: (c.activeClasses || 0) + 1 }
           : c
       );
-      localStorage.setItem('lak_erp_courses', JSON.stringify(nextCourses));
       return nextCourses;
     });
 
     setIsClassModalOpen(false);
     setEditingClass(null);
-    message.success(
-      isEnglish
-        ? 'New class created successfully!'
-        : 'Tạo lớp học mới thành công!'
-    );
+
+    try {
+      await ClassService.saveClass(newClass);
+      message.success(
+        isEnglish
+          ? 'New class created successfully!'
+          : 'Tạo lớp học mới thành công!'
+      );
+    } catch (err) {
+      message.error(isEnglish ? 'Failed to save class: ' + err.message : 'Lỗi lưu lớp học: ' + err.message);
+    }
   };
 
-  const handleUpdateClass = (classId, updatedValues) => {
+  const handleUpdateClass = async (classId, updatedValues) => {
     const updated = ClassService.updateClass(
       classId,
       updatedValues,
       classes,
-      MOCK_TEACHERS,
+      teachers,
       courses
     );
-    syncUpdatedClasses(updated, classId);
+    const updatedClassObj = updated.find((c) => c.id === classId);
+    setClasses(updated);
+    if (updatedClassObj && rosterClass?.id === classId) {
+      setRosterClass(updatedClassObj);
+    }
 
     setEditingClass(null);
     setIsClassModalOpen(false);
-    message.success(
-      isEnglish ? 'Class information updated successfully!' : 'Cập nhật thông tin lớp học thành công!'
-    );
+
+    try {
+      if (updatedClassObj) {
+        await ClassService.saveClass(updatedClassObj);
+      }
+      message.success(
+        isEnglish ? 'Class information updated successfully!' : 'Cập nhật thông tin lớp học thành công!'
+      );
+    } catch (err) {
+      message.error(isEnglish ? 'Failed to update class: ' + err.message : 'Lỗi cập nhật lớp: ' + err.message);
+    }
   };
 
   /**
    * 1. Giáo viên tự đăng ký nhận dạy lớp trống GV (Chờ Giáo vụ duyệt)
    */
-  const handleRequestTeachClass = (classId, customTeacher = null) => {
+  const handleRequestTeachClass = async (classId, customTeacher = null) => {
     const teacherActor =
       customTeacher ||
-      MOCK_TEACHERS.find((t) => t.id === currentUser?.id) ||
-      MOCK_TEACHERS[0];
+      teachers.find((t) => t.id === currentUser?.id) ||
+      teachers[0];
+
+    if (!teacherActor) {
+      message.error(isEnglish ? 'No teacher profile found!' : 'Không tìm thấy hồ sơ giáo viên!');
+      return;
+    }
 
     const { updatedClasses, conflicts } = ClassService.requestTeachClass(
       classId,
       teacherActor,
       classes
     );
-    syncUpdatedClasses(updatedClasses, classId);
+    await syncUpdatedClasses(updatedClasses, classId);
 
     if (conflicts.length > 0) {
       message.warning(
@@ -181,60 +272,58 @@ export const useCoursesController = () => {
     } else {
       message.success(
         isEnglish
-          ? 'Teaching registration submitted! Waiting for Academic Coordinator approval.'
-          : 'Đã gửi đăng ký nhận dạy lớp thành công! Vui lòng chờ Giáo vụ phê duyệt.'
+          ? 'Teaching request submitted! Waiting for Academic approval.'
+          : 'Đã gửi yêu cầu đăng ký dạy lớp! Vui lòng chờ Giáo vụ phê duyệt.'
       );
     }
   };
 
   /**
-   * 2. Giáo vụ duyệt Giáo viên nhận lớp
+   * 2. Giáo vụ phê duyệt yêu cầu nhận lớp của Giáo viên
    */
-  const handleApproveTeacherRequest = (classId, teacherId) => {
-    const updated = ClassService.approveTeacherRequest(
-      classId,
-      teacherId,
-      classes,
-      MOCK_TEACHERS
-    );
-    syncUpdatedClasses(updated, classId);
+  const handleApproveTeacherRequest = async (classId, teacherId) => {
+    const updated = ClassService.approveTeacherRequest(classId, teacherId, classes);
+    await syncUpdatedClasses(updated, classId);
     message.success(
       isEnglish
-        ? 'Approved teacher assignment for this class!'
-        : 'Đã phê duyệt phân công Giáo viên dạy lớp thành công!'
+        ? 'Approved teacher assignment to class!'
+        : 'Đã phê duyệt Giáo viên vào giảng dạy lớp!'
     );
   };
 
   /**
-   * 3. Giáo vụ từ chối Giáo viên nhận lớp
+   * 3. Giáo vụ từ chối yêu cầu nhận lớp của Giáo viên
    */
-  const handleRejectTeacherRequest = (classId, teacherId) => {
+  const handleRejectTeacherRequest = async (classId, teacherId) => {
     const updated = ClassService.rejectTeacherRequest(classId, teacherId, classes);
-    syncUpdatedClasses(updated, classId);
+    await syncUpdatedClasses(updated, classId);
     message.info(
       isEnglish
-        ? 'Declined teacher registration request.'
-        : 'Đã từ chối yêu cầu đăng ký dạy của giáo viên.'
+        ? 'Declined teacher request for this class.'
+        : 'Đã từ chối yêu cầu nhận dạy của giáo viên.'
     );
   };
 
   /**
-   * 4. Học viên tự đăng ký tham gia lớp học (Chờ Giáo vụ duyệt)
+   * 4. Học viên tự đăng ký ghi danh vào Lớp học (Chờ Giáo vụ duyệt)
    */
-  const handleRequestEnrollClass = (classId, customStudent = null) => {
-    const targetCls = classes.find((c) => c.id === classId);
+  const handleRequestEnrollClass = async (classId, customStudent = null) => {
     const studentActor =
       customStudent ||
       students.find((s) => s.id === currentUser?.id) ||
-      students.find((s) => !(targetCls?.studentIds || []).includes(s.id)) ||
       students[0];
+
+    if (!studentActor) {
+      message.error(isEnglish ? 'No student profile found!' : 'Không tìm thấy hồ sơ học viên!');
+      return;
+    }
 
     const { updatedClasses, conflicts } = ClassService.requestEnrollClass(
       classId,
       studentActor,
       classes
     );
-    syncUpdatedClasses(updatedClasses, classId);
+    await syncUpdatedClasses(updatedClasses, classId);
 
     if (conflicts.length > 0) {
       message.warning(
@@ -254,9 +343,9 @@ export const useCoursesController = () => {
   /**
    * 5. Giáo vụ duyệt Học viên vào lớp
    */
-  const handleApproveStudentRequest = (classId, studentId) => {
+  const handleApproveStudentRequest = async (classId, studentId) => {
     const updated = ClassService.approveStudentRequest(classId, studentId, classes);
-    syncUpdatedClasses(updated, classId);
+    await syncUpdatedClasses(updated, classId);
     message.success(
       isEnglish
         ? 'Approved student enrollment into class roster!'
@@ -267,9 +356,9 @@ export const useCoursesController = () => {
   /**
    * 6. Giáo vụ từ chối yêu cầu đăng ký lớp của Học viên
    */
-  const handleRejectStudentRequest = (classId, studentId) => {
+  const handleRejectStudentRequest = async (classId, studentId) => {
     const updated = ClassService.rejectStudentRequest(classId, studentId, classes);
-    syncUpdatedClasses(updated, classId);
+    await syncUpdatedClasses(updated, classId);
     message.info(
       isEnglish
         ? 'Declined student enrollment request.'
@@ -277,36 +366,48 @@ export const useCoursesController = () => {
     );
   };
 
-  const handleDeleteCourse = (courseId) => {
+  const handleDeleteCourse = async (courseId) => {
     const updated = courses.filter((c) => c.id !== courseId);
     setCourses(updated);
-    localStorage.setItem('lak_erp_courses', JSON.stringify(updated));
     if (viewingCourse?.id === courseId) setViewingCourse(null);
     if (editingCourse?.id === courseId) setEditingCourse(null);
-    message.success(
-      isEnglish ? 'Course deleted successfully!' : 'Đã xóa khóa học thành công!'
-    );
+    try {
+      await CourseService.deleteCourse(courseId);
+      message.success(
+        isEnglish ? 'Course deleted successfully!' : 'Đã xóa khóa học thành công!'
+      );
+    } catch (err) {
+      message.error(isEnglish ? 'Failed to delete course: ' + err.message : 'Lỗi xóa khóa học: ' + err.message);
+    }
   };
 
-  const handleDeleteClass = (classId) => {
+  const handleDeleteClass = async (classId) => {
     const updated = classes.filter((c) => c.id !== classId);
-    syncUpdatedClasses(updated);
+    setClasses(updated);
     if (rosterClass?.id === classId) setRosterClass(null);
     if (editingClass?.id === classId) setEditingClass(null);
-    message.success(
-      isEnglish ? 'Class deleted successfully!' : 'Đã xóa lớp học thành công!'
-    );
+    try {
+      await ClassService.deleteClass(classId);
+      message.success(
+        isEnglish ? 'Class deleted successfully!' : 'Đã xóa lớp học thành công!'
+      );
+    } catch (err) {
+      message.error(isEnglish ? 'Failed to delete class: ' + err.message : 'Lỗi xóa lớp: ' + err.message);
+    }
   };
 
-  const handleClearAllData = () => {
+  const handleClearAllData = async () => {
     setCourses([]);
     setClasses([]);
-    localStorage.removeItem('lak_erp_courses');
-    localStorage.removeItem('lak_erp_classes');
+    try {
+      localStorage.removeItem('lak_erp_courses');
+      localStorage.removeItem('lak_erp_classes');
+      localStorage.removeItem('lak_erp_timetable');
+    } catch {}
     message.success(
       isEnglish
-        ? 'All course and class data cleared!'
-        : 'Đã xóa sạch toàn bộ dữ liệu khóa học và lớp học!'
+        ? 'All course and class local cache cleared!'
+        : 'Đã xóa sạch bộ nhớ tạm khóa học và lớp học!'
     );
   };
 
@@ -319,7 +420,7 @@ export const useCoursesController = () => {
     allCourses: courses,
     classes: filteredClasses,
     allClasses: classes,
-    teachers: MOCK_TEACHERS,
+    teachers,
     allStudents: students,
     courseSearch,
     setCourseSearch,

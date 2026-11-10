@@ -10,6 +10,7 @@ import {
   EyeOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { formatLocalizedAgeRange, formatLocalizedDuration } from '../../../shared/utils/taxonomyUtils';
 
 const { Text, Paragraph } = Typography;
 
@@ -100,7 +101,7 @@ export const CurriculumLevelCardList = ({
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
               <Tag color="purple" style={{ fontSize: 11, borderRadius: 4, margin: 0 }}>
-                👶 {item.ageRange}
+                👶 {formatLocalizedAgeRange(item.ageRange, isEnglish)}
               </Tag>
               <Tag color="cyan" style={{ fontSize: 11, fontWeight: 600, borderRadius: 4, margin: 0 }}>
                 <AimOutlined style={{ marginRight: 3 }} />
@@ -131,7 +132,7 @@ export const CurriculumLevelCardList = ({
               }}
             >
               <Text type="secondary" style={{ fontSize: 11 }}>
-                ⏱️ {item.recommendedDuration}
+                ⏱️ {formatLocalizedDuration(item.recommendedDuration, isEnglish)}
               </Text>
 
               <Space size={6}>

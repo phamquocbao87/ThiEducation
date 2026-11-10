@@ -57,20 +57,11 @@ export const CourseCreationPage = () => {
     }
   }, []);
 
-  const handleFinish = (values) => {
+  const handleFinish = async (values) => {
     setSaving(true);
     try {
-      // 1. Lấy danh sách khóa học hiện có từ localStorage
-      const savedCourses = localStorage.getItem('lak_erp_courses');
-      let currentCourses = MOCK_COURSES;
-      if (savedCourses) {
-        try {
-          const parsed = JSON.parse(savedCourses);
-          if (Array.isArray(parsed) && parsed.length > 0) currentCourses = parsed;
-        } catch {
-          // fallback to MOCK_COURSES
-        }
-      }
+      // 1. Lấy danh sách khóa học thực tế từ Cloud Firestore
+      const currentCourses = await CourseService.getAllCourses();
 
       // 2. Tạo đối tượng khóa học mới theo chuẩn đào tạo Tiếng Anh LAK Education
       const durationMonths = Number(values.durationMonths) || 3;
@@ -98,9 +89,8 @@ export const CourseCreationPage = () => {
         createdAt: new Date().toISOString(),
       };
 
-      // 3. Cập nhật và lưu bền vững vào localStorage
-      const updatedList = [newCourseRecord, ...currentCourses];
-      localStorage.setItem('lak_erp_courses', JSON.stringify(updatedList));
+      // 3. Lưu trực tiếp vào Cloud Firestore collection 'courses'
+      await CourseService.saveCourse(newCourseRecord);
 
       message.success(isEnglish ? 'Course created and published successfully!' : 'Đã khởi tạo và xuất bản khóa học mới thành công!');
       navigate('/courses-classes');

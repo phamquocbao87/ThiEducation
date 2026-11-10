@@ -480,7 +480,9 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
           >
             <div style={{ padding: '14px 20px', borderBottom: '1px solid #f0f0f0' }}>
               <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
-                {isEnglish ? 'WORKSPACE MENU FOR' : 'MENU CÔNG VIỆC CỦA'} {currentRoleMeta.shortLabel} ({currentUser.id})
+                {isEnglish ? 'WORKSPACE MENU FOR' : 'MENU CÔNG VIỆC CỦA'}{' '}
+                {isEnglish ? (currentRoleMeta.shortLabelEn || currentRoleMeta.shortLabel) : currentRoleMeta.shortLabel}{' '}
+                ({currentUser.id || currentUser.code})
               </Text>
             </div>
             <Menu

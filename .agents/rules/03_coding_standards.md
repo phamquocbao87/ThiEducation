@@ -192,3 +192,21 @@
 
 1. **Tuyệt đối không tự ý `git commit` hoặc `git push`** khi Sếp Bảo chưa yêu cầu rõ ràng.
 2. Sau mỗi lần chỉnh sửa code, chỉ chạy `npm run build` để kiểm tra tính toàn vẹn của cả 2 bản build (`dist/landing` và `dist/erp`), báo cáo kết quả và chờ Sếp Bảo kiểm tra trước khi commit/push.
+
+---
+
+## 6. Kỷ Luật Vận Hành 100% Dữ Liệu Cloud Firestore Thực Tế & Khai Tử Toàn Bộ Mock Data (`Zero-Mock & Pure Real Database Invariant`)
+
+1. **Tuyệt đối cấm sử dụng fallback mock data** (`MOCK_COURSES`, `MOCK_CLASSES`, `MOCK_TEACHERS`, `MOCK_STUDENTS`, `MOCK_CONTRACTS`, `MOCK_PAYROLLS`, `MOCK_ACADEMIC_STAFF`, `INITIAL_STATS`...). Khai tử toàn bộ tài khoản demo cũ (`GV001..GV007`, `ACA001..ACA003`).
+2. **Tuyệt đối cấm dùng `localStorage` làm nguồn dữ liệu chính**. Tự động purge rác cache cũ (`lak_erp_classes`, `lak_erp_timetable`, `lak_erp_courses`) khi khởi chạy.
+3. **Mỗi Sub-Feature Class kết nối trực tiếp 1 Firestore Collection**:
+   - `CourseService` $\rightarrow$ `courses`
+   - `ClassService` $\rightarrow$ `classes`
+   - `TeacherContractService` $\rightarrow$ `contracts`
+   - `TeacherPayrollService` $\rightarrow$ `payrolls`
+   - `StaffPayrollService` $\rightarrow$ trích xuất động từ Cán bộ Giáo vụ thật trong `users` (`role === 'academic'`: `ACA545` Ngọc Nhi, `ACA404` Diễm Quỳnh...)
+   - `ExecutiveAnalyticsService` $\rightarrow$ tính toán thống kê động từ dữ liệu thực tế.
+4. **Dropdown Modal tạo mới liên kết danh bạ thật**: Mọi ô chọn Giáo viên / Học viên bắt buộc dùng Select Dropdown liên kết với Firestore `allSystemUsers` (`GV791`...), tuyệt đối cấm nhập text tự do.
+5. **Dữ liệu rỗng hiển thị Empty State chuẩn mực**: Khi Firestore chưa có bản ghi, hiển thị Empty State trang nhã kèm nút tạo mới, tuyệt đối không bơm mock data lấp liếm.
+6. **Kiểm toán Tự Động Playwright E2E Khẳng Định Dữ Liệu Thật (`Automated Real-DB Assertion`)**: Trước khi bàn giao nghiệm thu phân hệ cho Sếp Bảo, bắt buộc chạy kiểm thử Playwright tự động để kiểm tra: ASSERT TRUE (dữ liệu nhân sự thật hiển thị đầy đủ: `GV791 Hellen`, `ACA545 Ngọc Nhi`, `ACA404 Diễm Quỳnh`...) và ASSERT FALSE (hoàn toàn không còn xuất hiện bất kỳ nhân sự mock giả lập nào: `David Smith`, `Emma Watson`, `Trần Thu Hà`, `Nguyễn Phương Thảo`...).
+

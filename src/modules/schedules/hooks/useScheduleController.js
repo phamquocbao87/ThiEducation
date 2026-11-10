@@ -1,59 +1,81 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { message } from 'antd';
 import { useAuth } from '../../../core/context/AuthContext';
+import { useLanguage } from '../../../core/context/LanguageContext';
 import { PermissionService } from '../../../core/services/PermissionService';
-import {
-  MOCK_TIMETABLE,
-  MOCK_TEACHERS,
-  MOCK_COURSES,
-  MOCK_CLASSES,
-} from '../../../shared/data/mockData';
-import { CourseCatalogService } from '../services/CourseCatalogService';
+import { CourseService } from '../../courses/services/CourseService';
+import { ClassService } from '../../courses/services/ClassService';
 import { TimetableSlotService } from '../services/TimetableSlotService';
 import { TeacherCheckInService } from '../services/TeacherCheckInService';
 
 export const useScheduleController = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, allSystemUsers } = useAuth();
+  const { isEnglish } = useLanguage();
   const role = currentUser.role;
 
-  // Đọc danh sách lớp học thực tế từ hệ thống (localStorage hoặc MOCK_CLASSES)
-  const systemClasses = useMemo(() => {
-    try {
-      const saved = localStorage.getItem('lak_erp_classes');
-      return saved !== null ? JSON.parse(saved) : MOCK_CLASSES;
-    } catch {
-      return MOCK_CLASSES;
-    }
-  }, []);
+  const [systemClasses, setSystemClasses] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [timetable, setTimetable] = useState([]);
 
-  const [courses, setCourses] = useState(MOCK_COURSES);
+  // Lấy danh sách Giáo viên Bản Xứ thực tế từ Firestore
+  const teachers = useMemo(() => {
+    return (allSystemUsers || [])
+      .filter(
+        (u) =>
+          (u.role || '').toLowerCase() === 'teacher' &&
+          u.status !== 'deleted' &&
+          !u.isDeleted
+      )
+      .map((u) => ({
+        id: u.id || u.code,
+        name: u.name,
+        englishName: u.englishName || u.name,
+        nationality: u.nationality || 'Foreign Native',
+        email: u.email,
+        phone: u.phoneNumber || u.phone,
+        avatar: u.avatar || '',
+        ratePerSession: u.hourlyRate || 450000,
+        status: u.status || 'Active',
+      }));
+  }, [allSystemUsers]);
 
-  // Nếu hệ thống không có lớp học nào -> Thời khóa biểu phải là rỗng []
-  const [timetable, setTimetable] = useState(() => {
-    if (!systemClasses || systemClasses.length === 0) {
+  // Đọc danh sách lớp học và khóa học trực tiếp từ Cloud Firestore
+  useEffect(() => {
+    let isMounted = true;
+    const fetchSchedulesData = async () => {
       try {
-        localStorage.removeItem('lak_erp_timetable');
-      } catch {}
-      return [];
-    }
+        const [cList, clsList] = await Promise.all([
+          CourseService.getAllCourses(),
+          ClassService.getAllClasses(),
+        ]);
+        if (isMounted) {
+          setCourses(cList);
+          setSystemClasses(clsList);
 
-    try {
-      const saved = localStorage.getItem('lak_erp_timetable');
-      if (saved !== null) {
-        const parsed = JSON.parse(saved);
-        // Lọc bỏ những ca học thuộc các lớp không còn tồn tại
-        const validSlots = parsed.filter((slot) =>
-          systemClasses.some((c) => c.id === slot.classId)
-        );
-        return validSlots;
+          // Xóa triệt để các ca học rác cũ lưu trong localStorage ("Súng Bắn Ốc, Vặn Vít", "erw", "a223")
+          try {
+            localStorage.removeItem('lak_erp_timetable');
+            localStorage.removeItem('lak_erp_classes');
+          } catch {}
+
+          // Sinh thời khóa biểu chuẩn từ danh sách lớp học thực tế trong Firestore
+          if (clsList && clsList.length > 0) {
+            const generatedSlots = TimetableSlotService.generateSlotsFromClasses(clsList);
+            setTimetable(generatedSlots);
+          } else {
+            setTimetable([]);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching schedules from Firestore:', err);
       }
-    } catch {
-      // ignore
-    }
+    };
 
-    // Tự động sinh từ các lớp học thực tế đang có trong hệ thống
-    return TimetableSlotService.generateSlotsFromClasses(systemClasses);
-  });
+    fetchSchedulesData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const [selectedDayFilter, setSelectedDayFilter] = useState('ALL');
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -70,34 +92,39 @@ export const useScheduleController = () => {
     showCourseCatalog: ['director', 'academic', 'admin'].includes(role),
   };
 
-  const handleCreateCourse = (values) => {
-    setCourses((prev) => CourseCatalogService.createCourse(prev, values));
+  const handleCreateCourse = async (values) => {
+    const updated = CourseService.createCourse(values, courses);
+    const newCourse = updated[0];
+    setCourses(updated);
     setIsCourseModalOpen(false);
-    message.success('Đã tạo khóa học mới thành công!');
+    try {
+      await CourseService.saveCourse(newCourse);
+      message.success(isEnglish ? 'New course created successfully!' : 'Đã tạo khóa học mới thành công!');
+    } catch (err) {
+      message.error(isEnglish ? 'Failed to save course: ' + err.message : 'Lỗi lưu khóa học: ' + err.message);
+    }
   };
 
   const handleAddScheduleSlot = (values) => {
-    const next = TimetableSlotService.createScheduleSlot(timetable, values, MOCK_TEACHERS);
+    const next = TimetableSlotService.createScheduleSlot(timetable, values, teachers);
     setTimetable(next);
-    localStorage.setItem('lak_erp_timetable', JSON.stringify(next));
     setIsScheduleModalOpen(false);
-    message.success('Đã xếp lịch lớp học trực tuyến mới thành công!');
+    message.success(isEnglish ? 'New class schedule created successfully!' : 'Đã xếp lịch lớp học trực tuyến mới thành công!');
   };
 
   const handleCheckInSession = (slotId) => {
     setTimetable((prev) => {
       const next = TeacherCheckInService.checkInSession(prev, slotId);
-      localStorage.setItem('lak_erp_timetable', JSON.stringify(next));
       return next;
     });
-    message.success('Check-in lớp học thành công! Đã ghi nhận ca dạy của giáo viên.');
+    message.success(isEnglish ? 'Class check-in completed!' : 'Check-in lớp học thành công! Đã ghi nhận ca dạy của giáo viên.');
   };
 
   return {
     currentUser,
     courses,
     classes: systemClasses,
-    teachers: MOCK_TEACHERS,
+    teachers,
     scopedTimetable,
     selectedDayFilter,
     setSelectedDayFilter,

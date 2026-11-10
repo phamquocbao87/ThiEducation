@@ -1,10 +1,75 @@
 import { BaseModuleService } from '../../../shared/services/BaseModuleService';
+import { db, IS_FIREBASE_ENABLED } from '../../../core/services/firebase';
+import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 
 /**
  * Service managing Course Catalog operations
+ * Backed 100% by Cloud Firestore (`courses` collection in `lakeducationdb`)
  * Extends BaseModuleService
  */
 export class CourseService extends BaseModuleService {
+  static COLLECTION_NAME = 'courses';
+
+  /**
+   * Đọc toàn bộ danh sách Khóa học trực tiếp từ Cloud Firestore
+   */
+  static async getAllCourses() {
+    if (IS_FIREBASE_ENABLED && db) {
+      try {
+        const colRef = collection(db, this.COLLECTION_NAME);
+        const snap = await getDocs(colRef);
+        if (!snap.empty) {
+          const list = snap.docs
+            .map((d) => ({ ...d.data(), id: d.id }))
+            .filter((c) => !c.isDeleted && c.status !== 'Deleted');
+          return list;
+        }
+      } catch (err) {
+        console.warn('[CourseService] Lỗi đọc Firestore courses:', err.message);
+      }
+    }
+    return [];
+  }
+
+  /**
+   * Lưu hoặc cập nhật một Khóa học vào Cloud Firestore
+   */
+  static async saveCourse(courseData) {
+    if (IS_FIREBASE_ENABLED && db && courseData?.id) {
+      try {
+        const docRef = doc(db, this.COLLECTION_NAME, courseData.id);
+        await setDoc(docRef, courseData, { merge: true });
+      } catch (err) {
+        console.error('[CourseService] Lỗi lưu khóa học vào Firestore:', err.message);
+        throw err;
+      }
+    }
+    return courseData;
+  }
+
+  /**
+   * Xóa mềm (Soft delete) một Khóa học trên Cloud Firestore
+   */
+  static async deleteCourse(courseId) {
+    if (IS_FIREBASE_ENABLED && db && courseId) {
+      try {
+        const docRef = doc(db, this.COLLECTION_NAME, courseId);
+        await setDoc(
+          docRef,
+          {
+            isDeleted: true,
+            status: 'Deleted',
+            deletedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        console.error('[CourseService] Lỗi xóa khóa học trên Firestore:', err.message);
+        throw err;
+      }
+    }
+  }
+
   static createCourse(newCourse, existingCourses = []) {
     const nextCount = existingCourses.length + 1;
     const generatedId = newCourse.id?.trim() || `KH-${String(nextCount).padStart(3, '0')}`;

@@ -7,6 +7,7 @@ import {
   CheckCircleOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
+import { useLanguage } from '../../../core/context/LanguageContext';
 
 const { Text, Paragraph } = Typography;
 
@@ -18,6 +19,8 @@ export const ActiveClassCards = ({
   onOpenEvaluate,
   onOpenStudentProfiles,
 }) => {
+  const { isEnglish, t } = useLanguage();
+
   return (
     <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
       {classes.map((cls) => (
@@ -27,7 +30,10 @@ export const ActiveClassCards = ({
             title={<Text strong style={{ color: '#1890ff' }}>{cls.name}</Text>}
             extra={
               <Tag color={cls.checkInStatus === 'CHECKED_IN' ? 'green' : 'purple'}>
-                <VideoCameraOutlined /> {cls.checkInStatus === 'CHECKED_IN' ? 'GV Đã Check-in' : 'Zoom Cloud'}
+                <VideoCameraOutlined />{' '}
+                {cls.checkInStatus === 'CHECKED_IN'
+                  ? (isEnglish ? 'Teacher Checked-in' : 'GV Đã Check-in')
+                  : 'Zoom Cloud'}
               </Tag>
             }
             actions={[
@@ -39,7 +45,7 @@ export const ActiveClassCards = ({
                 style={{ background: '#2db7f5', borderColor: '#2db7f5' }}
                 onClick={() => window.open(cls.meetingLink, '_blank')}
               >
-                Vào Zoom
+                {isEnglish ? 'Launch Zoom' : 'Vào Zoom'}
               </Button>,
               canCheckIn && cls.checkInStatus !== 'CHECKED_IN' ? (
                 <Button
@@ -58,7 +64,7 @@ export const ActiveClassCards = ({
                   icon={<TeamOutlined />}
                   onClick={() => onOpenStudentProfiles(cls)}
                 >
-                  Hồ Sơ HV
+                  {isEnglish ? 'Student Profiles' : 'Hồ Sơ HV'}
                 </Button>
               ),
               canEvaluate ? (
@@ -68,22 +74,37 @@ export const ActiveClassCards = ({
                   icon={<StarOutlined style={{ color: '#faad14' }} />}
                   onClick={() => onOpenEvaluate(cls)}
                 >
-                  Điểm Danh
+                  {isEnglish ? 'Take Attendance' : 'Điểm Danh'}
                 </Button>
               ) : null,
             ].filter(Boolean)}
           >
-            <Paragraph style={{ margin: 0 }}><Text strong>Giáo viên:</Text> {cls.teacherName}</Paragraph>
-            <Paragraph style={{ margin: 0 }}><Text strong>Sĩ số:</Text> {cls.totalStudents} học viên</Paragraph>
-            <Paragraph style={{ margin: 0 }}><Text strong>Lịch học:</Text> {cls.schedule}</Paragraph>
             <Paragraph style={{ margin: 0 }}>
-              <Text strong>Tình trạng vận hành:</Text> <Tag color="cyan">{cls.operationStatus}</Tag>
+              <Text strong>{isEnglish ? 'Teacher:' : 'Giáo viên:'}</Text> {cls.teacherName}
             </Paragraph>
-            <div style={{ marginTop: 8 }}>
-              <Button size="small" type="link" style={{ padding: 0 }} onClick={() => onOpenStudentProfiles(cls)}>
-                Xem danh sách & nhận xét từng học viên trong lớp →
-              </Button>
-            </div>
+            <Paragraph style={{ margin: 0 }}>
+              <Text strong>{isEnglish ? 'Roster:' : 'Sĩ số:'}</Text> {cls.totalStudents}{' '}
+              {isEnglish ? 'students' : 'học viên'}
+            </Paragraph>
+            <Paragraph style={{ margin: 0 }}>
+              <Text strong>{isEnglish ? 'Schedule:' : 'Lịch học:'}</Text> {cls.schedule}
+            </Paragraph>
+            <Paragraph style={{ margin: 0 }}>
+              <Text strong>{isEnglish ? 'Operating Status:' : 'Tình trạng vận hành:'}</Text>{' '}
+              <Tag color="cyan">{cls.operationStatus}</Tag>
+            </Paragraph>
+            {onOpenStudentProfiles && (
+              <div style={{ marginTop: 8 }}>
+                <Button
+                  type="link"
+                  size="small"
+                  style={{ padding: 0, fontSize: 12 }}
+                  onClick={() => onOpenStudentProfiles(cls)}
+                >
+                  {isEnglish ? 'View class roster & per-student feedback →' : 'Xem danh sách lớp & nhận xét từng học viên →'}
+                </Button>
+              </div>
+            )}
           </Card>
         </Col>
       ))}

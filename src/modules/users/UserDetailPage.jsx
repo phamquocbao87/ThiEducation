@@ -63,6 +63,7 @@ import { UserService } from './services/UserService';
 import { UserAuditService } from './services/UserAuditService';
 import { DriveStorageService } from '../../core/services/DriveStorageService';
 import { formatScheduleForViewer, findScheduleConflictsInClassList } from '../../shared/utils/scheduleUtils';
+import { localizePosition, localizeDepartment } from '../../shared/utils/taxonomyUtils';
 import { DEFAULT_ACTIVE_CLASSES } from './UserRegistrationPage';
 import {
   USER_ROLES,
@@ -1446,10 +1447,10 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                     {user.role === 'academic' && (
                       <Descriptions bordered size="middle" column={{ xs: 1, sm: 2 }} styles={{ label: { fontWeight: 600, color: '#475569', backgroundColor: '#f8fafc' }, content: { color: '#0f172a' } }}>
                         <Descriptions.Item label={isEnglish ? 'Position' : 'Chức Danh Giáo Vụ'}>
-                          {user.position || 'Điều phối viên giáo vụ'}
+                          {localizePosition(user.position || 'Điều phối viên giáo vụ', isEnglish)}
                         </Descriptions.Item>
                         <Descriptions.Item label={isEnglish ? 'Department' : 'Phòng Ban'}>
-                          {user.department || 'Phòng Đào Tạo'}
+                          {localizeDepartment(user.department || 'Phòng Đào Tạo', isEnglish)}
                         </Descriptions.Item>
                         <Descriptions.Item label={isEnglish ? 'Managed Classes' : 'Số Lớp Điều Phối'}>
                           {user.managedClasses || 8} {isEnglish ? 'classes' : 'lớp'}
@@ -1467,10 +1468,26 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                           <Tag color={roleColor}>{isEnglish ? ROLE_LABELS.en?.[user.role] : ROLE_LABELS.vi?.[user.role]}</Tag>
                         </Descriptions.Item>
                         <Descriptions.Item label={isEnglish ? 'Department / Unit' : 'Phòng Ban / Đơn Vị Công Tác'}>
-                          {user.department || (user.role === 'accountant' ? 'Phòng Tài Chính - Kế Toán' : user.role === 'director' ? 'Ban Giám Đốc Điều Hành' : 'Phòng Quản Trị Hệ Thống IT')}
+                          {localizeDepartment(
+                            user.department ||
+                              (user.role === 'accountant'
+                                ? 'Phòng Tài Chính - Kế Toán'
+                                : user.role === 'director'
+                                ? 'Ban Giám Đốc Điều Hành'
+                                : 'Phòng Quản Trị Hệ Thống IT'),
+                            isEnglish
+                          )}
                         </Descriptions.Item>
                         <Descriptions.Item label={isEnglish ? 'Position / Title' : 'Chức Danh Đảm Nhiệm'}>
-                          {user.position || (user.role === 'accountant' ? 'Kế toán tổng hợp & Đối soát học phí' : user.role === 'director' ? 'Giám đốc Điều hành (CEO)' : 'Trưởng phòng Hạ tầng IT & Bảo mật')}
+                          {localizePosition(
+                            user.position ||
+                              (user.role === 'accountant'
+                                ? 'Kế toán tổng hợp & Đối soát học phí'
+                                : user.role === 'director'
+                                ? 'Giám đốc Điều hành (CEO)'
+                                : 'Trưởng phòng Hạ tầng IT & Bảo mật'),
+                            isEnglish
+                          )}
                         </Descriptions.Item>
                         <Descriptions.Item label={isEnglish ? 'Operational Notes' : 'Ghi Chú Nghiệp Vụ & Thẩm Quyền'}>
                           {user.extraInfo || '—'}

@@ -17,3 +17,22 @@ export const TUITION_STATUS_LABELS = {
   OVERDUE: { text: 'QUÁ HẠN', color: 'red' },
 };
 
+export const getTuitionStatusMeta = (status, isEnglish = false) => {
+  switch (status) {
+    case TUITION_STATUS.PAID:
+      return { text: isEnglish ? 'PAID' : 'ĐÃ NỘP', color: 'green' };
+    case TUITION_STATUS.UNPAID:
+      return { text: isEnglish ? 'UNPAID' : 'CHƯA NỘP', color: 'orange' };
+    case TUITION_STATUS.OVERDUE:
+      return { text: isEnglish ? 'OVERDUE' : 'QUÁ HẠN', color: 'red' };
+    default:
+      return { text: status, color: 'default' };
+  }
+};
+
+export const getTuitionStatusOptions = (isEnglish = false) => [
+  { value: 'ALL', label: isEnglish ? 'All Statuses' : 'Tất cả trạng thái' },
+  { value: 'PAID', label: isEnglish ? 'Paid' : 'Đã Nộp' },
+  { value: 'UNPAID', label: isEnglish ? 'Unpaid' : 'Chưa Nộp' },
+  { value: 'OVERDUE', label: isEnglish ? 'Overdue' : 'Quá Hạn' },
+];

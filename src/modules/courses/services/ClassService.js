@@ -1,4 +1,6 @@
 import { BaseModuleService } from '../../../shared/services/BaseModuleService';
+import { db, IS_FIREBASE_ENABLED } from '../../../core/services/firebase';
+import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import { matchesMultiFields } from '../../../shared/utils/searchUtils';
 import {
   parseScheduleToStructured,
@@ -11,8 +13,71 @@ import {
  * Service managing Class Management operations
  * Each class belongs to 1 Course, has 0 or 1 Assigned Native Teacher, and multiple Students.
  * Supports Effective-Dated Schedule History, Multi-Timezone, Self-Registration & Academic Approval.
+ * Backed 100% by Cloud Firestore (`classes` collection in `lakeducationdb`).
  */
 export class ClassService extends BaseModuleService {
+  static COLLECTION_NAME = 'classes';
+
+  /**
+   * Đọc toàn bộ danh sách Lớp học trực tiếp từ Cloud Firestore
+   */
+  static async getAllClasses() {
+    if (IS_FIREBASE_ENABLED && db) {
+      try {
+        const colRef = collection(db, this.COLLECTION_NAME);
+        const snap = await getDocs(colRef);
+        if (!snap.empty) {
+          const list = snap.docs
+            .map((d) => ({ ...d.data(), id: d.id }))
+            .filter((c) => !c.isDeleted && c.status !== 'Deleted');
+          return list;
+        }
+      } catch (err) {
+        console.warn('[ClassService] Lỗi đọc Firestore classes:', err.message);
+      }
+    }
+    return [];
+  }
+
+  /**
+   * Lưu hoặc cập nhật Lớp học vào Cloud Firestore
+   */
+  static async saveClass(classData) {
+    if (IS_FIREBASE_ENABLED && db && classData?.id) {
+      try {
+        const docRef = doc(db, this.COLLECTION_NAME, classData.id);
+        await setDoc(docRef, classData, { merge: true });
+      } catch (err) {
+        console.error('[ClassService] Lỗi lưu lớp học vào Firestore:', err.message);
+        throw err;
+      }
+    }
+    return classData;
+  }
+
+  /**
+   * Xóa mềm (Soft delete) Lớp học trên Cloud Firestore
+   */
+  static async deleteClass(classId) {
+    if (IS_FIREBASE_ENABLED && db && classId) {
+      try {
+        const docRef = doc(db, this.COLLECTION_NAME, classId);
+        await setDoc(
+          docRef,
+          {
+            isDeleted: true,
+            status: 'Deleted',
+            deletedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        console.error('[ClassService] Lỗi xóa lớp học trên Firestore:', err.message);
+        throw err;
+      }
+    }
+  }
+
   static createClass(newClass, existingClasses = [], teachers = [], courses = []) {
     const nextCount = existingClasses.length + 1;
     const generatedId = `LH${String(nextCount).padStart(3, '0')}`;
