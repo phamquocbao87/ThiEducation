@@ -13,6 +13,7 @@ export const TuitionPage = () => {
   const { t, translateLabel } = useLanguage();
   const {
     currentUser,
+    loading,
     scopedStudents,
     summary,
     searchText,
@@ -50,6 +51,7 @@ export const TuitionPage = () => {
 
       <TuitionTable
         students={scopedStudents}
+        loading={loading}
         canConfirmPayment={permissions.canConfirmPayment}
         canSendReminder={permissions.canSendReminder}
         onSelectForPayment={setSelectedStudent}

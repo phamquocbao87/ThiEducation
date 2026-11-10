@@ -239,11 +239,11 @@ export class PermissionService {
   }
 
   static canConfirmTuitionPayment(role) {
-    return ['accountant', 'academic', 'director'].includes(role);
+    return ['admin', 'accountant', 'academic', 'director'].includes(role);
   }
 
   static canSendTuitionReminder(role) {
-    return ['academic', 'accountant', 'director'].includes(role);
+    return ['admin', 'academic', 'accountant', 'director'].includes(role);
   }
 }
 
