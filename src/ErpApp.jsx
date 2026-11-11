@@ -157,15 +157,19 @@ function ErpRoutes() {
         <Route
           path={`/${MODULE_SLUGS.courses}/:action`}
           element={
-            <ProtectedRoute moduleKey="courses">
+            <ProtectedRoute moduleKey="coursesManage">
               <CoursesModule />
             </ProtectedRoute>
           }
         />
         <Route
           path={`/${MODULE_SLUGS.curriculum}`}
+          element={<Navigate to={`/${MODULE_SLUGS.courses}?tab=curriculum`} replace />}
+        />
+        <Route
+          path={`/${MODULE_SLUGS.curriculum}/new`}
           element={
-            <ProtectedRoute moduleKey="curriculum">
+            <ProtectedRoute moduleKey="curriculumManage">
               <CurriculumModule />
             </ProtectedRoute>
           }
@@ -181,7 +185,7 @@ function ErpRoutes() {
         <Route
           path={`/${MODULE_SLUGS.curriculum}/:levelId/:action`}
           element={
-            <ProtectedRoute moduleKey="curriculum">
+            <ProtectedRoute moduleKey="curriculumManage">
               <CurriculumModule />
             </ProtectedRoute>
           }

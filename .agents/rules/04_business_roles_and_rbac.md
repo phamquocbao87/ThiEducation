@@ -137,9 +137,13 @@ Dự án **ThiEducation** vận hành theo mô hình **6 Vai Trò (Roles)** tác
    - Khi phụ huynh đăng nhập bằng SĐT chính dùng chung của các con, hệ thống hiển thị Dialog chọn con trực quan (`.lak-profile-candidate-card`). Bấm 1 chạm vào Card con nào là vào học ngay lập tức.
 6. **Bộ Chuyển Đổi Hồ Sơ Con 1 Chạm Trên Header (`FamilyProfileSwitcher`):**
    - Nút **`Switch Child / Đổi Hồ Sơ`** trên Header và Mobile Drawer cho phép phụ huynh/học viên chuyển đổi giữa các anh chị em ruột tức thì (**0ms phản hồi**) mà không cần đăng xuất.
-7. **Menu IT Admin Switch Role (Đổi Vai Trò Trực Tiếp):**
-   - Riêng IT Admin (`ADM001`), hệ thống cung cấp Menu **`Switch Role / Đổi Vai Trò`** trên Header để kiểm thử và điều hành hệ thống dưới cả 6 vai trò (Giám đốc, Giáo vụ, Giáo viên, Kế toán, Học viên).
-   - Khi đang xem thử, màn hình có **Banner Cảnh Báo Màu Cam** ở đỉnh trang và nút **"Thoát Chế Độ Xem"** để trở về IT Admin trong 0ms.
+7. **Bảo Mật Định Tuyến Tập Trung 2 Tầng (`ProtectedRoute` & `PermissionService.canAccessRoutePath`):**
+   - **Tầng 1 (Chưa đăng nhập):** Chặn toàn bộ truy cập trực tiếp qua URL vào các trang nội bộ (bao gồm cả query như `/courses-classes?tab=curriculum`), chuyển hướng về `/?require_login=true&redirect=...` kèm mở Modal Đăng nhập. Tuyệt đối cấm tự động fallback sang tài khoản Admin khi chưa đăng nhập.
+   - **Tầng 2 (Sai quyền RBAC):** Hiển thị màn hình **`403 Not Found`** gọn nhẹ kèm nút **`Quay Lại`**.
+8. **Hệ Thống Thông Báo Realtime Theo Vai Trò & Cá Nhân (`NotificationService` + `targetKeys`):**
+   - Mọi thông báo nghiệp vụ (đăng ký lớp, nhận dạy lớp, phê duyệt/từ chối) bắt buộc định danh chính xác `currentUser` đang đăng nhập (tuyệt đối cấm fallback `students[0]` / `teachers[0]`), gắn mảng `targetKeys` (`USER:<id>`, `ROLE:academic`, `ROLE:director`, `ROLE:admin`, `ALL`) và lắng nghe qua `onSnapshot` với `where('targetKeys', 'array-contains-any', queryKeys)` + `limit(20)`.
+   - Riêng vai trò `admin` (`ADM001`) được hiển thị thanh kiểm toán (`Audit Trail`) trên từng thẻ thông báo trong `NotificationBellPopover`.
+
 
 
 

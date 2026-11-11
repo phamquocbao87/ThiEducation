@@ -45,6 +45,7 @@ import { useAuth } from '../../core/context/AuthContext';
 import { useLanguage } from '../../core/context/LanguageContext';
 import { PermissionService } from '../../core/services/PermissionService';
 import { UserService } from './services/UserService';
+import { ClassService } from '../courses/services/ClassService';
 import { findScheduleConflictsInClassList } from '../../shared/utils/scheduleUtils';
 import {
   USER_ROLES,
@@ -58,53 +59,7 @@ import {
   normalizePhoneNumber,
 } from './models/user.model';
 
-export const DEFAULT_ACTIVE_CLASSES = [
-  {
-    id: 'LH001',
-    name: 'Wonders G1 - Lớp Khởi Động Sáng Tạo (Zoom)',
-    courseId: 'KH-WONDERS-G1',
-    courseLevel: 'WONDERS-G1',
-    schedule: 'Thứ 2, Thứ 4 (18:00 - 19:30)',
-    teacherName: 'Mr. David Smith (USA 🇺🇸)',
-    studentIds: [],
-  },
-  {
-    id: 'LH002',
-    name: 'Wonders G1 - Lớp Nâng Cao Buổi Chiều (Zoom)',
-    courseId: 'KH-WONDERS-G1',
-    courseLevel: 'WONDERS-G1',
-    schedule: 'Thứ 3, Thứ 5 (18:00 - 19:30)',
-    teacherName: 'Ms. Sarah Connor (UK 🇬🇧)',
-    studentIds: [],
-  },
-  {
-    id: 'LH003',
-    name: 'Wonders G2 - Khám Phá Thế Giới (Zoom)',
-    courseId: 'KH-WONDERS-G2',
-    courseLevel: 'WONDERS-G2',
-    schedule: 'Thứ 6, Chủ Nhật (19:30 - 21:00)',
-    teacherName: 'Mr. John Williams (Canada 🇨🇦)',
-    studentIds: [],
-  },
-  {
-    id: 'LH004',
-    name: 'Wonders G4 - Đọc Sâu & Viết Luận (Zoom)',
-    courseId: 'KH-WONDERS-G4',
-    courseLevel: 'WONDERS-G4',
-    schedule: 'Thứ 7, Chủ Nhật (09:00 - 10:30)',
-    teacherName: 'Ms. Emma Watson (UK 🇬🇧)',
-    studentIds: [],
-  },
-  {
-    id: 'LH005',
-    name: 'Wonders G1 - Lớp Tăng Tốc (Zoom Trùng Giờ LH001)',
-    courseId: 'KH-WONDERS-G1',
-    courseLevel: 'WONDERS-G1',
-    schedule: 'Thứ 2, Thứ 4 (18:30 - 20:00)',
-    teacherName: 'Mr. Robert Brown (Australia 🇦🇺)',
-    studentIds: [],
-  },
-];
+export const DEFAULT_ACTIVE_CLASSES = [];
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -127,17 +82,26 @@ export const UserRegistrationPage = () => {
   // Vai trò mặc định ban đầu
   const defaultRole = allowedRoles[allowedRoles.length - 1] || USER_ROLES.STUDENT;
 
-  // Danh sách các lớp học đang hoạt động trong hệ thống
-  const [availableClasses] = useState(() => {
-    try {
-      const saved = localStorage.getItem('lak_erp_classes');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+  // Danh sách các lớp học đang hoạt động trong hệ thống (Đọc trực tiếp từ Cloud Firestore qua ClassService)
+  const [availableClasses, setAvailableClasses] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchClasses = async () => {
+      try {
+        const list = await ClassService.getAllClasses();
+        if (isMounted) {
+          setAvailableClasses(list || []);
+        }
+      } catch (err) {
+        console.error('Error fetching classes:', err);
       }
-    } catch {}
-    return DEFAULT_ACTIVE_CLASSES;
-  });
+    };
+    fetchClasses();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Theo dõi giá trị realtime của form
   const watchedEmail = Form.useWatch('email', form) || '';
@@ -855,6 +819,11 @@ export const UserRegistrationPage = () => {
                     style={{ width: '100%', minHeight: 40, borderRadius: 8 }}
                     allowClear
                     optionLabelProp="label"
+                    notFoundContent={
+                      <div style={{ padding: '8px 0', textAlign: 'center', color: '#64748b' }}>
+                        {isEnglish ? 'No online classes available in system' : 'Chưa có lớp học trực tuyến nào trong hệ thống'}
+                      </div>
+                    }
                   >
                     {availableClasses.map((cls) => (
                       <Option

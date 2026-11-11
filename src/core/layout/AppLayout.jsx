@@ -42,6 +42,7 @@ import { isProductionErpDomain, SITE_DOMAINS, APP_BUILD_VERSION_LABEL } from '..
 import { DriveStorageService } from '../services/DriveStorageService';
 import { AdminUserImpersonationModal } from '../../shared/components/modals/AdminUserImpersonationModal';
 import { matchesMultiFields } from '../../shared/utils/searchUtils';
+import { NotificationBellPopover } from './NotificationBellPopover';
 
 const { Header, Content, Sider, Footer } = Layout;
 const { Text, Title } = Typography;
@@ -90,11 +91,6 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
         key: 'courses',
         icon: <BookOutlined />,
         label: t('menus.courses'),
-      },
-      {
-        key: 'curriculum',
-        icon: <AppstoreOutlined />,
-        label: t('menus.curriculum'),
       },
       {
         key: 'schedules',
@@ -242,6 +238,9 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
             ]}
             style={{ fontWeight: 600 }}
           />
+
+          {/* CHUÔNG THÔNG BÁO HỆ THỐNG ĐA VAI TRÒ (NOTIFICATION BELL POPOVER) */}
+          <NotificationBellPopover isMobile={isMobile} />
 
           {!isMobile && (
             <Space style={{ color: '#fff' }} size={isCompactHeader ? 6 : 10}>

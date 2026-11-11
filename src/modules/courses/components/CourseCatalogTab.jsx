@@ -13,15 +13,19 @@ import {
 import { formatCurrency } from '../../../shared/utils/formatter';
 import { formatLocalizedAgeRange } from '../../../shared/utils/taxonomyUtils';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { useAuth } from '../../../core/context/AuthContext';
+import { AdminAuditInfo } from '../../../shared/components/AdminAuditInfo';
 
 const { Title, Text, Paragraph } = Typography;
 
 export const CourseCatalogTab = ({
   courses,
+  classes = [],
   canManage,
   onOpenCreate,
   onViewCourse,
   onEditCourse,
+  onSwitchToCourseClasses,
   search,
   onSearchChange,
   onDeleteCourse,
@@ -29,6 +33,7 @@ export const CourseCatalogTab = ({
   isMobile = false,
 }) => {
   const { isEnglish, t } = useLanguage();
+  const { currentUser } = useAuth();
 
   return (
     <div>
@@ -259,6 +264,33 @@ export const CourseCatalogTab = ({
                   <Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ margin: '0 0 12px 0', fontSize: 12 }}>
                     {course.description}
                   </Paragraph>
+                )}
+
+                {/* Nhật Ký Kiểm Toán IT (Chỉ hiển thị cho View Admin) */}
+                <AdminAuditInfo record={course} currentUser={currentUser} mode="card" style={{ marginBottom: 12 }} />
+
+                {/* Nút Xem Danh Sách Lớp Học Thuộc Khóa Học (1 Khóa Học -> Nhiều Lớp Học; Học viên đăng ký ở Lớp học) */}
+                {onSwitchToCourseClasses && (
+                  <Button
+                    type="dashed"
+                    block
+                    icon={<TeamOutlined />}
+                    onClick={() => onSwitchToCourseClasses(course.id)}
+                    style={{
+                      marginBottom: 8,
+                      height: 36,
+                      borderRadius: 8,
+                      borderColor: '#1890ff',
+                      color: '#1890ff',
+                      fontWeight: 600,
+                      fontSize: 12,
+                      background: '#f0f7ff',
+                    }}
+                  >
+                    {isEnglish
+                      ? `View Classes in this Course (${classes.filter((cls) => cls.courseId === course.id).length})`
+                      : `Xem Các Lớp Học Của Khóa (${classes.filter((cls) => cls.courseId === course.id).length} lớp)`}
+                  </Button>
                 )}
 
                 {/* Thanh Nút Hành Động Chân Card: Xem Chi Tiết & Chỉnh Sửa */}

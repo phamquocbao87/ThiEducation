@@ -25,12 +25,18 @@ import {
   DollarOutlined,
   CalendarOutlined,
   UserOutlined,
+  UserAddOutlined,
+  CheckCircleOutlined,
+  VideoCameraOutlined,
+  LinkOutlined,
 } from '@ant-design/icons';
 import { COURSE_LEVEL_OPTIONS } from '../models/courses.model';
 import { CurriculumLevelService } from '../../curriculum/services/CurriculumLevelService';
 import { BaseRangeSelector } from '../../../shared/components/controls';
 import { formatCurrency } from '../../../shared/utils/formatter';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { useAuth } from '../../../core/context/AuthContext';
+import { AdminAuditInfo } from '../../../shared/components/AdminAuditInfo';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -46,8 +52,13 @@ export const CourseDetailDrawer = ({
   canManage = false,
   onClose,
   onEdit,
+  onRequestEnrollClass,
+  onViewRoster,
 }) => {
   const { isEnglish } = useLanguage();
+  const { currentUser } = useAuth();
+  const isStudentRole = currentUser?.role === 'student';
+  const currentUid = currentUser?.id || currentUser?.code;
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 768
   );
@@ -135,6 +146,9 @@ export const CourseDetailDrawer = ({
           </Text>
         )}
       </div>
+
+      {/* Nhật Ký Kiểm Toán IT (Chỉ hiển thị cho View Admin) */}
+      <AdminAuditInfo record={course} currentUser={currentUser} mode="detail" style={{ marginBottom: 16 }} />
 
       {/* 2. Thẻ Chỉ Số Tóm Tắt (Metric Highlight Cards) */}
       <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
@@ -256,31 +270,120 @@ export const CourseDetailDrawer = ({
           </div>
         ) : (
           <Row gutter={[10, 10]}>
-            {courseClasses.map((cls) => (
-              <Col xs={24} sm={12} key={cls.id}>
-                <Card size="small" style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <Tag color="geekblue" style={{ fontWeight: 700, margin: 0 }}>
-                      {cls.id}
-                    </Tag>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      {cls.totalStudents || cls.studentIds?.length || 0} HV
+            {courseClasses.map((cls) => {
+              const isEnrolled = (cls.studentIds || []).includes(currentUid);
+              const isPending = (cls.pendingStudentRequests || []).some(
+                (r) => r.studentId === currentUid
+              );
+              const zoomUrl = cls.zoomStudentLink || cls.meetingLink;
+
+              return (
+                <Col xs={24} sm={12} key={cls.id}>
+                  <Card size="small" style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Tag color="geekblue" style={{ fontWeight: 700, margin: 0 }}>
+                        {cls.id}
+                      </Tag>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {cls.totalStudents || cls.studentIds?.length || 0} HV
+                      </Text>
+                    </div>
+                    <Text strong style={{ display: 'block', marginBottom: 4, color: '#0f172a' }}>
+                      {cls.name}
                     </Text>
-                  </div>
-                  <Text strong style={{ display: 'block', marginBottom: 4, color: '#0f172a' }}>
-                    {cls.name}
-                  </Text>
-                  <div style={{ fontSize: 12, color: '#475569' }}>
-                    <UserOutlined style={{ marginRight: 4, color: '#1890ff' }} />
-                    {cls.teacherName}
-                  </div>
-                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                    <CalendarOutlined style={{ marginRight: 4, color: '#fa8c16' }} />
-                    {cls.schedule}
-                  </div>
-                </Card>
-              </Col>
-            ))}
+                    <div style={{ fontSize: 12, color: '#475569' }}>
+                      <UserOutlined style={{ marginRight: 4, color: '#1890ff' }} />
+                      {cls.teacherName}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                      <CalendarOutlined style={{ marginRight: 4, color: '#fa8c16' }} />
+                      {cls.schedule}
+                    </div>
+
+                    {/* Hiển thị thông tin Zoom nếu đã được duyệt hoặc là Cán bộ quản lý */}
+                    {(!isStudentRole || isEnrolled) && (
+                      <div style={{ fontSize: 12, color: '#722ed1', marginTop: 4, fontWeight: 600 }}>
+                        <VideoCameraOutlined style={{ marginRight: 4 }} />
+                        Zoom ID: {cls.meetingId || '888 999 101'}{' '}
+                        {zoomUrl && (
+                          <a
+                            href={zoomUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ marginLeft: 6, textDecoration: 'underline' }}
+                          >
+                            {isEnglish ? 'Join Zoom' : 'Vào Zoom'}
+                          </a>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 3 trạng thái đăng ký cho Học viên ngay trong Drawer Khóa học */}
+                    {isStudentRole && (
+                      <div style={{ marginTop: 8 }}>
+                        {isEnrolled ? (
+                          <Button
+                            type="primary"
+                            size="small"
+                            block
+                            icon={<LinkOutlined />}
+                            onClick={() =>
+                              onViewRoster ? onViewRoster(cls) : zoomUrl && window.open(zoomUrl, '_blank')
+                            }
+                            style={{
+                              borderRadius: 6,
+                              background: '#16a34a',
+                              borderColor: '#16a34a',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {isEnglish
+                              ? 'Enrolled — View Class & Zoom'
+                              : 'Đã duyệt — Xem Lớp & Phòng Zoom'}
+                          </Button>
+                        ) : isPending ? (
+                          <Button
+                            size="small"
+                            disabled
+                            block
+                            icon={<ClockCircleOutlined />}
+                            style={{
+                              borderRadius: 6,
+                              background: '#e6f4ff',
+                              borderColor: '#91caff',
+                              color: '#0958d9',
+                              fontWeight: 600,
+                              cursor: 'not-allowed',
+                            }}
+                          >
+                            {isEnglish
+                              ? 'Registered — Waiting for Approval'
+                              : 'Đã đăng ký — Chờ phê duyệt'}
+                          </Button>
+                        ) : (
+                          <Button
+                            size="small"
+                            type="dashed"
+                            block
+                            icon={<UserAddOutlined />}
+                            onClick={() => onRequestEnrollClass && onRequestEnrollClass(cls.id)}
+                            style={{
+                              borderRadius: 6,
+                              borderColor: '#16a34a',
+                              color: '#16a34a',
+                              background: '#f6ffed',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {isEnglish ? 'Register for Class' : 'Đăng Ký Tham Gia Lớp'}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </Card>
+                </Col>
+              );
+            })}
           </Row>
         )}
       </div>
@@ -300,6 +403,7 @@ export const CourseFormModal = ({
 }) => {
   const [form] = Form.useForm();
   const { isEnglish } = useLanguage();
+  const { currentUser } = useAuth();
   const isEditMode = Boolean(editingCourse);
 
   const [isMobile, setIsMobile] = useState(
@@ -428,6 +532,16 @@ export const CourseFormModal = ({
           format: '100% Native English Teacher (Zoom Cloud Meeting)',
         }}
       >
+        {/* Nhật Ký Kiểm Toán IT (Chỉ hiển thị khi chỉnh sửa và người xem là Admin) */}
+        {isEditMode && (
+          <AdminAuditInfo
+            record={editingCourse}
+            currentUser={currentUser}
+            mode="detail"
+            style={{ marginBottom: 16 }}
+          />
+        )}
+
         {/* KHỐI 1: ĐỊNH DANH KHÓA HỌC & CẤP ĐỘ GIÁO TRÌNH */}
         <div style={{ marginBottom: 4 }}>
           <Text strong style={{ fontSize: 14, color: '#0f172a', display: 'block' }}>

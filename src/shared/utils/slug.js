@@ -29,6 +29,9 @@ export const MODULE_SLUGS = {
 export const getSlugFromModule = (key) => MODULE_SLUGS[key] || 'dashboard';
 export const getModuleFromSlug = (slug) => {
   const rootSlug = String(slug || '').split('/')[0];
+  if (rootSlug === MODULE_SLUGS.curriculum) {
+    return 'courses';
+  }
   const entry = Object.entries(MODULE_SLUGS).find(([_, value]) => value === rootSlug || value === slug);
   return entry ? entry[0] : 'dashboard';
 };

@@ -68,6 +68,15 @@ export class CurriculumLevelService extends BaseModuleService {
       // Đảm bảo không trả về các mục đã bị xóa
       const cleanList = parsed.filter((l) => !deletedCodes.includes(l.code?.toUpperCase()) && !deletedCodes.includes(l.id?.toUpperCase()));
 
+      // Backfill audit metadata nếu bản ghi cũ chưa có thông tin người tạo
+      cleanList.forEach((item) => {
+        if (!item.createdBy) {
+          item.createdBy = 'ADM001';
+          item.createdByName = 'Phạm Quốc Bảo';
+          item.createdAt = item.createdAt || '2026-11-01T08:00:00.000Z';
+        }
+      });
+
       return cleanList.sort((a, b) => (Number(a.orderIndex) || 99) - (Number(b.orderIndex) || 99));
     } catch (err) {
       console.warn('[CurriculumLevelService] Lỗi đọc storage, trả về mặc định:', err);
@@ -101,7 +110,7 @@ export class CurriculumLevelService extends BaseModuleService {
   /**
    * Thêm cấp độ giáo trình mới
    */
-  static createLevel(newLevelData) {
+  static createLevel(newLevelData, actorUser) {
     const all = this.getAllLevels();
     const cleanCode = String(newLevelData.code || '').trim().toUpperCase();
 
@@ -112,6 +121,9 @@ export class CurriculumLevelService extends BaseModuleService {
     if (all.some((l) => l.code?.toUpperCase() === cleanCode)) {
       throw new Error(`Mã cấp độ "${cleanCode}" đã tồn tại trên hệ thống`);
     }
+
+    const creatorId = actorUser?.id || actorUser?.code || newLevelData.createdBy || 'ADM001';
+    const creatorName = actorUser?.name || newLevelData.createdByName || 'Phạm Quốc Bảo';
 
     const newRecord = {
       id: cleanCode,
@@ -132,7 +144,11 @@ export class CurriculumLevelService extends BaseModuleService {
       status: newLevelData.status || LEVEL_STATUS.ACTIVE,
       description: newLevelData.description?.trim() || '',
       coverColor: newLevelData.coverColor || '#3b82f6',
-      createdAt: new Date().toISOString(),
+      createdBy: creatorId,
+      createdByName: creatorName,
+      updatedBy: creatorId,
+      updatedByName: creatorName,
+      createdAt: newLevelData.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
@@ -144,7 +160,7 @@ export class CurriculumLevelService extends BaseModuleService {
   /**
    * Cập nhật thông tin cấp độ giáo trình
    */
-  static updateLevel(id, updatedData) {
+  static updateLevel(id, updatedData, actorUser) {
     const all = this.getAllLevels();
     const idx = all.findIndex((l) => l.id === id || l.code === id);
     if (idx === -1) {
@@ -158,6 +174,9 @@ export class CurriculumLevelService extends BaseModuleService {
       ? updatedData.skillsFocus.split(',').map((s) => s.trim()).filter(Boolean)
       : current.skillsFocus;
 
+    const updaterId = actorUser?.id || actorUser?.code || updatedData.updatedBy || 'ADM001';
+    const updaterName = actorUser?.name || updatedData.updatedByName || 'Phạm Quốc Bảo';
+
     const merged = {
       ...current,
       ...updatedData,
@@ -166,6 +185,8 @@ export class CurriculumLevelService extends BaseModuleService {
       skillsFocus: skills,
       totalUnits: Number(updatedData.totalUnits) || current.totalUnits,
       orderIndex: Number(updatedData.orderIndex) || current.orderIndex,
+      updatedBy: updaterId,
+      updatedByName: updaterName,
       updatedAt: new Date().toISOString(),
     };
 
@@ -177,7 +198,7 @@ export class CurriculumLevelService extends BaseModuleService {
   /**
    * Đổi trạng thái Kích hoạt / Tạm ngưng (Quick Toggle Status)
    */
-  static toggleLevelStatus(id) {
+  static toggleLevelStatus(id, actorUser) {
     const all = this.getAllLevels();
     const target = all.find((l) => l.id === id || l.code === id);
     if (!target) {
@@ -186,6 +207,10 @@ export class CurriculumLevelService extends BaseModuleService {
 
     target.status = target.status === LEVEL_STATUS.ACTIVE ? LEVEL_STATUS.INACTIVE : LEVEL_STATUS.ACTIVE;
     target.updatedAt = new Date().toISOString();
+    if (actorUser) {
+      target.updatedBy = actorUser.id || actorUser.code || 'ADM001';
+      target.updatedByName = actorUser.name || 'Phạm Quốc Bảo';
+    }
     this.saveAllLevels(all);
     return target;
   }

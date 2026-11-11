@@ -78,9 +78,12 @@ export class ClassService extends BaseModuleService {
     }
   }
 
-  static createClass(newClass, existingClasses = [], teachers = [], courses = []) {
+  static createClass(newClass, existingClasses = [], teachers = [], courses = [], actorUser = null) {
     const nextCount = existingClasses.length + 1;
     const generatedId = `LH${String(nextCount).padStart(3, '0')}`;
+
+    const creatorId = actorUser?.id || actorUser?.code || newClass.createdBy || 'ADM001';
+    const creatorName = actorUser?.name || newClass.createdByName || 'Phạm Quốc Bảo';
 
     const hasTeacher = Boolean(newClass.teacherId && String(newClass.teacherId).trim());
     const selectedTeacher = hasTeacher
@@ -151,7 +154,12 @@ export class ClassService extends BaseModuleService {
       operationStatus:
         newClass.operationStatus ||
         (hasTeacher ? 'Đang học ổn định' : 'Mới khai giảng'),
-      createdAt: new Date().toISOString(),
+      createdBy: creatorId,
+      createdByName: creatorName,
+      updatedBy: creatorId,
+      updatedByName: creatorName,
+      createdAt: newClass.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     return [classRecord, ...existingClasses];
@@ -162,8 +170,11 @@ export class ClassService extends BaseModuleService {
     updatedData,
     existingClasses = [],
     teachers = [],
-    courses = []
+    courses = [],
+    actorUser = null
   ) {
+    const updaterId = actorUser?.id || actorUser?.code || updatedData.updatedBy || 'ADM001';
+    const updaterName = actorUser?.name || updatedData.updatedByName || 'Phạm Quốc Bảo';
     const hasTeacherParam = updatedData.teacherId !== undefined;
     const isClearingTeacher =
       hasTeacherParam && (!updatedData.teacherId || String(updatedData.teacherId).trim() === '');
@@ -246,6 +257,8 @@ export class ClassService extends BaseModuleService {
           : cls.holidays || [],
         operationStatus:
           updatedData.operationStatus || cls.operationStatus || 'Đang học ổn định',
+        updatedBy: updaterId,
+        updatedByName: updaterName,
         updatedAt: new Date().toISOString(),
       };
     });

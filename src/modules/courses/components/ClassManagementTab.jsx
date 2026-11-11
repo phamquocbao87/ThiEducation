@@ -31,9 +31,11 @@ import {
   MessageOutlined,
   UserAddOutlined,
   BellOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import { CLASS_STATUS_COLORS } from '../models/courses.model';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { AdminAuditInfo } from '../../../shared/components/AdminAuditInfo';
 import {
   findTeacherScheduleConflicts,
   findStudentScheduleConflicts,
@@ -186,9 +188,11 @@ export const ClassManagementTab = ({
         <Row gutter={[16, 16]}>
           {classes.map((record) => {
             const foundCourse = courses.find((c) => c.id === record.courseId);
+            const maxClassSize = Number(foundCourse?.maxClassSize) || 18;
             const isUnassignedTeacher =
               !record.teacherId || record.teacherName === 'Chưa phân công';
             const studentCount = record.totalStudents || record.studentIds?.length || 0;
+            const isClassFull = studentCount >= maxClassSize;
             const statusColor = CLASS_STATUS_COLORS[record.operationStatus] || 'green';
 
             const pendingTReqs = Array.isArray(record.pendingTeacherRequests)
@@ -213,18 +217,24 @@ export const ClassManagementTab = ({
               : [];
 
             // Kiểm tra trạng thái đăng ký học của HV hiện tại
-            const isAlreadyEnrolled = (record.studentIds || []).includes(currentUser?.id);
+            const currentUid = currentUser?.id || currentUser?.code;
+            const isAlreadyEnrolled = (record.studentIds || []).includes(currentUid);
             const myStudentPending = pendingSReqs.some(
-              (r) => r.studentId === currentUser?.id
+              (r) => r.studentId === currentUid
             );
             const myStudentConflicts = isStudentRole
               ? findStudentScheduleConflicts(
-                  currentUser?.id,
+                  currentUid,
                   record.scheduleData || record.schedule,
                   allClasses.length ? allClasses : classes,
                   record.id
                 )
               : [];
+
+            // Quyền xem thông tin Phòng học Zoom & Nhóm Zalo:
+            // - Cán bộ quản lý (canManage) hoặc Giáo viên phụ trách: Xem toàn bộ
+            // - Học viên (isStudentRole): CHỈ ĐƯỢC XEM KHI ĐÃ ĐƯỢC DUYỆT VÀO LỚP (isAlreadyEnrolled === true)
+            const canViewClassRoomLinks = !isStudentRole || isAlreadyEnrolled;
 
             const zoomUrlToOpen =
               canManage || isTeacherRole
@@ -515,7 +525,7 @@ export const ClassManagementTab = ({
                       );
                     })()}
 
-                    {/* Phòng Zoom & Nhóm Zalo (Click mở trực tiếp) */}
+                    {/* Phòng Zoom & Nhóm Zalo (Học viên chỉ được mở khóa khi đã được Giáo vụ duyệt vào lớp) */}
                     <div
                       style={{
                         display: 'flex',
@@ -528,19 +538,33 @@ export const ClassManagementTab = ({
                         <VideoCameraOutlined style={{ color: '#722ed1' }} />
                         <Text type="secondary">{isEnglish ? 'Zoom Room:' : 'Phòng Zoom:'}</Text>
                       </Space>
-                      <Tag
-                        color="purple"
-                        onClick={() => zoomUrlToOpen && window.open(zoomUrlToOpen, '_blank')}
-                        style={{
-                          margin: 0,
-                          cursor: 'pointer',
-                          fontWeight: 600,
-                          borderRadius: 6,
-                        }}
-                      >
-                        <LinkOutlined style={{ marginRight: 4 }} />
-                        {record.meetingId || '888 999 111'}
-                      </Tag>
+                      {canViewClassRoomLinks ? (
+                        <Tag
+                          color="purple"
+                          onClick={() => zoomUrlToOpen && window.open(zoomUrlToOpen, '_blank')}
+                          style={{
+                            margin: 0,
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            borderRadius: 6,
+                          }}
+                        >
+                          <LinkOutlined style={{ marginRight: 4 }} />
+                          {record.meetingId || '888 999 111'}
+                        </Tag>
+                      ) : (
+                        <Tag
+                          color="default"
+                          style={{
+                            margin: 0,
+                            fontSize: 11,
+                            color: '#64748b',
+                            borderRadius: 6,
+                          }}
+                        >
+                          {isEnglish ? '🔒 Unlocked after approval' : '🔒 Mở sau khi duyệt'}
+                        </Tag>
+                      )}
                     </div>
 
                     {record.zaloGroupLink && (
@@ -556,25 +580,39 @@ export const ClassManagementTab = ({
                           <MessageOutlined style={{ color: '#0068ff' }} />
                           <Text type="secondary">{t('courses.classes.zaloChatLabel')}</Text>
                         </Space>
-                        <Tag
-                          color="blue"
-                          onClick={() => window.open(record.zaloGroupLink, '_blank')}
-                          style={{
-                            margin: 0,
-                            cursor: 'pointer',
-                            fontWeight: 600,
-                            borderRadius: 6,
-                          }}
-                        >
-                          <MessageOutlined style={{ marginRight: 4 }} />
-                          {t('courses.classes.joinZaloGroup')}
-                        </Tag>
+                        {canViewClassRoomLinks ? (
+                          <Tag
+                            color="blue"
+                            onClick={() => window.open(record.zaloGroupLink, '_blank')}
+                            style={{
+                              margin: 0,
+                              cursor: 'pointer',
+                              fontWeight: 600,
+                              borderRadius: 6,
+                            }}
+                          >
+                            <MessageOutlined style={{ marginRight: 4 }} />
+                            {t('courses.classes.joinZaloGroup')}
+                          </Tag>
+                        ) : (
+                          <Tag
+                            color="default"
+                            style={{
+                              margin: 0,
+                              fontSize: 11,
+                              color: '#64748b',
+                              borderRadius: 6,
+                            }}
+                          >
+                            {isEnglish ? '🔒 Unlocked after approval' : '🔒 Mở sau khi duyệt'}
+                          </Tag>
+                        )}
                       </div>
                     )}
                   </div>
 
-                  {/* Khối Tự Đăng Ký Dạy Dành Cho Giáo Viên Khi Lớp Chưa Có GV */}
-                  {isUnassignedTeacher && (isTeacherRole || canManage) && onRequestTeachClass && (
+                  {/* Khối Tự Đăng Ký Dạy Dành Cho Giáo Viên Khi Lớp Chưa Có GV (CHỈ DUY NHẤT GIÁO VIÊN) */}
+                  {isUnassignedTeacher && isTeacherRole && onRequestTeachClass && (
                     <div style={{ marginBottom: 10 }}>
                       {myTeacherPending ? (
                         <Tag
@@ -583,12 +621,42 @@ export const ClassManagementTab = ({
                           style={{
                             width: '100%',
                             textAlign: 'center',
-                            padding: '5px 8px',
+                            padding: '6px 8px',
                             borderRadius: 6,
+                            fontWeight: 600,
                           }}
                         >
                           {t('courses.classes.teacherPendingNotice')}
                         </Tag>
+                      ) : myTeacherConflicts.length > 0 ? (
+                        <Tooltip
+                          title={
+                            isEnglish
+                              ? `Schedule overlaps with your assigned class: ${myTeacherConflicts.map((c) => `${c.id} (${c.schedule})`).join(', ')}`
+                              : `Trùng thời khóa biểu với lớp bạn đang phụ trách: ${myTeacherConflicts.map((c) => `${c.id} (${c.schedule})`).join(', ')}`
+                          }
+                        >
+                          <Button
+                            type="dashed"
+                            danger
+                            disabled
+                            block
+                            icon={<WarningOutlined />}
+                            style={{
+                              height: 36,
+                              borderRadius: 8,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              background: '#fff1f0',
+                              borderColor: '#ffa39e',
+                              color: '#cf1322',
+                            }}
+                          >
+                            {isEnglish
+                              ? `Conflict with ${myTeacherConflicts[0].id}`
+                              : `Trùng lịch dạy lớp ${myTeacherConflicts[0].id}`}
+                          </Button>
+                        </Tooltip>
                       ) : (
                         <Button
                           type="dashed"
@@ -606,43 +674,119 @@ export const ClassManagementTab = ({
                           }}
                         >
                           {t('courses.classes.applyToTeach')}
-                          {myTeacherConflicts.length > 0
-                            ? ` (⚠️ ${t('courses.classes.conflictNotice')})`
-                            : ''}
                         </Button>
                       )}
                     </div>
                   )}
 
-                  {/* Khối Tự Đăng Ký Học Dành Cho Học Viên */}
+                  {/* Khối Tự Đăng Ký Học Dành Cho Học Viên (3 Trạng Thái Rõ Ràng) */}
                   {isStudentRole && onRequestEnrollClass && (
                     <div style={{ marginBottom: 10 }}>
                       {isAlreadyEnrolled ? (
-                        <Tag
-                          icon={<CheckCircleOutlined />}
-                          color="success"
-                          style={{
-                            width: '100%',
-                            textAlign: 'center',
-                            padding: '5px 8px',
-                            borderRadius: 6,
-                          }}
-                        >
-                          {t('courses.classes.studentEnrolledNotice')}
-                        </Tag>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <Tag
+                            icon={<CheckCircleOutlined />}
+                            color="success"
+                            style={{
+                              width: '100%',
+                              textAlign: 'center',
+                              padding: '6px 8px',
+                              borderRadius: 6,
+                              fontWeight: 600,
+                              margin: 0,
+                            }}
+                          >
+                            {isEnglish
+                              ? 'Enrolled — Approved to Join Class'
+                              : 'Đã duyệt đăng ký — Đã tham gia lớp học'}
+                          </Tag>
+                          <Button
+                            type="primary"
+                            block
+                            icon={<VideoCameraOutlined />}
+                            onClick={() => zoomUrlToOpen && window.open(zoomUrlToOpen, '_blank')}
+                            style={{
+                              height: 36,
+                              borderRadius: 8,
+                              background: '#722ed1',
+                              borderColor: '#722ed1',
+                              fontWeight: 600,
+                              fontSize: 12,
+                            }}
+                          >
+                            {isEnglish
+                              ? `Join Zoom Class (${record.meetingId || '888 999 111'})`
+                              : `Vào Phòng Học Zoom (${record.meetingId || '888 999 111'})`}
+                          </Button>
+                        </div>
                       ) : myStudentPending ? (
-                        <Tag
+                        <Button
+                          disabled
+                          block
                           icon={<ClockCircleOutlined />}
-                          color="processing"
                           style={{
-                            width: '100%',
-                            textAlign: 'center',
-                            padding: '5px 8px',
-                            borderRadius: 6,
+                            height: 36,
+                            borderRadius: 8,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            background: '#e6f4ff',
+                            borderColor: '#91caff',
+                            color: '#0958d9',
+                            cursor: 'not-allowed',
                           }}
                         >
-                          {t('courses.classes.studentPendingNotice')}
-                        </Tag>
+                          {isEnglish
+                            ? 'Registered — Waiting for Approval'
+                            : 'Đã đăng ký — Chờ phê duyệt'}
+                        </Button>
+                      ) : isClassFull ? (
+                        <Button
+                          type="dashed"
+                          disabled
+                          block
+                          style={{
+                            height: 36,
+                            borderRadius: 8,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            background: '#f8fafc',
+                            borderColor: '#cbd5e1',
+                            color: '#94a3b8',
+                          }}
+                        >
+                          {isEnglish
+                            ? `Class is full (${studentCount}/${maxClassSize})`
+                            : `Lớp đã đủ sĩ số (${studentCount}/${maxClassSize})`}
+                        </Button>
+                      ) : myStudentConflicts.length > 0 ? (
+                        <Tooltip
+                          title={
+                            isEnglish
+                              ? `Schedule overlaps with your enrolled class: ${myStudentConflicts.map((c) => `${c.id} (${c.schedule})`).join(', ')}`
+                              : `Trùng thời khóa biểu với lớp bạn đang theo học: ${myStudentConflicts.map((c) => `${c.id} (${c.schedule})`).join(', ')}`
+                          }
+                        >
+                          <Button
+                            type="dashed"
+                            danger
+                            disabled
+                            block
+                            icon={<WarningOutlined />}
+                            style={{
+                              height: 36,
+                              borderRadius: 8,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              background: '#fff1f0',
+                              borderColor: '#ffa39e',
+                              color: '#cf1322',
+                            }}
+                          >
+                            {isEnglish
+                              ? `Conflict with ${myStudentConflicts[0].id}`
+                              : `Trùng TKB lớp ${myStudentConflicts[0].id}`}
+                          </Button>
+                        </Tooltip>
                       ) : (
                         <Button
                           type="dashed"
@@ -660,13 +804,13 @@ export const ClassManagementTab = ({
                           }}
                         >
                           {t('courses.classes.requestEnrollment')}
-                          {myStudentConflicts.length > 0
-                            ? ` (⚠️ ${t('courses.classes.conflictNotice')})`
-                            : ''}
                         </Button>
                       )}
                     </div>
                   )}
+
+                  {/* Nhật Ký Kiểm Toán IT (Chỉ hiển thị cho View Admin) */}
+                  <AdminAuditInfo record={record} currentUser={currentUser} mode="card" style={{ marginBottom: 12 }} />
 
                   {/* 4. Thanh Nút Hành Động Chân Card (50% / 50% đồng bộ Course Card) */}
                   <div

@@ -26,6 +26,8 @@ import {
 import { CLASS_OPERATION_STATUS } from '../models/courses.model';
 import { ClassService } from '../services/ClassService';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { useAuth } from '../../../core/context/AuthContext';
+import { AdminAuditInfo } from '../../../shared/components/AdminAuditInfo';
 import {
   BaseDatePicker,
   BaseWeeklyScheduleControl,
@@ -49,6 +51,7 @@ export const ClassFormDrawer = ({
 }) => {
   const [form] = Form.useForm();
   const { isEnglish } = useLanguage();
+  const { currentUser } = useAuth();
   const isEditMode = Boolean(editingClass);
 
   const [isMobile, setIsMobile] = useState(
@@ -218,6 +221,16 @@ export const ClassFormDrawer = ({
           zaloGroupLink: 'https://zalo.me/g/lakeducation_class',
         }}
       >
+        {/* Nhật Ký Kiểm Toán IT (Chỉ hiển thị khi chỉnh sửa và người xem là Admin) */}
+        {isEditMode && (
+          <AdminAuditInfo
+            record={editingClass}
+            currentUser={currentUser}
+            mode="detail"
+            style={{ marginBottom: 16 }}
+          />
+        )}
+
         {/* KHỐI 1: ĐỊNH DANH LỚP HỌC & NGÀY KHAI GIẢNG */}
         <div style={{ marginBottom: 4 }}>
           <Text strong style={{ fontSize: 14, color: '#0f172a', display: 'block' }}>

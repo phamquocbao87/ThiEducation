@@ -10,6 +10,8 @@ import {
   EyeOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { useAuth } from '../../../core/context/AuthContext';
+import { AdminAuditInfo } from '../../../shared/components/AdminAuditInfo';
 import { formatLocalizedAgeRange, formatLocalizedDuration } from '../../../shared/utils/taxonomyUtils';
 
 const { Text, Paragraph } = Typography;
@@ -28,6 +30,7 @@ export const CurriculumLevelCardList = ({
   canManage = true,
 }) => {
   const { isEnglish } = useLanguage();
+  const { currentUser } = useAuth();
 
   if (!levels || levels.length === 0) {
     return (
@@ -168,6 +171,9 @@ export const CurriculumLevelCardList = ({
                 )}
               </Space>
             </div>
+
+            {/* Dành riêng cho IT Admin: Kiểm toán Người tạo & Cập nhật */}
+            <AdminAuditInfo record={item} currentUser={currentUser} mode="card" />
           </Card>
         );
       })}

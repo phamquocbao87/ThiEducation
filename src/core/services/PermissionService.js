@@ -31,7 +31,9 @@ export class PermissionService {
     const accessMatrix = {
       dashboard: ['admin', 'director', 'academic', 'teacher', 'accountant', 'student'],
       courses: ['admin', 'director', 'academic', 'teacher', 'student'],
+      coursesManage: ['admin', 'director', 'academic'],
       curriculum: ['admin', 'director', 'academic', 'teacher', 'student'],
+      curriculumManage: ['admin', 'director', 'academic'],
       schedules: ['admin', 'director', 'academic', 'teacher', 'student'],
       attendance: ['admin', 'director', 'academic', 'teacher', 'student'],
       contracts: ['admin', 'director', 'academic', 'teacher', 'accountant'],
@@ -40,6 +42,79 @@ export class PermissionService {
       profile: ['admin', 'director', 'academic', 'teacher', 'accountant', 'student'],
     };
     return (accessMatrix[moduleKey] || []).includes(role);
+  }
+
+  /**
+   * Kiểm tra phân quyền tập trung theo từng URL + Query String (?tab=...) + Hành động (:action = new / edit)
+   * Trả về { allowed: boolean, reason: string, requiredRoles: string[] }
+   */
+  static canAccessRoutePath(role, pathname = '/', search = '') {
+    if (!role) return { allowed: false, reason: 'UNAUTHENTICATED', requiredRoles: [] };
+
+    const cleanPath = String(pathname || '/').replace(/\/+$/, '') || '/';
+    const segments = cleanPath.substring(1).split('/').filter(Boolean);
+    const rootSlug = segments[0] || 'dashboard';
+    const subSegment1 = segments[1] || '';
+    const subSegment2 = segments[2] || '';
+
+    // 1. Chốt chặn các URL khởi tạo mới hoặc chỉnh sửa nhạy cảm (:action === 'new' | 'create' | 'edit')
+    if (rootSlug === 'courses-classes') {
+      if (subSegment1 === 'new' || subSegment1 === 'create' || subSegment1 === 'edit' || subSegment2 === 'edit') {
+        const ok = this.canManageCourses(role);
+        return {
+          allowed: ok,
+          reason: ok ? 'OK' : 'COURSE_WRITE_FORBIDDEN',
+          requiredRoles: ['admin', 'director', 'academic'],
+        };
+      }
+      return {
+        allowed: this.canAccessModule(role, 'courses'),
+        reason: 'OK',
+        requiredRoles: ['admin', 'director', 'academic', 'teacher', 'student'],
+      };
+    }
+
+    if (rootSlug === 'curriculum-levels') {
+      if (subSegment1 === 'new' || subSegment1 === 'create' || subSegment1 === 'edit' || subSegment2 === 'edit') {
+        const ok = this.canManageCurriculum(role);
+        return {
+          allowed: ok,
+          reason: ok ? 'OK' : 'CURRICULUM_WRITE_FORBIDDEN',
+          requiredRoles: ['admin', 'director', 'academic'],
+        };
+      }
+      return {
+        allowed: this.canAccessModule(role, 'curriculum'),
+        reason: 'OK',
+        requiredRoles: ['admin', 'director', 'academic', 'teacher', 'student'],
+      };
+    }
+
+    if (rootSlug === 'user-management') {
+      const ok = this.canManageUsers(role);
+      return {
+        allowed: ok,
+        reason: ok ? 'OK' : 'USER_MANAGEMENT_FORBIDDEN',
+        requiredRoles: ['admin', 'director', 'academic'],
+      };
+    }
+
+    // Map rootSlug sang moduleKey chuẩn
+    const slugToModule = {
+      dashboard: 'dashboard',
+      'zoom-schedules': 'schedules',
+      'class-attendance-evaluation': 'attendance',
+      'contracts-payroll': 'contracts',
+      'tuition-fees': 'tuition',
+      'my-profile': 'profile',
+    };
+    const moduleKey = slugToModule[rootSlug] || 'dashboard';
+    const ok = this.canAccessModule(role, moduleKey);
+    return {
+      allowed: ok,
+      reason: ok ? 'OK' : 'MODULE_ACCESS_FORBIDDEN',
+      requiredRoles: [],
+    };
   }
 
   static canManageCourses(role) {

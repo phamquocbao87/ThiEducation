@@ -1,7 +1,7 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs, Row, Col, Card, Statistic, Typography } from 'antd';
-import { BookOutlined, TeamOutlined, UserOutlined, CalendarOutlined } from '@ant-design/icons';
+import { BookOutlined, TeamOutlined, UserOutlined, CalendarOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { useLanguage } from '../../core/context/LanguageContext';
 import { useCoursesController } from './hooks/useCoursesController';
 import { CourseCatalogTab } from './components/CourseCatalogTab';
@@ -9,6 +9,8 @@ import { CourseDetailDrawer, CourseFormModal } from './components/CourseFormModa
 import { ClassManagementTab } from './components/ClassManagementTab';
 import { ClassFormDrawer } from './components/ClassFormDrawer';
 import { ClassRosterDrawer } from './components/ClassRosterDrawer';
+import { CurriculumLevelsPage } from '../curriculum/CurriculumLevelsPage';
+import { CurriculumLevelService } from '../curriculum/services/CurriculumLevelService';
 
 const { Title, Text } = Typography;
 
@@ -67,6 +69,31 @@ export const CoursesPage = () => {
     handleDeleteClass,
     handleClearAllData,
   } = useCoursesController();
+
+  const [searchParams] = useSearchParams();
+
+  // Xử lý Deep-Linking từ Notifications hoặc URL trực tiếp
+  React.useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    const classIdParam = searchParams.get('classId');
+    const actionParam = searchParams.get('action');
+
+    if (tabParam === 'classes' || tabParam === 'courses' || tabParam === 'curriculum') {
+      setActiveTab(tabParam);
+    }
+
+    if (classIdParam && allClasses.length > 0) {
+      const target = allClasses.find((c) => c.id === classIdParam);
+      if (target) {
+        if (actionParam === 'roster' || !actionParam) {
+          setRosterClass(target);
+        } else if (actionParam === 'edit') {
+          setEditingClass(target);
+          setIsClassModalOpen(true);
+        }
+      }
+    }
+  }, [searchParams, allClasses, setActiveTab, setRosterClass, setEditingClass, setIsClassModalOpen]);
 
   return (
     <div>
@@ -137,34 +164,6 @@ export const CoursesPage = () => {
           onChange={setActiveTab}
           items={[
             {
-              key: 'courses',
-              label: (
-                <span style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600 }}>
-                  <BookOutlined style={{ marginRight: 6 }} />
-                  {isMobile
-                    ? t('courses.tabs.catalogShort')
-                    : t('courses.tabs.catalog')}{' '}
-                  ({allCourses.length})
-                </span>
-              ),
-              children: (
-                <div style={{ paddingTop: 12 }}>
-                  <CourseCatalogTab
-                    courses={courses}
-                    canManage={canManage}
-                    onOpenCreate={() => navigate('/courses-classes/new')}
-                    onViewCourse={(course) => setViewingCourse(course)}
-                    onEditCourse={(course) => setEditingCourse(course)}
-                    search={courseSearch}
-                    onSearchChange={setCourseSearch}
-                    onDeleteCourse={handleDeleteCourse}
-                    onClearAll={handleClearAllData}
-                    isMobile={isMobile}
-                  />
-                </div>
-              ),
-            },
-            {
               key: 'classes',
               label: (
                 <span style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600 }}>
@@ -211,6 +210,56 @@ export const CoursesPage = () => {
                 </div>
               ),
             },
+            {
+              key: 'courses',
+              label: (
+                <span style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600 }}>
+                  <BookOutlined style={{ marginRight: 6 }} />
+                  {isMobile
+                    ? t('courses.tabs.catalogShort')
+                    : t('courses.tabs.catalog')}{' '}
+                  ({allCourses.length})
+                </span>
+              ),
+              children: (
+                <div style={{ paddingTop: 12 }}>
+                  <CourseCatalogTab
+                    courses={courses}
+                    classes={allClasses}
+                    canManage={canManage}
+                    onOpenCreate={() => navigate('/courses-classes/new')}
+                    onViewCourse={(course) => setViewingCourse(course)}
+                    onEditCourse={(course) => setEditingCourse(course)}
+                    onSwitchToCourseClasses={(courseId) => {
+                      setSelectedCourseFilter(courseId);
+                      setActiveTab('classes');
+                    }}
+                    search={courseSearch}
+                    onSearchChange={setCourseSearch}
+                    onDeleteCourse={handleDeleteCourse}
+                    onClearAll={handleClearAllData}
+                    isMobile={isMobile}
+                  />
+                </div>
+              ),
+            },
+            {
+              key: 'curriculum',
+              label: (
+                <span style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600 }}>
+                  <AppstoreOutlined style={{ marginRight: 6 }} />
+                  {isMobile
+                    ? (isEnglish ? 'Curriculum' : 'Cấp Độ')
+                    : t('menus.curriculum')}{' '}
+                  ({CurriculumLevelService.getAllLevels().length})
+                </span>
+              ),
+              children: (
+                <div style={{ paddingTop: 12 }}>
+                  <CurriculumLevelsPage embedded={true} />
+                </div>
+              ),
+            },
           ]}
         />
       </Card>
@@ -223,6 +272,11 @@ export const CoursesPage = () => {
         canManage={canManage}
         onClose={() => setViewingCourse(null)}
         onEdit={(course) => setEditingCourse(course)}
+        onRequestEnrollClass={handleRequestEnrollClass}
+        onViewRoster={(cls) => {
+          setViewingCourse(null);
+          setRosterClass(cls);
+        }}
       />
 
       <CourseFormModal

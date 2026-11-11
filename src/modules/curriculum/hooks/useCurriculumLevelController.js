@@ -6,10 +6,12 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { message } from 'antd';
 import { CurriculumLevelService } from '../services/CurriculumLevelService';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { useAuth } from '../../../core/context/AuthContext';
 import { matchesMultiFields } from '../../../shared/utils/searchUtils';
 
 export const useCurriculumLevelController = () => {
   const { isEnglish } = useLanguage();
+  const { currentUser } = useAuth();
 
   const [levels, setLevels] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -98,14 +100,14 @@ export const useCurriculumLevelController = () => {
     setModalLoading(true);
     try {
       if (editingLevel) {
-        CurriculumLevelService.updateLevel(editingLevel.id, values);
+        CurriculumLevelService.updateLevel(editingLevel.id, values, currentUser);
         message.success(
           isEnglish
             ? `Updated curriculum level "${values.name || editingLevel.code}" successfully`
             : `Đã cập nhật thành công cấp độ "${values.name || editingLevel.code}"`
         );
       } else {
-        CurriculumLevelService.createLevel(values);
+        CurriculumLevelService.createLevel(values, currentUser);
         message.success(
           isEnglish
             ? `Created new curriculum level "${values.name}" successfully`
@@ -126,7 +128,7 @@ export const useCurriculumLevelController = () => {
   const handleToggleStatus = (record) => {
     try {
       const targetId = record.id || record.code;
-      const updated = CurriculumLevelService.toggleLevelStatus(targetId);
+      const updated = CurriculumLevelService.toggleLevelStatus(targetId, currentUser);
       message.success(
         isEnglish
           ? `Status of "${updated.name}" changed to ${updated.status}`

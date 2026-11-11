@@ -134,11 +134,13 @@ export const AuthProvider = ({ children }) => {
           if (remoteUsers.length > 0) {
             setAllSystemUsers(remoteUsers);
 
-            // Tự động khôi phục đúng người dùng đã lưu trong phiên làm việc
+            // Tự động khôi phục đúng người dùng đã lưu trong phiên làm việc hoặc từ ?sso_uid
             try {
+              const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+              const ssoUid = urlParams ? urlParams.get('sso_uid') : null;
               const savedId = localStorage.getItem(STORAGE_AUTH_USER_KEY);
               const rawUser = localStorage.getItem('lak_erp_auth_user');
-              let targetId = savedId;
+              let targetId = ssoUid || savedId;
               if (!targetId && rawUser) {
                 targetId = JSON.parse(rawUser)?.id || JSON.parse(rawUser)?.code;
               }
@@ -148,7 +150,14 @@ export const AuthProvider = ({ children }) => {
                 );
                 if (matched) {
                   setAuthenticatedUser(matched);
+                  localStorage.setItem(STORAGE_AUTH_USER_KEY, matched.id || matched.code);
                 }
+              }
+              // Làm sạch ?sso_uid trên thanh địa chỉ sau khi đã đồng bộ xong
+              if (ssoUid && typeof window !== 'undefined' && window.location.search.includes('sso_uid=')) {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('sso_uid');
+                window.history.replaceState({}, document.title, url.pathname + url.search);
               }
             } catch (e) {
               console.warn('[AuthProvider] Lỗi khôi phục session:', e.message);
@@ -171,13 +180,30 @@ export const AuthProvider = ({ children }) => {
       const params = new URLSearchParams(window.location.search);
       const ssoUid = params.get('sso_uid');
       if (ssoUid) {
+        const upperSso = ssoUid.toUpperCase();
+        localStorage.setItem(STORAGE_AUTH_USER_KEY, upperSso);
         const matchedSso = allSystemUsers.find(
-          (u) => (u.id || u.code || '').toUpperCase() === ssoUid.toUpperCase()
+          (u) => (u.id || u.code || '').toUpperCase() === upperSso
         );
         if (matchedSso) {
-          localStorage.setItem(STORAGE_AUTH_USER_KEY, matchedSso.id || matchedSso.code);
           return matchedSso;
         }
+        return {
+          id: upperSso,
+          code: upperSso,
+          name: upperSso,
+          role: upperSso.startsWith('ADM')
+            ? 'admin'
+            : upperSso.startsWith('DIR')
+            ? 'director'
+            : upperSso.startsWith('ACA')
+            ? 'academic'
+            : upperSso.startsWith('ACC')
+            ? 'accountant'
+            : upperSso.startsWith('GV') || upperSso.startsWith('TEA')
+            ? 'teacher'
+            : 'student',
+        };
       }
 
       // 1. Kiểm tra lak_erp_auth_user
@@ -202,13 +228,32 @@ export const AuthProvider = ({ children }) => {
           (u) => (u.id || u.code || '').toUpperCase() === savedId.toUpperCase()
         );
         if (matchedSaved) return matchedSaved;
+        // Giữ phiên tạm thời theo savedId trong lúc chờ syncFirestoreUsers tải xong danh bạ từ Cloud Firestore
+        const upperId = savedId.toUpperCase();
+        return {
+          id: upperId,
+          code: upperId,
+          name: upperId,
+          role: upperId.startsWith('ADM')
+            ? 'admin'
+            : upperId.startsWith('DIR')
+            ? 'director'
+            : upperId.startsWith('ACA')
+            ? 'academic'
+            : upperId.startsWith('ACC')
+            ? 'accountant'
+            : upperId.startsWith('GV') || upperId.startsWith('TEA')
+            ? 'teacher'
+            : 'student',
+        };
       }
     }
-    // Mặc định đăng nhập tài khoản Quản trị viên cao nhất
-    return allSystemUsers[0] || CORE_ROLE_USERS.admin;
+    // [BẢO MẬT TUYỆT ĐỐI]: Nếu chưa đăng nhập (không có session trong localStorage hoặc ?sso_uid)
+    // -> Trả về null để ProtectedRoute chặn truy cập và chuyển hướng về trang Đăng nhập (/?require_login=true)
+    return null;
   }, [allSystemUsers]);
 
-  // 1. authenticatedUser: Tài khoản thực tế đăng nhập vào hệ thống
+  // 1. authenticatedUser: Tài khoản thực tế đăng nhập vào hệ thống (null nếu chưa đăng nhập)
   const [authenticatedUser, setAuthenticatedUser] = useState(resolveInitialAuthenticatedUser);
 
   // 2. impersonatedUser: Tài khoản/Vai trò đang được Admin chuyển đổi để kiểm thử góc nhìn người dùng
@@ -221,21 +266,12 @@ export const AuthProvider = ({ children }) => {
     authenticatedUser?.email === 'phamquocbao87@gmail.com';
   const canImpersonateUsers = isRealAdmin;
 
-  // currentUser: Nếu Admin đang chuyển đổi vai trò -> hiển thị vai trò đó; ngược lại là authenticatedUser
-  const currentUser = impersonatedUser || authenticatedUser || CORE_ROLE_USERS.admin;
+  // currentUser: Nếu chưa đăng nhập (authenticatedUser === null) -> currentUser = null để ProtectedRoute chặn đứng!
+  const currentUser = authenticatedUser ? (impersonatedUser || authenticatedUser) : null;
   const isImpersonating = Boolean(
     impersonatedUser &&
     (impersonatedUser.id || impersonatedUser.code) !== (authenticatedUser?.id || authenticatedUser?.code)
   );
-
-  // Làm sạch ?sso_uid trên thanh địa chỉ sau khi đã nhận phiên đăng nhập liên thông từ Landing Page
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.search.includes('sso_uid=')) {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('sso_uid');
-      window.history.replaceState({}, document.title, url.pathname + url.search);
-    }
-  }, []);
 
   // CỜ XÁC THỰC BẢO MẬT TOÀN CỤC (GLOBAL AUTHENTICATION FLAG)
   const isAuthenticated = Boolean(authenticatedUser);
@@ -300,6 +336,14 @@ export const AuthProvider = ({ children }) => {
   const loginWithGoogle = useCallback(async () => {
     const userProfile = await AuthService.signInWithGoogle();
     setAuthenticatedUser(userProfile);
+    setAllSystemUsers((prev) => {
+      const uid = (userProfile.id || userProfile.code || '').toUpperCase();
+      if (!uid) return prev;
+      const exists = prev.some((u) => (u.id || u.code || '').toUpperCase() === uid);
+      return exists
+        ? prev.map((u) => ((u.id || u.code || '').toUpperCase() === uid ? { ...u, ...userProfile } : u))
+        : [userProfile, ...prev];
+    });
     localStorage.setItem(STORAGE_AUTH_USER_KEY, userProfile.id || userProfile.code);
 
     const defaultRoute = ROLE_DEFAULT_ERP_ROUTE[userProfile.role] || 'dashboard';
@@ -321,6 +365,14 @@ export const AuthProvider = ({ children }) => {
       return res;
     }
     setAuthenticatedUser(res);
+    setAllSystemUsers((prev) => {
+      const uid = (res.id || res.code || '').toUpperCase();
+      if (!uid) return prev;
+      const exists = prev.some((u) => (u.id || u.code || '').toUpperCase() === uid);
+      return exists
+        ? prev.map((u) => ((u.id || u.code || '').toUpperCase() === uid ? { ...u, ...res } : u))
+        : [res, ...prev];
+    });
     localStorage.setItem(STORAGE_AUTH_USER_KEY, res.id || res.code);
 
     const defaultRoute = ROLE_DEFAULT_ERP_ROUTE[res.role] || 'dashboard';
@@ -421,13 +473,16 @@ export const AuthProvider = ({ children }) => {
 
   /**
    * Đăng xuất khỏi phiên làm việc hiện tại
+   * [BẢO MẬT TUYỆT ĐỐI]: Xóa toàn bộ token/session trong localStorage và đưa authenticatedUser về null
    */
   const logoutAccount = useCallback(async () => {
     await AuthService.signOut();
     localStorage.removeItem(STORAGE_AUTH_USER_KEY);
+    localStorage.removeItem('lak_erp_auth_user');
     localStorage.removeItem('lak_active_profile_id');
-    setAuthenticatedUser(allSystemUsers[0] || CORE_ROLE_USERS.admin);
-  }, [allSystemUsers]);
+    setImpersonatedUser(null);
+    setAuthenticatedUser(null);
+  }, []);
 
   /**
    * Chuyển đổi vai trò / xem hệ thống dưới góc nhìn tài khoản khác (Dành cho Admin kiểm thử & điều hành)

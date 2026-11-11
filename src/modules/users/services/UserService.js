@@ -297,36 +297,47 @@ export class UserService extends BaseModuleService {
   }
 
   /**
-   * Đồng bộ danh sách học viên ghi danh vào bộ lưu trữ Lớp học
+   * Đồng bộ danh sách học viên ghi danh vào bộ lưu trữ Lớp học (Cloud Firestore `classes`)
    */
-  static syncStudentClasses(studentId, enrolledClassIds = []) {
-    if (typeof window === 'undefined' || !studentId) return;
-    try {
-      const rawClasses = localStorage.getItem('lak_erp_classes');
-      if (!rawClasses) return;
-      const classes = JSON.parse(rawClasses);
-      if (!Array.isArray(classes)) return;
+  static async syncStudentClasses(studentId, enrolledClassIds = []) {
+    if (!studentId) return;
+    const targetId = String(studentId).trim();
+    const targetClassIds = Array.isArray(enrolledClassIds) ? enrolledClassIds : [];
 
-      const targetId = String(studentId).trim();
-      const targetClassIds = Array.isArray(enrolledClassIds) ? enrolledClassIds : [];
+    if (IS_FIREBASE_ENABLED && db) {
+      try {
+        const colRef = collection(db, 'classes');
+        const snap = await getDocs(colRef);
+        if (!snap.empty) {
+          for (const docSnap of snap.docs) {
+            const cls = docSnap.data();
+            const clsDocId = docSnap.id;
+            const currentStudentIds = Array.isArray(cls.studentIds) ? [...cls.studentIds] : [];
+            const studentSet = new Set(currentStudentIds);
+            const isEnrolled = targetClassIds.includes(clsDocId) || targetClassIds.includes(cls.id);
 
-      const updated = classes.map((cls) => {
-        const studentSet = new Set(Array.isArray(cls.studentIds) ? cls.studentIds : []);
-        if (targetClassIds.includes(cls.id) || targetClassIds.includes(cls.classId)) {
-          studentSet.add(targetId);
-        } else {
-          studentSet.delete(targetId);
+            let changed = false;
+            if (isEnrolled && !studentSet.has(targetId)) {
+              studentSet.add(targetId);
+              changed = true;
+            } else if (!isEnrolled && studentSet.has(targetId)) {
+              studentSet.delete(targetId);
+              changed = true;
+            }
+
+            if (changed) {
+              const updatedList = Array.from(studentSet);
+              await setDoc(doc(db, 'classes', clsDocId), {
+                studentIds: updatedList,
+                totalStudents: updatedList.length,
+                updatedAt: new Date().toISOString(),
+              }, { merge: true });
+            }
+          }
         }
-        return {
-          ...cls,
-          studentIds: Array.from(studentSet),
-          totalStudents: studentSet.size,
-        };
-      });
-
-      localStorage.setItem('lak_erp_classes', JSON.stringify(updated));
-    } catch (e) {
-      console.warn('[UserService.syncStudentClasses] Error:', e.message);
+      } catch (e) {
+        console.warn('[UserService.syncStudentClasses] Firestore sync error:', e.message);
+      }
     }
   }
 
@@ -436,6 +447,8 @@ export class UserService extends BaseModuleService {
       extraInfo: userData.extraInfo || '',
       createdBy: actorUser.id || actorUser.code || 'SYSTEM',
       createdByName: actorUser.name || 'Quản trị viên',
+      updatedBy: actorUser.id || actorUser.code || 'SYSTEM',
+      updatedByName: actorUser.name || 'Quản trị viên',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -480,7 +493,7 @@ export class UserService extends BaseModuleService {
 
     // 5. Đồng bộ ghi danh vào các lớp học thực tế
     if (targetRole === USER_ROLES.STUDENT && Array.isArray(userData.enrolledClassIds)) {
-      this.syncStudentClasses(userId, userData.enrolledClassIds);
+      await this.syncStudentClasses(userId, userData.enrolledClassIds);
     }
 
     return newUser;
@@ -675,7 +688,8 @@ export class UserService extends BaseModuleService {
       extraInfo: updateData.extraInfo !== undefined ? updateData.extraInfo : (targetUser.extraInfo || ''),
       avatar: updateData.avatar || targetUser.avatar,
       updatedAt: new Date().toISOString(),
-      updatedBy: actorUser.name || actorUser.id,
+      updatedBy: actorUser.id || actorUser.code || 'SYSTEM',
+      updatedByName: actorUser.name || 'Quản trị viên',
     };
 
     // Chỉ Admin mới được phép thay đổi Role
@@ -722,7 +736,7 @@ export class UserService extends BaseModuleService {
 
     // 3. Đồng bộ danh sách học viên ghi danh vào các lớp học thực tế
     if (targetRole === USER_ROLES.STUDENT && Array.isArray(updateData.enrolledClassIds)) {
-      this.syncStudentClasses(targetUser.id || targetUser.code, updateData.enrolledClassIds);
+      await this.syncStudentClasses(targetUser.id || targetUser.code, updateData.enrolledClassIds);
     }
 
     return updatedUser;

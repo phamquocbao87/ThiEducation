@@ -18,10 +18,16 @@ export const LandingPage = () => {
 
   const content = LANDING_CONTENT[language] || LANDING_CONTENT.en;
 
+  const [pendingRedirectUrl, setPendingRedirectUrl] = useState(null);
+
   // Tự động bật Modal Đăng Nhập nếu người dùng bị Route Guard chặn lại vì chưa đăng nhập
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
+      const redir = params.get('redirect');
+      if (redir) {
+        setPendingRedirectUrl(redir);
+      }
       if (params.get('require_login') === 'true') {
         setLoginModalOpen(true);
         message.warning(
@@ -59,7 +65,7 @@ export const LandingPage = () => {
         window.location.href = target.url;
       } else {
         const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-        const redirectUrl = params ? params.get('redirect') : null;
+        const redirectUrl = (params && params.get('redirect')) || pendingRedirectUrl;
         navigate(redirectUrl || target.path);
       }
     }

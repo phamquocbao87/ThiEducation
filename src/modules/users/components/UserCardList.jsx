@@ -27,6 +27,7 @@ import {
 import { ROLE_COLORS, USER_STATUS, ROLE_LABELS, isGmailAddress } from '../models/user.model';
 import { PermissionService } from '../../../core/services/PermissionService';
 import { DriveStorageService } from '../../../core/services/DriveStorageService';
+import { AdminAuditInfo } from '../../../shared/components/AdminAuditInfo';
 import { useLanguage } from '../../../core/context/LanguageContext';
 
 const { Text, Title } = Typography;
@@ -246,6 +247,9 @@ export const UserCardList = ({
                 )}
               </Space>
             </div>
+
+            {/* Dành riêng cho IT Admin: Nhật ký khởi tạo & cập nhật */}
+            <AdminAuditInfo record={user} currentUser={currentUser} mode="card" />
           </Card>
         );
       })}

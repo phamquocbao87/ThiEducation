@@ -11,6 +11,8 @@ import {
   EyeOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { useAuth } from '../../../core/context/AuthContext';
+import { AdminAuditInfo } from '../../../shared/components/AdminAuditInfo';
 import { formatLocalizedAgeRange, formatLocalizedDuration } from '../../../shared/utils/taxonomyUtils';
 
 const { Text } = Typography;
@@ -25,6 +27,7 @@ export const CurriculumLevelTable = ({
   canManage = true,
 }) => {
   const { isEnglish, t } = useLanguage();
+  const { currentUser } = useAuth();
 
   const columns = useMemo(
     () => [
@@ -181,6 +184,18 @@ export const CurriculumLevelTable = ({
           );
         },
       },
+      ...(currentUser?.role === 'admin'
+        ? [
+            {
+              title: isEnglish ? 'Audit Trail' : 'Người Tạo / Cập Nhật',
+              key: 'auditTrail',
+              width: 190,
+              render: (_, record) => (
+                <AdminAuditInfo record={record} currentUser={currentUser} mode="table" />
+              ),
+            },
+          ]
+        : []),
       {
         title: t('curriculum.table.colActions'),
         key: 'actions',
@@ -219,7 +234,7 @@ export const CurriculumLevelTable = ({
         ),
       },
     ],
-    [isEnglish, canManage, onView, onEdit, onToggleStatus, onDelete, t]
+    [isEnglish, canManage, onView, onEdit, onToggleStatus, onDelete, t, currentUser]
   );
 
   return (

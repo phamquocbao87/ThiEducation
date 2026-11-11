@@ -64,6 +64,8 @@ import { UserAuditService } from './services/UserAuditService';
 import { DriveStorageService } from '../../core/services/DriveStorageService';
 import { formatScheduleForViewer, findScheduleConflictsInClassList } from '../../shared/utils/scheduleUtils';
 import { localizePosition, localizeDepartment } from '../../shared/utils/taxonomyUtils';
+import { AdminAuditInfo } from '../../shared/components/AdminAuditInfo';
+import { ClassService } from '../courses/services/ClassService';
 import { DEFAULT_ACTIVE_CLASSES } from './UserRegistrationPage';
 import {
   USER_ROLES,
@@ -133,17 +135,26 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
   const [linkedClasses, setLinkedClasses] = useState([]);
   const [familyMembers, setFamilyMembers] = useState([]);
 
-  // Danh sách các lớp học đang hoạt động trong hệ thống
-  const [availableClasses] = useState(() => {
-    try {
-      const saved = localStorage.getItem('lak_erp_classes');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+  // Danh sách các lớp học đang hoạt động trong hệ thống (Đọc trực tiếp từ Cloud Firestore qua ClassService)
+  const [availableClasses, setAvailableClasses] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchClasses = async () => {
+      try {
+        const list = await ClassService.getAllClasses();
+        if (isMounted) {
+          setAvailableClasses(list || []);
+        }
+      } catch (err) {
+        console.error('Error fetching classes:', err);
       }
-    } catch {}
-    return DEFAULT_ACTIVE_CLASSES;
-  });
+    };
+    fetchClasses();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Theo dõi email, sđt và vai trò nhập vào trong form để nhận diện loại tài khoản thời gian thực
   const watchedEmail = Form.useWatch('email', form) ?? user?.email ?? '';
@@ -192,11 +203,9 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
       };
       setUser(normalizedData);
 
-      // Đọc danh sách lớp học thực tế từ localStorage ('lak_erp_classes') để gắn vào Profile của GV / HV
+      // Đọc danh sách lớp học thực tế từ Cloud Firestore qua ClassService để gắn vào Profile của GV / HV
       try {
-        const rawClasses = localStorage.getItem('lak_erp_classes');
-        const parsedClasses = rawClasses ? JSON.parse(rawClasses) : [];
-        const allClasses = Array.isArray(parsedClasses) && parsedClasses.length > 0 ? parsedClasses : DEFAULT_ACTIVE_CLASSES;
+        const allClasses = await ClassService.getAllClasses();
         const targetCode = data.id || data.code;
         if (data.role === 'teacher') {
           setLinkedClasses(allClasses.filter((c) => c.teacherId === targetCode));
@@ -578,7 +587,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
         syncCurrentUserProfile(updated);
       }
       if (user?.role === USER_ROLES.STUDENT && Array.isArray(updatePayload.enrolledClassIds)) {
-        UserService.syncStudentClasses(user.id || user.code, updatePayload.enrolledClassIds);
+        await UserService.syncStudentClasses(user.id || user.code, updatePayload.enrolledClassIds);
       }
       message.success(isEnglish ? `Profile of ${updated.name} updated successfully` : `Đã lưu thành công thông tin hồ sơ của ${updated.name}`);
       loadUserAuditLogs();
@@ -938,8 +947,11 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
             boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
             border: '1px solid #e2e8f0',
           }}
-          styles={{ body: { padding: '8px 20px 24px' } }}
+          styles={{ body: { padding: '16px 20px 24px' } }}
         >
+          {/* Dành riêng cho IT Admin: Bảng thông tin Audit Trail */}
+          <AdminAuditInfo record={user} currentUser={currentUser} mode="detail" />
+
           <Tabs
             defaultActiveKey="overview"
             items={[
@@ -1610,6 +1622,9 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
           disabled={false}
           onFinish={handleSave}
         >
+          {/* Dành riêng cho IT Admin: Bảng thông tin Audit Trail trong chế độ chỉnh sửa */}
+          <AdminAuditInfo record={user} currentUser={currentUser} mode="detail" />
+
           <Tabs
             defaultActiveKey="basic"
             items={[
@@ -1985,6 +2000,11 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                               style={{ width: '100%', minHeight: 40, borderRadius: 8 }}
                               allowClear
                               optionLabelProp="label"
+                              notFoundContent={
+                                <div style={{ padding: '8px 0', textAlign: 'center', color: '#64748b' }}>
+                                  {isEnglish ? 'No online classes available in system' : 'Chưa có lớp học trực tuyến nào trong hệ thống'}
+                                </div>
+                              }
                             >
                               {availableClasses.map((cls) => (
                                 <Option

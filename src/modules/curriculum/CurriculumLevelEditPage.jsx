@@ -37,6 +37,7 @@ import {
   BaseFormPageLayout,
   FormSectionCard,
 } from '../../shared/components/layout';
+import { AdminAuditInfo } from '../../shared/components/AdminAuditInfo';
 import {
   BaseRichTextEditor,
   BaseRangeSelector,
@@ -98,7 +99,7 @@ export const CurriculumLevelEditPage = () => {
           ? 'You do not have permission to edit curriculum levels'
           : 'Bạn không có quyền chỉnh sửa cấp độ giáo trình'
       );
-      navigate(isCreate ? '/curriculum-levels' : `/curriculum-levels/${levelId}`, { replace: true });
+      navigate(isCreate ? '/courses-classes?tab=curriculum' : `/curriculum-levels/${levelId}`, { replace: true });
     }
   }, [canManage, isCreate, levelId, navigate, isEnglish]);
 
@@ -123,7 +124,7 @@ export const CurriculumLevelEditPage = () => {
         });
       } else {
         message.error(isEnglish ? 'Curriculum level not found' : 'Không tìm thấy cấp độ giáo trình');
-        navigate('/curriculum-levels');
+        navigate('/courses-classes?tab=curriculum');
       }
     } else {
       form.setFieldsValue({
@@ -146,11 +147,11 @@ export const CurriculumLevelEditPage = () => {
       setSaving(true);
       const targetCode = values.code || levelId;
       if (isCreate) {
-        CurriculumLevelService.createLevel(values);
+        CurriculumLevelService.createLevel(values, currentUser);
         message.success(isEnglish ? 'Curriculum level created successfully' : 'Tạo cấp độ giáo trình mới thành công');
         navigate(`/curriculum-levels/${targetCode}`);
       } else {
-        CurriculumLevelService.updateLevel(levelId, values);
+        CurriculumLevelService.updateLevel(levelId, values, currentUser);
         message.success(isEnglish ? 'Curriculum level updated successfully' : 'Cập nhật cấp độ giáo trình thành công');
         navigate(`/curriculum-levels/${targetCode}`);
       }
@@ -166,9 +167,9 @@ export const CurriculumLevelEditPage = () => {
       title: (
         <span
           style={{ cursor: 'pointer', color: '#1890ff' }}
-          onClick={() => navigate('/curriculum-levels')}
+          onClick={() => navigate('/courses-classes?tab=curriculum')}
         >
-          {isEnglish ? 'Curriculum Levels' : 'Cấp Độ Giáo Trình'}
+          {isEnglish ? 'Courses & Curriculum Levels' : 'Khóa Học & Cấp Độ Giáo Trình'}
         </span>
       ),
     },
@@ -196,7 +197,7 @@ export const CurriculumLevelEditPage = () => {
   const headerActions = (
     <Space size={10}>
       <Button
-        onClick={() => navigate(isCreate ? '/curriculum-levels' : `/curriculum-levels/${levelId}`)}
+        onClick={() => navigate(isCreate ? '/courses-classes?tab=curriculum' : `/curriculum-levels/${levelId}`)}
         style={{ borderRadius: 8, minWidth: 80, height: 38 }}
       >
         {isEnglish ? 'Cancel' : 'Hủy'}
@@ -225,7 +226,7 @@ export const CurriculumLevelEditPage = () => {
   return (
     <BaseFormPageLayout
       breadcrumbs={breadcrumbs}
-      onBack={() => navigate(isCreate ? '/curriculum-levels' : `/curriculum-levels/${levelId}`)}
+      onBack={() => navigate(isCreate ? '/courses-classes?tab=curriculum' : `/curriculum-levels/${levelId}`)}
       backText={isCreate ? (isEnglish ? 'Back to Curriculum' : 'Quay Lại Danh Sách') : (isEnglish ? 'Cancel & Return to View' : 'Hủy & Quay Lại Xem')}
       icon={<BookOutlined />}
       maxWidth={1100}
@@ -247,6 +248,11 @@ export const CurriculumLevelEditPage = () => {
         onFinish={handleFinish}
         requiredMark="optional"
       >
+        {/* Dành riêng cho IT Admin: Bảng thông tin Audit Trail */}
+        {!isCreate && initialData && (
+          <AdminAuditInfo record={initialData} currentUser={currentUser} mode="detail" />
+        )}
+
         {/* SECTION 1: THÔNG TIN ĐỊNH DANH & PHÂN LOẠI GIÁO TRÌNH */}
         <FormSectionCard
           icon={<BookOutlined />}
@@ -487,7 +493,7 @@ export const CurriculumLevelEditPage = () => {
           <div className="lak-form-bottom-actions">
             <Button
               size="large"
-              onClick={() => navigate(isCreate ? '/curriculum-levels' : `/curriculum-levels/${levelId}`)}
+              onClick={() => navigate(isCreate ? '/courses-classes?tab=curriculum' : `/curriculum-levels/${levelId}`)}
               style={{
                 borderRadius: 8,
                 minWidth: 120,

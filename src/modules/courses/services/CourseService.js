@@ -70,13 +70,16 @@ export class CourseService extends BaseModuleService {
     }
   }
 
-  static createCourse(newCourse, existingCourses = []) {
+  static createCourse(newCourse, existingCourses = [], actorUser = null) {
     const nextCount = existingCourses.length + 1;
     const generatedId = newCourse.id?.trim() || `KH-${String(nextCount).padStart(3, '0')}`;
     const durationMonths = Number(newCourse.durationMonths) || 3;
     const durationWeeks = Number(newCourse.durationWeeks) || durationMonths * 4;
     const sessionsPerWeek = Number(newCourse.sessionsPerWeek) || 2;
     const feePerMonth = Number(newCourse.feePerMonth) || 2500000;
+
+    const creatorId = actorUser?.id || actorUser?.code || newCourse.createdBy || 'ADM001';
+    const creatorName = actorUser?.name || newCourse.createdByName || 'Phạm Quốc Bảo';
 
     const courseRecord = {
       id: generatedId,
@@ -102,13 +105,21 @@ export class CourseService extends BaseModuleService {
         'Kiểm tra đánh giá năng lực đầu vào 1-1 với giáo vụ',
       objectives: newCourse.objectives?.trim() || newCourse.description?.trim() || '',
       description: newCourse.description?.trim() || newCourse.objectives?.trim() || '',
-      createdAt: new Date().toISOString(),
+      createdBy: creatorId,
+      createdByName: creatorName,
+      updatedBy: creatorId,
+      updatedByName: creatorName,
+      createdAt: newCourse.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     return [courseRecord, ...existingCourses];
   }
 
-  static updateCourse(courseId, updatedData, existingCourses = []) {
+  static updateCourse(courseId, updatedData, existingCourses = [], actorUser = null) {
+    const updaterId = actorUser?.id || actorUser?.code || updatedData.updatedBy || 'ADM001';
+    const updaterName = actorUser?.name || updatedData.updatedByName || 'Phạm Quốc Bảo';
+
     return existingCourses.map((c) => {
       if (c.id !== courseId) return c;
       const durationMonths = Number(updatedData.durationMonths) || c.durationMonths || 3;
@@ -134,6 +145,8 @@ export class CourseService extends BaseModuleService {
         prerequisites: updatedData.prerequisites?.trim() ?? c.prerequisites,
         objectives: updatedData.objectives?.trim() ?? c.objectives,
         description: updatedData.description?.trim() ?? updatedData.objectives?.trim() ?? c.description,
+        updatedBy: updaterId,
+        updatedByName: updaterName,
         updatedAt: new Date().toISOString(),
       };
     });

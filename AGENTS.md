@@ -53,9 +53,15 @@ ThiEducation/
 5. **Mô Hình Đào Tạo Chuẩn: 1 Khóa Học (Course) → Nhiều Lớp Học (Classes) → Mỗi Lớp Nhiều Học Viên & 1 Giáo Viên:**
    - **Khóa học (`Course`):** Khung chương trình đào tạo chung (Mục tiêu, chuẩn đầu ra, giáo trình chính McGraw-Hill Wonders, thời lượng tháng, sĩ số tối đa 1 lớp, học phí niêm yết).
    - **Lớp học (`Class`):** Đơn vị vận hành cụ thể trực thuộc một khóa học (`courseId`), có lịch học hàng tuần, có sĩ số tối đa theo chuẩn khóa học, có **1 Giáo viên bản xứ đảm nhiệm (`teacherId`)**, và danh sách nhiều học viên theo học (`studentIds`).
-   - **Phân tách 2 Module độc lập:**
-     - Phân hệ Quản lý Khóa Học & Lớp Học (`src/modules/courses/` — `/courses-classes`): Quản lý danh mục khóa học, lớp học và trang tạo khóa học mới chuyên biệt `/courses-classes/new`.
-     - Phân hệ Cấp Độ Giáo Trình (`src/modules/curriculum/` — `/curriculum-levels`): Khung chuẩn ELA & Wonders (GK - G6), CEFR, độ tuổi, liên kết trực tiếp khi tạo khóa học mới.
+   - **Phân tách Module & Cấu trúc 3 Tab Quản lý Đào tạo Hợp nhất:**
+     - Phân hệ Quản lý Đào tạo Hợp nhất (`src/modules/courses/` — `/courses-classes`): Gồm 3 Tab theo thứ tự ưu tiên vận hành:
+       1. **Tab 1 (`classes` — Mặc định):** `Quản Lý Lớp Học & Phân Bổ` (Học viên chỉ đăng ký tham gia tại cấp Lớp học; tuyệt đối không đặt nút đăng ký ở cấp Khóa học).
+       2. **Tab 2 (`courses`):** `Danh Mục Khóa Học` (Quản lý khung chương trình đào tạo).
+       3. **Tab 3 (`curriculum`):** `Cấp Độ Giáo Trình` (Nhúng trực tiếp `CurriculumLevelsPage`, ẩn menu rời trên Sidebar để tinh gọn điều hướng).
+     - **Quy chuẩn 3 Trạng thái Học viên Đăng ký Lớp học & Bảo mật Link Zoom:**
+       1. *Chưa đăng ký:* Nút `Đăng Ký Tham Gia Lớp Học` mở, ẩn/khóa toàn bộ Link Zoom, ID & Mật khẩu phòng học.
+       2. *Đang chờ duyệt (`pendingStudentRequests`):* Nút chuyển sang `Đã đăng ký — Chờ phê duyệt` (`disabled=true`, chặn đứng đăng ký trùng lặp), tiếp tục khóa thông tin Zoom.
+       3. *Đã phê duyệt (`studentIds`):* Hiển thị `Đã duyệt đăng ký — Đã tham gia lớp học`, mở khóa toàn bộ Link Zoom & nhóm lớp cho học viên.
      - Phân hệ Thời Khóa Biểu Zoom (`src/modules/schedules/` — `/zoom-schedules`): Lịch học & thời khóa biểu phòng học trực tuyến Live Zoom Calendar View.
 6. **Kỷ Luật Bất Biến Về Phạm Vi Task & Đánh Giá Tác Động Bắt Buộc (Strict Scope Integrity & Mandatory Impact Assessment Invariant):**
    - **Tuyệt đối không tự ý thay đổi chức năng khác khi chưa có yêu cầu / thông báo:**
@@ -154,6 +160,17 @@ ThiEducation/
 13. **Quy Chuẩn Xác Thực Email Tùy Chọn & Bố Cục Form Thu Gọn (Safe Optional Email Validator & Compact Form Layout):**
     - **Safe Optional Email Validator:** Khi Email là tùy chọn (như Học viên), **TUYỆT ĐỐI CẤM** dùng `{ type: 'email' }` đơn thuần để tránh lỗi thư viện chặn chuỗi rỗng `""`. Bắt buộc dùng validator kiểm tra `if (!value || !value.trim()) return Promise.resolve()`.
     - **Compact Form Layout Invariant:** Khoảng cách dòng `Form.Item` dùng `marginBottom: 14px` (hoặc tối đa `16px`), chiều cao controls `38px - 40px`, chia đều cột 50/50 (`Col xs={24} sm={12}`).
+14. **Quy Chuẩn Bảo Mật Định Tuyến Tập Trung (`ProtectedRoute` 2 Tầng) & Cấm Fallback Actor (`Zero Actor Fallback Invariant`):**
+    - **Cấm tuyệt đối Fallback Actor:** Khi xử lý đăng ký lớp học (`handleRequestEnrollClass`) hoặc nhận lớp giảng dạy (`handleRequestTeachClass`), bắt buộc lấy đúng định danh `currentUser` đang đăng nhập, **TUYỆT ĐỐI CẤM** fallback sang `students[0]`, `teachers[0]` hoặc tự động gán `CORE_ROLE_USERS.admin` khi chưa đăng nhập.
+    - **Bảo mật 2 tầng tại [`ProtectedRoute.jsx`](file:///Volumes/DATA/projects/ThiEducation/src/core/router/ProtectedRoute.jsx) & [`PermissionService.canAccessRoutePath`](file:///Volumes/DATA/projects/ThiEducation/src/core/services/PermissionService.js):**
+      * *Tầng 1 (Chưa đăng nhập):* Chặn mọi truy cập URL trực tiếp (kể cả query `?tab=curriculum`), chuyển hướng về `/?require_login=true&redirect=...` và bật Modal Đăng nhập.
+      * *Tầng 2 (Đã đăng nhập nhưng không đủ quyền Role):* Hiển thị màn hình **`403 Not Found`** tối giản kèm nút **`Quay Lại`**.
+15. **Quy Chuẩn Hệ Thống Thông Báo Realtime Tối Ưu Chi Phí (`onSnapshot` + `targetKeys` + `limit(20)` + `Admin Audit Trail`):**
+    - **Định tuyến chỉ mục `targetKeys` ([`NotificationService.js`](file:///Volumes/DATA/projects/ThiEducation/src/core/services/NotificationService.js)):** Mỗi thông báo khi ghi vào Firestore `notifications` bắt buộc gắn mảng `targetKeys` (`["USER:<id>"]`, `["ROLE:academic", "ROLE:director", "ROLE:admin"]`, hoặc `["ALL"]`) và `auditTrail` đầy đủ (`action`, `actorId`, `actorName`, `actorRole`, `createdAt`).
+    - **Lắng nghe Realtime bảo vệ chi phí ([`useNotifications.js`](file:///Volumes/DATA/projects/ThiEducation/src/core/hooks/useNotifications.js)):** Dùng `onSnapshot` với truy vấn chỉ mục đơn `where('targetKeys', 'array-contains-any', userQueryKeys)` + `limit(20)` (tuyệt đối không quét toàn bộ collection và không ghép `orderBy` gây lỗi thiếu Composite Index; sắp xếp `createdAt` tại client).
+    - **Tối ưu Lượt ghi & Vòng đời Tab:** Dùng `arrayUnion(currentUser.id)` khi đánh dấu đã đọc (bỏ qua nếu đã đọc để tốn `0 Write`), dùng `writeBatch` khi bấm *"Đã đọc tất cả"*, cô lập cache theo từng user (`lak_erp_notifications_cache_<userId>`), và tự động tạm ngắt listener khi tab ẩn quá 5 phút (`visibilitychange`).
+    - **Hiển thị Audit cho IT Admin ([`NotificationBellPopover.jsx`](file:///Volumes/DATA/projects/ThiEducation/src/core/layout/NotificationBellPopover.jsx)):** Khi `currentUser.role === 'admin'`, hiển thị thanh kiểm toán trên từng thông báo (`Khởi tạo: <actorName> (<actorId>) • Đã đọc: <count>`).
+    - **Lưu ý Kiểm thử Playwright E2E với `onSnapshot`:** Khi dùng Playwright kiểm thử các trang có kết nối WebSocket/Firestore `onSnapshot`, luôn dùng `wait_until="domcontentloaded"` thay vì `wait_until="networkidle"`.
 
 ---
 

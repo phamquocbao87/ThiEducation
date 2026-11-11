@@ -44,8 +44,9 @@ export class TimetableSlotService extends BaseModuleService {
           subject: cls.subject || 'Wonders English ELA',
           teacherId: cls.teacherId,
           teacherName: cls.teacherName || 'Chưa phân công',
+          studentIds: Array.isArray(cls.studentIds) ? cls.studentIds : [],
           platform: cls.platform || 'Zoom Meeting',
-          meetingLink: cls.meetingLink || 'https://zoom.us/j/888999111',
+          meetingLink: cls.zoomStudentLink || cls.meetingLink || 'https://zoom.us/j/888999111',
           status: SESSION_STATUS.UPCOMING,
         });
       });

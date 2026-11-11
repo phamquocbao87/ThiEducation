@@ -21,6 +21,8 @@ import {
   EditOutlined,
   LinkOutlined,
   CheckOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
   CloseOutlined,
   WarningOutlined,
   MessageOutlined,
@@ -31,6 +33,7 @@ import { CLASS_STATUS_COLORS } from '../models/courses.model';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { ClassService } from '../services/ClassService';
 import { formatScheduleForViewer } from '../../../shared/utils/scheduleUtils';
+import { AdminAuditInfo } from '../../../shared/components/AdminAuditInfo';
 
 const { Title, Text } = Typography;
 
@@ -78,6 +81,17 @@ export const ClassRosterDrawer = ({
   const pendingStudentRequests = Array.isArray(targetClass.pendingStudentRequests)
     ? targetClass.pendingStudentRequests
     : [];
+
+  const currentUid = currentUser?.id || currentUser?.code;
+  const isTeacherRole = currentUser?.role === 'teacher';
+  const isStudentRole = currentUser?.role === 'student';
+  const myTeacherPending = pendingTeacherRequests.some((r) => r.teacherId === currentUid);
+  const isAlreadyEnrolled = (targetClass.studentIds || []).includes(currentUid);
+  const myStudentPending = pendingStudentRequests.some((r) => r.studentId === currentUid);
+
+  // Quyền xem thông tin Phòng học Zoom & Nhóm Zalo trong Drawer:
+  // Học viên chỉ được mở khóa khi đã được Giáo vụ duyệt vào lớp (isAlreadyEnrolled === true)
+  const canViewClassRoomLinks = !isStudentRole || isAlreadyEnrolled;
 
   const holidays = Array.isArray(targetClass.holidays)
     ? targetClass.holidays
@@ -229,7 +243,7 @@ export const ClassRosterDrawer = ({
           <Button onClick={onClose} style={{ height: 40, borderRadius: 8, minWidth: 90 }}>
             {isEnglish ? 'Close' : 'Đóng'}
           </Button>
-          {zaloUrl && (
+          {canViewClassRoomLinks && zaloUrl && (
             <Button
               icon={<MessageOutlined />}
               onClick={() => window.open(zaloUrl, '_blank')}
@@ -244,21 +258,23 @@ export const ClassRosterDrawer = ({
               {isEnglish ? 'Zalo Group' : 'Nhóm Zalo Lớp'}
             </Button>
           )}
-          <Button
-            icon={<LinkOutlined />}
-            onClick={() =>
-              window.open(canManage ? hostZoomUrl : studentZoomUrl, '_blank')
-            }
-            style={{
-              height: 40,
-              borderRadius: 8,
-              borderColor: '#722ed1',
-              color: '#722ed1',
-              fontWeight: 500,
-            }}
-          >
-            {isEnglish ? 'Open Zoom Room' : 'Mở Phòng Zoom'}
-          </Button>
+          {canViewClassRoomLinks && (
+            <Button
+              icon={<LinkOutlined />}
+              onClick={() =>
+                window.open(canManage || isTeacherRole ? hostZoomUrl : studentZoomUrl, '_blank')
+              }
+              style={{
+                height: 40,
+                borderRadius: 8,
+                borderColor: '#722ed1',
+                color: '#722ed1',
+                fontWeight: 500,
+              }}
+            >
+              {isEnglish ? 'Open Zoom Room' : 'Mở Phòng Zoom'}
+            </Button>
+          )}
           {canManage && onEdit && (
             <Button
               type="primary"
@@ -297,6 +313,9 @@ export const ClassRosterDrawer = ({
           {targetClass.name}
         </Title>
       </div>
+
+      {/* Nhật Ký Kiểm Toán IT (Chỉ hiển thị cho View Admin) */}
+      <AdminAuditInfo record={targetClass} currentUser={currentUser} mode="detail" style={{ marginBottom: 16 }} />
 
       {/* 2. Thẻ Chỉ Số Tóm Tắt (Metric Highlight Cards) */}
       <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
@@ -353,7 +372,11 @@ export const ClassRosterDrawer = ({
                   {isEnglish ? 'Zoom Room ID' : 'Mã phòng Zoom'}
                 </div>
                 <Text strong style={{ fontSize: 15, color: '#722ed1' }}>
-                  {targetClass.meetingId || '888 999 101'}
+                  {canViewClassRoomLinks
+                    ? targetClass.meetingId || '888 999 101'
+                    : isEnglish
+                    ? '🔒 Unlocked after approval'
+                    : '🔒 Mở sau khi duyệt'}
                 </Text>
               </div>
             </Space>
@@ -394,35 +417,63 @@ export const ClassRosterDrawer = ({
           </Text>
 
           <Space size={8} wrap>
-            {isUnassignedTeacher && onRequestTeachClass && (
-              <Button
-                size="small"
-                icon={<UserAddOutlined />}
-                onClick={() => onRequestTeachClass(targetClass.id)}
-                style={{
-                  borderRadius: 6,
-                  borderColor: '#fa8c16',
-                  color: '#d46b08',
-                  fontWeight: 600,
-                }}
-              >
-                {isEnglish ? 'Apply to Teach' : 'GV Đăng Ký Dạy Lớp Này'}
-              </Button>
+            {isTeacherRole && isUnassignedTeacher && onRequestTeachClass && (
+              myTeacherPending ? (
+                <Tag icon={<ClockCircleOutlined />} color="processing" style={{ margin: 0, padding: '4px 10px', fontWeight: 600 }}>
+                  {isEnglish ? 'Applied — Waiting for Approval' : 'Đã đăng ký dạy — Chờ phê duyệt'}
+                </Tag>
+              ) : (
+                <Button
+                  size="small"
+                  icon={<UserAddOutlined />}
+                  onClick={() => onRequestTeachClass(targetClass.id)}
+                  style={{
+                    borderRadius: 6,
+                    borderColor: '#fa8c16',
+                    color: '#d46b08',
+                    fontWeight: 600,
+                  }}
+                >
+                  {isEnglish ? 'Apply to Teach' : 'GV Đăng Ký Dạy Lớp Này'}
+                </Button>
+              )
             )}
-            {onRequestEnrollClass && (
-              <Button
-                size="small"
-                icon={<UserAddOutlined />}
-                onClick={() => onRequestEnrollClass(targetClass.id)}
-                style={{
-                  borderRadius: 6,
-                  borderColor: '#16a34a',
-                  color: '#16a34a',
-                  fontWeight: 600,
-                }}
-              >
-                {isEnglish ? 'Request Enrollment' : 'HV Đăng Ký Học Lớp Này'}
-              </Button>
+            {isStudentRole && onRequestEnrollClass && (
+              isAlreadyEnrolled ? (
+                <Tag icon={<CheckCircleOutlined />} color="success" style={{ margin: 0, padding: '4px 10px', fontWeight: 600 }}>
+                  {isEnglish ? 'Enrolled — Approved in Class' : 'Đã duyệt đăng ký — Đã tham gia lớp học'}
+                </Tag>
+              ) : myStudentPending ? (
+                <Button
+                  size="small"
+                  disabled
+                  icon={<ClockCircleOutlined />}
+                  style={{
+                    borderRadius: 6,
+                    background: '#e6f4ff',
+                    borderColor: '#91caff',
+                    color: '#0958d9',
+                    fontWeight: 600,
+                    cursor: 'not-allowed',
+                  }}
+                >
+                  {isEnglish ? 'Registered — Waiting for Approval' : 'Đã đăng ký — Chờ phê duyệt'}
+                </Button>
+              ) : (
+                <Button
+                  size="small"
+                  icon={<UserAddOutlined />}
+                  onClick={() => onRequestEnrollClass(targetClass.id)}
+                  style={{
+                    borderRadius: 6,
+                    borderColor: '#16a34a',
+                    color: '#16a34a',
+                    fontWeight: 600,
+                  }}
+                >
+                  {isEnglish ? 'Register for Class' : 'Đăng Ký Học Lớp Này'}
+                </Button>
+              )
             )}
           </Space>
         </div>
@@ -607,42 +658,70 @@ export const ClassRosterDrawer = ({
         )}
 
         <Descriptions.Item label={isEnglish ? 'Zoom Meeting ID' : 'Zoom Meeting ID'}>
-          <Text strong>{targetClass.meetingId || '888 999 101'}</Text>
+          {canViewClassRoomLinks ? (
+            <Text strong>{targetClass.meetingId || '888 999 101'}</Text>
+          ) : (
+            <Tag color="default">
+              {isEnglish ? '🔒 Visible after enrollment approval' : '🔒 Hiển thị sau khi được duyệt đăng ký'}
+            </Tag>
+          )}
         </Descriptions.Item>
         <Descriptions.Item label={isEnglish ? 'Zoom Passcode' : 'Mật khẩu Zoom'}>
-          <Tag color="default">{targetClass.passcode || '123456'}</Tag>
+          {canViewClassRoomLinks ? (
+            <Tag color="default">{targetClass.passcode || '123456'}</Tag>
+          ) : (
+            <Tag color="default">🔒 ••••••</Tag>
+          )}
         </Descriptions.Item>
 
-        <Descriptions.Item
-          label={isEnglish ? 'Zoom Link for Teacher (Host)' : 'Link Zoom Giáo Viên (Host)'}
-          span={2}
-        >
-          <a href={hostZoomUrl} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>
-            {hostZoomUrl}
-          </a>
-        </Descriptions.Item>
+        {!isStudentRole && (
+          <Descriptions.Item
+            label={isEnglish ? 'Zoom Link for Teacher (Host)' : 'Link Zoom Giáo Viên (Host)'}
+            span={2}
+          >
+            <a href={hostZoomUrl} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>
+              {hostZoomUrl}
+            </a>
+          </Descriptions.Item>
+        )}
 
         <Descriptions.Item
           label={isEnglish ? 'Zoom Link for Students (Join)' : 'Link Zoom Học Viên (Vào Học)'}
           span={2}
         >
-          <a
-            href={studentZoomUrl}
-            target="_blank"
-            rel="noreferrer"
-            style={{ wordBreak: 'break-all' }}
-          >
-            {studentZoomUrl}
-          </a>
+          {canViewClassRoomLinks ? (
+            <a
+              href={studentZoomUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{ wordBreak: 'break-all' }}
+            >
+              {studentZoomUrl}
+            </a>
+          ) : (
+            <Text type="secondary">
+              {isEnglish
+                ? '🔒 Zoom classroom link will be unlocked once Academic approves your registration.'
+                : '🔒 Link vào phòng học Zoom sẽ được mở khóa ngay khi Giáo vụ phê duyệt đăng ký của bạn.'}
+            </Text>
+          )}
         </Descriptions.Item>
 
         <Descriptions.Item
           label={isEnglish ? 'Class Zalo Group Chat' : 'Link Nhóm Chat Zalo Của Lớp'}
           span={2}
         >
-          <a href={zaloUrl} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>
-            {zaloUrl}
-          </a>
+          {canViewClassRoomLinks ? (
+            <a href={zaloUrl} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>
+              {zaloUrl}
+            </a>
+          ) : (
+            <Text type="secondary">
+              {isEnglish
+                ? '🔒 Class Zalo group link will be unlocked after enrollment approval.'
+                : '🔒 Link nhóm Zalo lớp sẽ hiển thị sau khi được duyệt tham gia lớp học.'}
+            </Text>
+          )}
         </Descriptions.Item>
       </Descriptions>
 

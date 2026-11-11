@@ -24,6 +24,7 @@ import {
 import { USER_ROLES, ROLE_COLORS, USER_STATUS, ROLE_LABELS, isGmailAddress, toEnglishName } from '../models/user.model';
 import { PermissionService } from '../../../core/services/PermissionService';
 import { DriveStorageService } from '../../../core/services/DriveStorageService';
+import { AdminAuditInfo } from '../../../shared/components/AdminAuditInfo';
 import { useLanguage } from '../../../core/context/LanguageContext';
 
 const { Text } = Typography;
@@ -236,6 +237,18 @@ export const UserTable = ({
         );
       },
     },
+    ...(currentUser?.role === 'admin'
+      ? [
+          {
+            title: isEnglish ? 'Audit Trail' : 'Người Tạo / Cập Nhật',
+            key: 'auditTrail',
+            width: 190,
+            render: (_, record) => (
+              <AdminAuditInfo record={record} currentUser={currentUser} mode="table" />
+            ),
+          },
+        ]
+      : []),
     {
       title: t('users.table.colActions'),
       key: 'actions',

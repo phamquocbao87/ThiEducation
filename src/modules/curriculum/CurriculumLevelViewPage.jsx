@@ -31,6 +31,7 @@ import { formatLocalizedAgeRange, formatLocalizedDuration } from '../../shared/u
 import { PermissionService } from '../../core/services/PermissionService';
 import { CurriculumLevelService } from './services/CurriculumLevelService';
 import { LEVEL_STATUS } from './models/curriculumLevel.model';
+import { AdminAuditInfo } from '../../shared/components/AdminAuditInfo';
 import {
   BaseFormPageLayout,
   FormSectionCard,
@@ -51,7 +52,7 @@ export const CurriculumLevelViewPage = () => {
 
   useEffect(() => {
     if (!levelId) {
-      navigate('/curriculum-levels');
+      navigate('/courses-classes?tab=curriculum');
       return;
     }
 
@@ -60,7 +61,7 @@ export const CurriculumLevelViewPage = () => {
       setLevel(found);
     } else {
       message.error(isEnglish ? 'Curriculum level not found' : 'Không tìm thấy cấp độ giáo trình');
-      navigate('/curriculum-levels');
+      navigate('/courses-classes?tab=curriculum');
     }
     setLoading(false);
   }, [levelId, navigate, isEnglish]);
@@ -76,9 +77,9 @@ export const CurriculumLevelViewPage = () => {
       title: (
         <span
           style={{ cursor: 'pointer', color: '#1890ff' }}
-          onClick={() => navigate('/curriculum-levels')}
+          onClick={() => navigate('/courses-classes?tab=curriculum')}
         >
-          {isEnglish ? 'Curriculum Levels' : 'Cấp Độ Giáo Trình'}
+          {isEnglish ? 'Courses & Curriculum Levels' : 'Khóa Học & Cấp Độ Giáo Trình'}
         </span>
       ),
     },
@@ -94,7 +95,7 @@ export const CurriculumLevelViewPage = () => {
     <Space size={10}>
       <Button
         icon={<ArrowLeftOutlined />}
-        onClick={() => navigate('/curriculum-levels')}
+        onClick={() => navigate('/courses-classes?tab=curriculum')}
         style={{ borderRadius: 8, height: 38 }}
       >
         {isEnglish ? 'Back to List' : 'Quay Lại Danh Sách'}
@@ -122,7 +123,7 @@ export const CurriculumLevelViewPage = () => {
   return (
     <BaseFormPageLayout
       breadcrumbs={breadcrumbs}
-      onBack={() => navigate('/curriculum-levels')}
+      onBack={() => navigate('/courses-classes?tab=curriculum')}
       backText={isEnglish ? 'Back to Curriculum' : 'Quay Lại Danh Sách'}
       icon={<BookOutlined />}
       maxWidth={1100}
@@ -134,6 +135,9 @@ export const CurriculumLevelViewPage = () => {
       }
       headerActions={headerActions}
     >
+      {/* Dành riêng cho IT Admin: Bảng thông tin Audit Trail */}
+      <AdminAuditInfo record={level} currentUser={currentUser} mode="detail" />
+
       {/* 1. THẺ HIGHLIGHT STAT CARDS TỔNG QUAN (3 METRICS CHỦ CHỐT) */}
       <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
         {/* Metric 1: Độ Tuổi Khuyến Nghị */}
@@ -423,7 +427,7 @@ export const CurriculumLevelViewPage = () => {
       >
         <Button
           size="large"
-          onClick={() => navigate('/curriculum-levels')}
+          onClick={() => navigate('/courses-classes?tab=curriculum')}
           style={{
             borderRadius: 8,
             minWidth: 120,

@@ -19,7 +19,7 @@ import { CurriculumLevelDeleteModal } from './components/CurriculumLevelDeleteMo
 
 const { Title, Text } = Typography;
 
-export const CurriculumLevelsPage = () => {
+export const CurriculumLevelsPage = ({ embedded = false }) => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { isEnglish, t } = useLanguage();
@@ -62,99 +62,101 @@ export const CurriculumLevelsPage = () => {
   } = useCurriculumLevelController();
 
   return (
-    <div style={{ maxWidth: 1300, margin: '0 auto', padding: '0 8px 32px' }}>
-      {/* 1. Header Banner & Tiêu đề phân hệ */}
-      <Card
-        bordered={false}
-        style={{
-          borderRadius: 14,
-          marginBottom: 16,
-          boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
-          background: 'linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%)',
-          border: '1px solid #e2e8f0',
-        }}
-        styles={{ body: { padding: '20px 24px' } }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <Space align="center" style={{ marginBottom: 4 }}>
-              <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
-                <BookOutlined style={{ color: '#0284c7', marginRight: 8 }} />
-                {t('curriculum.pageTitle')}
-              </Title>
-              <Tag color="blue" style={{ fontWeight: 700, borderRadius: 6 }}>
-                McGraw-Hill Wonders & CEFR
-              </Tag>
-            </Space>
-            <Text type="secondary" style={{ fontSize: 13, display: 'block' }}>
-              {t('curriculum.pageSubtitle')}
-            </Text>
+    <div style={{ maxWidth: embedded ? '100%' : 1300, margin: '0 auto', padding: embedded ? '0' : '0 8px 32px' }}>
+      {/* 1. Header Banner & Tiêu đề phân hệ (Ẩn khi nhúng trong Tab của Khóa Học & Lớp Học) */}
+      {!embedded && (
+        <Card
+          bordered={false}
+          style={{
+            borderRadius: 14,
+            marginBottom: 16,
+            boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+            background: 'linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%)',
+            border: '1px solid #e2e8f0',
+          }}
+          styles={{ body: { padding: '20px 24px' } }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <Space align="center" style={{ marginBottom: 4 }}>
+                <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
+                  <BookOutlined style={{ color: '#0284c7', marginRight: 8 }} />
+                  {t('curriculum.pageTitle')}
+                </Title>
+                <Tag color="blue" style={{ fontWeight: 700, borderRadius: 6 }}>
+                  McGraw-Hill Wonders & CEFR
+                </Tag>
+              </Space>
+              <Text type="secondary" style={{ fontSize: 13, display: 'block' }}>
+                {t('curriculum.pageSubtitle')}
+              </Text>
+            </div>
           </div>
-        </div>
 
-        {/* 2. Thẻ Thống Kê Tổng Quan */}
-        <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
-          <Col xs={12} sm={6}>
-            <Card
-              bordered={false}
-              style={{ borderRadius: 10, background: '#ffffff', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
-              styles={{ body: { padding: '12px 16px' } }}
-            >
-              <Statistic
-                title={<span style={{ fontSize: 12 }}>{t('curriculum.stats.total')}</span>}
-                value={stats.total}
-                prefix={<AppstoreOutlined style={{ color: '#3b82f6' }} />}
-                valueStyle={{ color: '#0f172a', fontWeight: 700, fontSize: 22 }}
-              />
-            </Card>
-          </Col>
+          {/* 2. Thẻ Thống Kê Tổng Quan */}
+          <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
+            <Col xs={12} sm={6}>
+              <Card
+                bordered={false}
+                style={{ borderRadius: 10, background: '#ffffff', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
+                styles={{ body: { padding: '12px 16px' } }}
+              >
+                <Statistic
+                  title={<span style={{ fontSize: 12 }}>{t('curriculum.stats.total')}</span>}
+                  value={stats.total}
+                  prefix={<AppstoreOutlined style={{ color: '#3b82f6' }} />}
+                  valueStyle={{ color: '#0f172a', fontWeight: 700, fontSize: 22 }}
+                />
+              </Card>
+            </Col>
 
-          <Col xs={12} sm={6}>
-            <Card
-              bordered={false}
-              style={{ borderRadius: 10, background: '#ffffff', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
-              styles={{ body: { padding: '12px 16px' } }}
-            >
-              <Statistic
-                title={<span style={{ fontSize: 12 }}>{t('curriculum.stats.active')}</span>}
-                value={stats.activeCount}
-                prefix={<CheckCircleOutlined style={{ color: '#10b981' }} />}
-                valueStyle={{ color: '#10b981', fontWeight: 700, fontSize: 22 }}
-              />
-            </Card>
-          </Col>
+            <Col xs={12} sm={6}>
+              <Card
+                bordered={false}
+                style={{ borderRadius: 10, background: '#ffffff', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
+                styles={{ body: { padding: '12px 16px' } }}
+              >
+                <Statistic
+                  title={<span style={{ fontSize: 12 }}>{t('curriculum.stats.active')}</span>}
+                  value={stats.activeCount}
+                  prefix={<CheckCircleOutlined style={{ color: '#10b981' }} />}
+                  valueStyle={{ color: '#10b981', fontWeight: 700, fontSize: 22 }}
+                />
+              </Card>
+            </Col>
 
-          <Col xs={12} sm={6}>
-            <Card
-              bordered={false}
-              style={{ borderRadius: 10, background: '#ffffff', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
-              styles={{ body: { padding: '12px 16px' } }}
-            >
-              <Statistic
-                title={<span style={{ fontSize: 12 }}>{t('curriculum.stats.series')}</span>}
-                value={stats.seriesCount}
-                prefix={<BookOutlined style={{ color: '#8b5cf6' }} />}
-                valueStyle={{ color: '#8b5cf6', fontWeight: 700, fontSize: 22 }}
-              />
-            </Card>
-          </Col>
+            <Col xs={12} sm={6}>
+              <Card
+                bordered={false}
+                style={{ borderRadius: 10, background: '#ffffff', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
+                styles={{ body: { padding: '12px 16px' } }}
+              >
+                <Statistic
+                  title={<span style={{ fontSize: 12 }}>{t('curriculum.stats.series')}</span>}
+                  value={stats.seriesCount}
+                  prefix={<BookOutlined style={{ color: '#8b5cf6' }} />}
+                  valueStyle={{ color: '#8b5cf6', fontWeight: 700, fontSize: 22 }}
+                />
+              </Card>
+            </Col>
 
-          <Col xs={12} sm={6}>
-            <Card
-              bordered={false}
-              style={{ borderRadius: 10, background: '#ffffff', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
-              styles={{ body: { padding: '12px 16px' } }}
-            >
-              <Statistic
-                title={<span style={{ fontSize: 12 }}>{t('curriculum.stats.cefr')}</span>}
-                value="Pre-A1 → B1"
-                prefix={<AimOutlined style={{ color: '#f59e0b' }} />}
-                valueStyle={{ color: '#f59e0b', fontWeight: 700, fontSize: 18 }}
-              />
-            </Card>
-          </Col>
-        </Row>
-      </Card>
+            <Col xs={12} sm={6}>
+              <Card
+                bordered={false}
+                style={{ borderRadius: 10, background: '#ffffff', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
+                styles={{ body: { padding: '12px 16px' } }}
+              >
+                <Statistic
+                  title={<span style={{ fontSize: 12 }}>{t('curriculum.stats.cefr')}</span>}
+                  value="Pre-A1 → B1"
+                  prefix={<AimOutlined style={{ color: '#f59e0b' }} />}
+                  valueStyle={{ color: '#f59e0b', fontWeight: 700, fontSize: 18 }}
+                />
+              </Card>
+            </Col>
+          </Row>
+        </Card>
+      )}
 
       {/* 3. Thanh Bộ Lọc & Tìm Kiếm */}
       <CurriculumLevelFilterBar

@@ -33,11 +33,22 @@ export class BaseModuleService {
     }
 
     if (currentUser.role === PermissionService.ROLES.STUDENT) {
+      const uid = currentUser.id || currentUser.code;
+      const enrolledList = [
+        ...(Array.isArray(currentUser.classesEnrolled) ? currentUser.classesEnrolled : []),
+        ...(Array.isArray(currentUser.enrolledClassIds) ? currentUser.enrolledClassIds : []),
+      ];
       return records.filter((item) => {
-        if (item[studentIdField] === currentUser.id || item.studentId === currentUser.id) {
+        if (item[studentIdField] === uid || item.studentId === uid) {
+          return true;
+        }
+        if (Array.isArray(item.studentIds) && item.studentIds.includes(uid)) {
           return true;
         }
         if (currentUser.classId && item[classIdField] === currentUser.classId) {
+          return true;
+        }
+        if (item[classIdField] && enrolledList.includes(item[classIdField])) {
           return true;
         }
         if (currentUser.classCode && item.className && matchLikeSearch(item.className, currentUser.classCode)) {
