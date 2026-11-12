@@ -23,16 +23,39 @@ export class TimetableSlotService extends BaseModuleService {
       return [];
     }
 
+    const dayNumToVi = {
+      1: 'Thứ 2',
+      2: 'Thứ 3',
+      3: 'Thứ 4',
+      4: 'Thứ 5',
+      5: 'Thứ 6',
+      6: 'Thứ 7',
+      0: 'Chủ Nhật',
+    };
+
     const slots = [];
     classes.forEach((cls, index) => {
       const scheduleStr = cls.schedule || '';
       const timeMatch = scheduleStr.match(/\((.*?)\)/);
-      const timeSlot = timeMatch ? timeMatch[1] : '18:00 - 20:00';
+      const timeSlot =
+        cls.scheduleData?.startTime && cls.scheduleData?.endTime
+          ? `${cls.scheduleData.startTime} - ${cls.scheduleData.endTime}`
+          : timeMatch
+          ? timeMatch[1]
+          : '18:00 - 19:30';
       const daysPart = scheduleStr.replace(/\(.*?\)/, '').trim();
 
-      const allDays = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
-      const matchedDays = allDays.filter((d) => daysPart.includes(d));
-      const daysToUse = matchedDays.length > 0 ? matchedDays : ['Thứ 2', 'Thứ 4'];
+      let daysToUse = [];
+      if (Array.isArray(cls.scheduleData?.days) && cls.scheduleData.days.length > 0) {
+        daysToUse = cls.scheduleData.days
+          .map((d) => (typeof d === 'number' ? dayNumToVi[d] : d))
+          .filter(Boolean);
+      }
+      if (daysToUse.length === 0) {
+        const allDays = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
+        const matchedDays = allDays.filter((d) => daysPart.includes(d));
+        daysToUse = matchedDays.length > 0 ? matchedDays : ['Thứ 2', 'Thứ 4'];
+      }
 
       daysToUse.forEach((day, dIdx) => {
         slots.push({

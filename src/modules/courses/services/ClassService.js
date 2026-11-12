@@ -17,6 +17,7 @@ import {
  */
 export class ClassService extends BaseModuleService {
   static COLLECTION_NAME = 'classes';
+  static _allKnownClassIds = new Set();
 
   /**
    * Đọc toàn bộ danh sách Lớp học trực tiếp từ Cloud Firestore
@@ -27,9 +28,11 @@ export class ClassService extends BaseModuleService {
         const colRef = collection(db, this.COLLECTION_NAME);
         const snap = await getDocs(colRef);
         if (!snap.empty) {
-          const list = snap.docs
-            .map((d) => ({ ...d.data(), id: d.id }))
-            .filter((c) => !c.isDeleted && c.status !== 'Deleted');
+          const allDocs = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+          allDocs.forEach((c) => {
+            if (c.id) this._allKnownClassIds.add(String(c.id).toUpperCase());
+          });
+          const list = allDocs.filter((c) => !c.isDeleted && c.status !== 'Deleted');
           return list;
         }
       } catch (err) {
@@ -41,18 +44,54 @@ export class ClassService extends BaseModuleService {
 
   /**
    * Lưu hoặc cập nhật Lớp học vào Cloud Firestore
+   * Đảm bảo luôn ghi rõ isDeleted: false & status: 'Active' khi tạo/cập nhật lớp đang hoạt động
+   * để tránh lỗi { merge: true } giữ lại cờ isDeleted: true của bản ghi cũ đã xóa mềm.
    */
   static async saveClass(classData) {
     if (IS_FIREBASE_ENABLED && db && classData?.id) {
       try {
         const docRef = doc(db, this.COLLECTION_NAME, classData.id);
-        await setDoc(docRef, classData, { merge: true });
+        const sanitizedPayload = {
+          ...classData,
+          isDeleted: Boolean(classData.isDeleted),
+          status: classData.isDeleted ? 'Deleted' : classData.status || 'Active',
+          deletedAt: classData.isDeleted ? classData.deletedAt || new Date().toISOString() : null,
+        };
+        await setDoc(docRef, sanitizedPayload, { merge: true });
       } catch (err) {
         console.error('[ClassService] Lỗi lưu lớp học vào Firestore:', err.message);
         throw err;
       }
     }
     return classData;
+  }
+
+  /**
+   * Sinh mã Lớp học mới không bao giờ trùng lặp với các lớp hiện có hoặc lớp đã xóa mềm
+   */
+  static generateNextClassId(existingClasses = []) {
+    const existingIds = new Set([
+      ...Array.from(this._allKnownClassIds),
+      ...(existingClasses || []).map((c) => String(c.id || '').toUpperCase()),
+    ]);
+    let maxNum = existingIds.size;
+    for (const idStr of existingIds) {
+      const match = String(idStr || '').match(/^LH(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!Number.isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+    let candidateNum = maxNum + 1;
+    let candidateId = `LH${String(candidateNum).padStart(3, '0')}`;
+    while (existingIds.has(candidateId.toUpperCase())) {
+      candidateNum += 1;
+      candidateId = `LH${String(candidateNum).padStart(3, '0')}`;
+    }
+    this._allKnownClassIds.add(candidateId.toUpperCase());
+    return candidateId;
   }
 
   /**
@@ -79,8 +118,7 @@ export class ClassService extends BaseModuleService {
   }
 
   static createClass(newClass, existingClasses = [], teachers = [], courses = [], actorUser = null) {
-    const nextCount = existingClasses.length + 1;
-    const generatedId = `LH${String(nextCount).padStart(3, '0')}`;
+    const generatedId = this.generateNextClassId(existingClasses);
 
     const creatorId = actorUser?.id || actorUser?.code || newClass.createdBy || 'ADM001';
     const creatorName = actorUser?.name || newClass.createdByName || 'Phạm Quốc Bảo';
@@ -154,6 +192,9 @@ export class ClassService extends BaseModuleService {
       operationStatus:
         newClass.operationStatus ||
         (hasTeacher ? 'Đang học ổn định' : 'Mới khai giảng'),
+      status: 'Active',
+      isDeleted: false,
+      deletedAt: null,
       createdBy: creatorId,
       createdByName: creatorName,
       updatedBy: creatorId,

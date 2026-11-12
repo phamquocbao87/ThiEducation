@@ -193,12 +193,26 @@ export const useCoursesController = () => {
     const newClass = updated[0];
     setClasses(updated);
 
+    // Đảm bảo bộ lọc hiện tại không che khuất lớp học vừa tạo
+    if (selectedCourseFilter !== 'ALL' && selectedCourseFilter !== newClass.courseId) {
+      setSelectedCourseFilter('ALL');
+    }
+    if (selectedTeacherFilter !== 'ALL') {
+      setSelectedTeacherFilter('ALL');
+    }
+    if (classSearch) {
+      setClassSearch('');
+    }
+    setActiveTab('classes');
+
     setCourses((prev) => {
-      const nextCourses = prev.map((c) =>
-        c.id === classData.courseId
-          ? { ...c, activeClasses: (c.activeClasses || 0) + 1 }
-          : c
-      );
+      const nextCourses = prev.map((c) => {
+        if (c.id === classData.courseId) {
+          const realCount = updated.filter((cls) => cls.courseId === c.id).length;
+          return { ...c, activeClasses: realCount };
+        }
+        return c;
+      });
       return nextCourses;
     });
 
@@ -207,6 +221,11 @@ export const useCoursesController = () => {
 
     try {
       await ClassService.saveClass(newClass);
+      const parentCourse = courses.find((c) => c.id === classData.courseId);
+      if (parentCourse) {
+        const realCount = updated.filter((cls) => cls.courseId === parentCourse.id).length;
+        await CourseService.saveCourse({ ...parentCourse, activeClasses: realCount });
+      }
       message.success(
         isEnglish
           ? 'New class created successfully!'

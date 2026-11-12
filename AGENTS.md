@@ -241,3 +241,47 @@ ThiEducation/
    - `ASSERT Tabs Cleanliness`: Tinh gọn nhãn Tab trên Mobile để hiển thị đầy đủ, cấm bị Ant Design cắt thành dấu `...`.
    - `ASSERT Header Viewport Protection`: Header di động $\le 390\text{px}$, nhãn Admin rút gọn `ADM001`, cấm để tràn làm co rúm logo.
    - `ASSERT Full-Width Drawers`: Drawer trên di động tự động co giãn `width={isMobile ? '100%' : 640}`, các nút footer dàn đều để dễ bấm ngón tay cái.
+
+---
+
+## 🔄 7. Quy Trình Chuẩn Tiếp Nhận Bug & Phát Triển Tính Năng (Mandatory Change Lifecycle)
+
+> **Nguyên tắc điều hành:** Mỗi yêu cầu được chia thành hai pha độc lập: **Phân tích/đề xuất** và **thực hiện thay đổi**. Agent được phép điều tra, tái hiện, đọc mã và chạy kiểm tra không làm thay đổi dữ liệu khi nhận yêu cầu. Chỉ được sửa mã, ghi dữ liệu, tạo dữ liệu thử hoặc thay đổi tài liệu nghiệp vụ sau khi Sếp Bảo nói rõ **“fix”**, **“thực hiện”**, **“làm tính năng”** hoặc một lệnh tương đương.
+
+### 7.1. Quy Trình Xử Lý Lỗi (Bug Fix Lifecycle)
+
+1. **Tiếp nhận & phân loại:** Ghi nhận chức năng, vai trò đăng nhập, môi trường, các bước tái hiện, kết quả thực tế, kết quả mong đợi và mức độ ảnh hưởng. Nếu thiếu dữ kiện, nêu chính xác dữ kiện cần bổ sung; không tự suy đoán hành vi nghiệp vụ.
+2. **Tái hiện lỗi (Reproduce):** Tái hiện trên trình duyệt thật với đúng role và dữ liệu hợp lệ; lưu ảnh màn hình, log kiểm thử và điều kiện tái hiện. Nếu không tái hiện được, báo cáo rõ phạm vi đã thử, không tuyên bố nguyên nhân hay sửa phỏng đoán.
+3. **Phân tích nguyên nhân gốc:** Lần theo đầy đủ luồng `UI → hook/controller → service → Firestore/storage → UI`; xác định file, điều kiện kích hoạt và nguyên nhân gốc, phân biệt triệu chứng với nguyên nhân.
+4. **Đề xuất giải pháp:** Nêu giải pháp nhỏ nhất, an toàn nhất; phạm vi file dự kiến; phương án kiểm thử; và phương án khôi phục nếu thay đổi thất bại. Không tự ý sửa trong pha này.
+5. **Đánh giá tác động bắt buộc:** Thực hiện đủ 3 bước tại Mục 2.6: xác định phạm vi ảnh hưởng, đánh giá hồi quy/breaking change, và xin ý kiến trước khi đụng vào `src/shared/`, `src/core/`, schema Firestore, route hoặc module khác.
+6. **Chỉ khi được yêu cầu fix:** Thực hiện đúng giải pháp đã phê duyệt, giữ thay đổi ở mức tối thiểu và tuân thủ kiến trúc module, RBAC, i18n, mobile-first và dữ liệu thực.
+7. **Kiểm thử lại & nghiệm thu:** Retest ca lỗi gốc, các ca biên và ca âm; chạy unit/component/layout/integration/E2E phù hợp; kiểm tra Desktop, Mobile, role liên quan, trạng thái sau F5 và các luồng bị tác động. Bắt buộc chạy `npm run build` khi có sửa mã.
+8. **Báo cáo bàn giao:** Chỉ báo “đã sửa xong” khi toàn bộ kiểm thử đạt. Báo cáo phải gồm: nguyên nhân gốc, giải pháp, danh sách file thay đổi, ca kiểm thử/kết quả, ảnh minh chứng, dữ liệu thử đã xóa và xác nhận các chức năng ngoài phạm vi được bảo toàn.
+
+### 7.2. Quy Trình Phát Triển Tính Năng (New Feature Lifecycle)
+
+1. **Đánh giá toàn diện:** Làm rõ mục tiêu nghiệp vụ, người dùng/role, luồng chính, ngoại lệ, dữ liệu vào-ra, phân quyền, trạng thái, thông báo, yêu cầu i18n và tiêu chí chấp nhận. Không dùng thuật ngữ kỹ thuật trong UI người dùng.
+2. **Đánh giá tác động:** Lập ma trận ảnh hưởng tới module hiện tại, routes, shared/core, Firestore, role, dữ liệu cũ và tích hợp. Áp dụng đầy đủ 3 bước impact assessment tại Mục 2.6 trước bất kỳ thay đổi liên mô-đun hoặc dùng chung nào.
+3. **Quyết định kiến trúc:** Ưu tiên tái sử dụng component, utility và service dùng chung đã có. Nếu tính năng là một miền nghiệp vụ độc lập, có lifecycle/dữ liệu/quyền riêng, hoặc làm module hiện tại phình vượt trách nhiệm, phải đề xuất module mới theo cấu trúc 5 lớp trước khi code. Mỗi sub-feature vẫn phải có component và service riêng.
+4. **Tài liệu nghiệp vụ sống:** Trước khi thực hiện, tạo hoặc cập nhật `docs/features/<feature-slug>.md`. Tài liệu phải có: mục tiêu và phạm vi; actor/RBAC; quy tắc nghiệp vụ; dữ liệu và trạng thái; luồng chính/ngoại lệ; tiêu chí chấp nhận; quyết định không thuộc phạm vi; liên kết test/evidence. Phải có sơ đồ Mermaid tối thiểu cho luồng nghiệp vụ; dùng thêm sơ đồ trạng thái hoặc dữ liệu khi cần. **Mọi yêu cầu thay đổi tính năng sau này bắt buộc cập nhật lại chính tài liệu này trong cùng lần bàn giao.**
+5. **Thiết kế kiểm thử trước khi code:** Từ tiêu chí chấp nhận, viết danh sách test case có ID và điều kiện tiền đề. Bao phủ tối thiểu: unit/service, component/UI, validation và lỗi, RBAC, i18n, responsive/layout Desktop + Mobile, persistence/F5, integration với service/Firestore và E2E luồng chính. Ca không áp dụng phải ghi rõ lý do.
+6. **Thực hiện khi đã được giao làm:** Phát triển đúng tài liệu/thiết kế được duyệt; giới hạn phạm vi thay đổi; không refactor hoặc sửa các chức năng khác ngoài yêu cầu nếu chưa có chấp thuận rõ ràng.
+7. **Xác minh tích hợp & bàn giao:** Chạy đầy đủ bộ test đã thiết kế, `npm run build`, kiểm toán QC tại Mục 6 và kiểm tra các tích hợp/role bị ảnh hưởng. Cập nhật tài liệu nghiệp vụ để khớp chính xác hành vi cuối cùng; báo cáo tính năng, phạm vi file, kết quả test, ảnh minh chứng, rủi ro còn lại (nếu có) và xác nhận bảo toàn phần ngoài phạm vi.
+
+### 7.3. Kỷ Luật Dữ Liệu Kiểm Thử, Ảnh Minh Chứng & Dọn Dẹp (Zero Test Residue)
+
+1. **Định danh bắt buộc:** Mọi dữ liệu do Agent/QC tạo (tên, mã, ghi chú, email thử, tệp thử, bản ghi Firestore, local/session storage) phải bắt đầu bằng tiền tố dễ truy vết: **`[TEST:<ticket-or-feature>:<YYYYMMDD>]`**. Ví dụ: `[TEST:class-enrollment:20261112] Lớp kiểm thử`.
+2. **Cấm dùng dữ liệu nghiệp vụ thật:** Không sửa, xóa hoặc tái sử dụng bản ghi của học viên/cán bộ/lớp học thật để kiểm thử. Dữ liệu test phải có quan hệ riêng, tối thiểu và có thể xóa an toàn.
+3. **Minh chứng trước dọn dẹp:** Sau khi chạy test, chụp ảnh các điểm kiểm tra quan trọng (Desktop và Mobile khi có UI); lưu theo thư mục tác vụ trong `test-results/` hoặc vị trí test hiện hành, với tên gắn ticket/feature và thời gian. Không đưa dữ liệu nhạy cảm vào ảnh/báo cáo.
+4. **Teardown bắt buộc:** Ngay sau khi đã lấy minh chứng, xóa toàn bộ dữ liệu có tiền tố `[TEST:...]`, tệp tải lên, các quan hệ phụ thuộc và cờ/cache được tạo trong lần test; sau đó truy vấn hoặc kiểm tra lại để xác nhận không còn dư liệu test. Không xóa bất kỳ dữ liệu thật nào.
+5. **Bằng chứng trong báo cáo:** Mỗi báo cáo phải ghi: tiền tố đã dùng, danh sách loại dữ liệu đã tạo, đường dẫn ảnh minh chứng, cách/xác nhận dọn dẹp và kết quả cuối cùng là **“0 test residue”**. Nếu không thể dọn dẹp do giới hạn quyền hoặc lỗi hạ tầng, phải dừng bàn giao, báo rõ bản ghi còn lại và xin hướng dẫn.
+
+### 7.4. Mẫu Báo Cáo Bắt Buộc
+
+| Giai đoạn | Nội dung tối thiểu phải báo cáo |
+| --- | --- |
+| Phân tích bug | Khả năng tái hiện, nguyên nhân gốc, giải pháp đề xuất, impact/rủi ro, phạm vi file dự kiến, chờ lệnh fix (nếu chưa có) |
+| Hoàn thành bug | Ca lỗi gốc và regression đã PASS, file thay đổi, build/QC, ảnh, test data cleanup, phạm vi ngoài thay đổi được bảo toàn |
+| Đề xuất feature | Mục tiêu/actor/acceptance criteria, kiến trúc/module, impact, tài liệu nghiệp vụ và sơ đồ, test plan, các điểm cần duyệt |
+| Hoàn thành feature | Hành vi đã triển khai, file/tài liệu cập nhật, test matrix PASS/không áp dụng, build/QC, ảnh, cleanup và rủi ro còn lại |

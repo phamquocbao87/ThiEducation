@@ -314,6 +314,7 @@ export const CoursesPage = () => {
       <ClassFormDrawer
         open={isClassModalOpen}
         editingClass={editingClass}
+        defaultCourseId={selectedCourseFilter}
         courses={allCourses}
         teachers={teachers}
         students={allStudents}

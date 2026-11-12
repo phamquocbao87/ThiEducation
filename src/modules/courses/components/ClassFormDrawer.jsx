@@ -42,6 +42,7 @@ const { Text } = Typography;
 export const ClassFormDrawer = ({
   open,
   editingClass = null,
+  defaultCourseId = null,
   courses = [],
   teachers = [],
   students = [],
@@ -115,9 +116,22 @@ export const ClassFormDrawer = ({
         setLiveSchedule(defaultSched);
         setLiveScheduleData(parseScheduleToStructured(defaultSched));
         form.resetFields();
+        const initialCourseId =
+          defaultCourseId && defaultCourseId !== 'ALL'
+            ? defaultCourseId
+            : courses[0]?.id;
+        if (initialCourseId) {
+          form.setFieldsValue({
+            courseId: initialCourseId,
+            operationStatus: 'Đang học ổn định',
+            startDate: '04/02/2026',
+            schedule: defaultSched,
+          });
+        }
       }
     }
-  }, [open, editingClass, courses, teachers, students, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editingClass]);
 
   const handleFinish = (values) => {
     onSubmit({

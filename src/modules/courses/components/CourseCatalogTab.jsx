@@ -246,7 +246,16 @@ export const CourseCatalogTab = ({
                       <Text type="secondary">{isEnglish ? 'Scale:' : 'Quy mô:'}</Text>
                     </Space>
                     <Text strong>
-                      {course.activeClasses || 0} {isEnglish ? 'classes' : 'lớp'} ({course.enrolledStudents || 0} {isEnglish ? 'students' : 'HV'})
+                      {classes.filter((cls) => cls.courseId === course.id).length}{' '}
+                      {isEnglish ? 'classes' : 'lớp'} (
+                      {classes
+                        .filter((cls) => cls.courseId === course.id)
+                        .reduce(
+                          (sum, cls) =>
+                            sum + (cls.totalStudents || (cls.studentIds || []).length || 0),
+                          0
+                        )}{' '}
+                      {isEnglish ? 'students' : 'HV'})
                     </Text>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>

@@ -9,6 +9,7 @@ import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
  */
 export class CourseService extends BaseModuleService {
   static COLLECTION_NAME = 'courses';
+  static _allKnownCourseIds = new Set();
 
   /**
    * Đọc toàn bộ danh sách Khóa học trực tiếp từ Cloud Firestore
@@ -19,9 +20,11 @@ export class CourseService extends BaseModuleService {
         const colRef = collection(db, this.COLLECTION_NAME);
         const snap = await getDocs(colRef);
         if (!snap.empty) {
-          const list = snap.docs
-            .map((d) => ({ ...d.data(), id: d.id }))
-            .filter((c) => !c.isDeleted && c.status !== 'Deleted');
+          const allDocs = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+          allDocs.forEach((c) => {
+            if (c.id) this._allKnownCourseIds.add(String(c.id).toUpperCase());
+          });
+          const list = allDocs.filter((c) => !c.isDeleted && c.status !== 'Deleted');
           return list;
         }
       } catch (err) {
@@ -38,13 +41,44 @@ export class CourseService extends BaseModuleService {
     if (IS_FIREBASE_ENABLED && db && courseData?.id) {
       try {
         const docRef = doc(db, this.COLLECTION_NAME, courseData.id);
-        await setDoc(docRef, courseData, { merge: true });
+        const sanitizedPayload = {
+          ...courseData,
+          isDeleted: Boolean(courseData.isDeleted),
+          status: courseData.isDeleted ? 'Deleted' : courseData.status || 'Active',
+          deletedAt: courseData.isDeleted ? courseData.deletedAt || new Date().toISOString() : null,
+        };
+        await setDoc(docRef, sanitizedPayload, { merge: true });
       } catch (err) {
         console.error('[CourseService] Lỗi lưu khóa học vào Firestore:', err.message);
         throw err;
       }
     }
     return courseData;
+  }
+
+  static generateNextCourseId(existingCourses = []) {
+    const existingIds = new Set([
+      ...Array.from(this._allKnownCourseIds),
+      ...(existingCourses || []).map((c) => String(c.id || '').toUpperCase()),
+    ]);
+    let maxNum = existingIds.size;
+    for (const idStr of existingIds) {
+      const match = String(idStr || '').match(/^KH-(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!Number.isNaN(num) && num < 1000 && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+    let candidateNum = maxNum + 1;
+    let candidateId = `KH-${String(candidateNum).padStart(3, '0')}`;
+    while (existingIds.has(candidateId.toUpperCase())) {
+      candidateNum += 1;
+      candidateId = `KH-${String(candidateNum).padStart(3, '0')}`;
+    }
+    this._allKnownCourseIds.add(candidateId.toUpperCase());
+    return candidateId;
   }
 
   /**
@@ -71,8 +105,7 @@ export class CourseService extends BaseModuleService {
   }
 
   static createCourse(newCourse, existingCourses = [], actorUser = null) {
-    const nextCount = existingCourses.length + 1;
-    const generatedId = newCourse.id?.trim() || `KH-${String(nextCount).padStart(3, '0')}`;
+    const generatedId = newCourse.id?.trim() || this.generateNextCourseId(existingCourses);
     const durationMonths = Number(newCourse.durationMonths) || 3;
     const durationWeeks = Number(newCourse.durationWeeks) || durationMonths * 4;
     const sessionsPerWeek = Number(newCourse.sessionsPerWeek) || 2;
@@ -96,6 +129,8 @@ export class CourseService extends BaseModuleService {
       activeClasses: 0,
       enrolledStudents: 0,
       status: newCourse.status || 'Active',
+      isDeleted: false,
+      deletedAt: null,
       format: newCourse.format || '100% Native English Teacher (Zoom Cloud Meeting)',
       curriculumTextbooks:
         newCourse.curriculumTextbooks?.trim() ||
