@@ -8,6 +8,7 @@ import {
   TeamOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { detectMeetingPlatform } from '../../../shared/utils/meetingPlatformUtils';
 
 const { Text, Paragraph } = Typography;
 
@@ -23,31 +24,41 @@ export const ActiveClassCards = ({
 
   return (
     <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-      {classes.map((cls) => (
-        <Col xs={24} sm={12} lg={8} key={cls.id}>
-          <Card
-            hoverable
-            title={<Text strong style={{ color: '#1890ff' }}>{cls.name}</Text>}
-            extra={
-              <Tag color={cls.checkInStatus === 'CHECKED_IN' ? 'green' : 'purple'}>
-                <VideoCameraOutlined />{' '}
-                {cls.checkInStatus === 'CHECKED_IN'
-                  ? (isEnglish ? 'Teacher Checked-in' : 'GV Đã Check-in')
-                  : 'Zoom Cloud'}
-              </Tag>
-            }
-            actions={[
-              <Button
-                key="join"
-                type="primary"
-                size="small"
-                icon={<LinkOutlined />}
-                style={{ background: '#2db7f5', borderColor: '#2db7f5' }}
-                onClick={() => window.open(cls.meetingLink, '_blank')}
-              >
-                {isEnglish ? 'Launch Zoom' : 'Vào Zoom'}
-              </Button>,
-              canCheckIn && cls.checkInStatus !== 'CHECKED_IN' ? (
+      {classes.map((cls) => {
+        const platform = detectMeetingPlatform(cls.meetingLink || cls.zoomStudentLink);
+        const isMeet = platform.type === 'google_meet';
+
+        return (
+          <Col xs={24} sm={12} lg={8} key={cls.id}>
+            <Card
+              hoverable
+              title={<Text strong style={{ color: '#1890ff' }}>{cls.name}</Text>}
+              extra={
+                <Tag color={cls.checkInStatus === 'CHECKED_IN' ? 'green' : (isMeet ? 'green' : 'blue')}>
+                  {platform.iconSmall || <VideoCameraOutlined />} {cls.checkInStatus === 'CHECKED_IN'
+                    ? (isEnglish ? 'Teacher Checked-in' : 'GV Đã Check-in')
+                    : platform.label}
+                </Tag>
+              }
+              actions={[
+                <Button
+                  key="join"
+                  type="primary"
+                  size="small"
+                  icon={platform.iconSmall || <LinkOutlined />}
+                  style={{
+                    background: isMeet ? '#0f9d58' : '#1890ff',
+                    borderColor: isMeet ? '#0f9d58' : '#1890ff',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 3,
+                  }}
+                  onClick={() => window.open(cls.meetingLink || cls.zoomStudentLink, '_blank')}
+                >
+                  {isEnglish ? (isMeet ? 'Meet' : 'Join') : (isMeet ? 'Meet' : 'Vào Lớp')}
+                </Button>,
+                canCheckIn && cls.checkInStatus !== 'CHECKED_IN' ? (
                 <Button
                   key="checkin"
                   size="small"
@@ -107,7 +118,8 @@ export const ActiveClassCards = ({
             )}
           </Card>
         </Col>
-      ))}
-    </Row>
+      );
+    })}
+  </Row>
   );
 };

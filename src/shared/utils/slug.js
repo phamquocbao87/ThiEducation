@@ -17,6 +17,9 @@ export const createSlug = (text) => {
 export const MODULE_SLUGS = {
   dashboard: 'dashboard',
   courses: 'courses-classes',
+  students: 'students',
+  materials: 'learning-materials',
+  exercises: 'english-exercises',
   curriculum: 'curriculum-levels',
   schedules: 'zoom-schedules',
   attendance: 'class-attendance-evaluation',
@@ -31,6 +34,9 @@ export const getModuleFromSlug = (slug) => {
   const rootSlug = String(slug || '').split('/')[0];
   if (rootSlug === MODULE_SLUGS.curriculum) {
     return 'courses';
+  }
+  if (rootSlug === MODULE_SLUGS.students || rootSlug === 'students') {
+    return 'students';
   }
   const entry = Object.entries(MODULE_SLUGS).find(([_, value]) => value === rootSlug || value === slug);
   return entry ? entry[0] : 'dashboard';

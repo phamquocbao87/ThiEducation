@@ -45,6 +45,10 @@ export class TimetableSlotService extends BaseModuleService {
           : '18:00 - 19:30';
       const daysPart = scheduleStr.replace(/\(.*?\)/, '').trim();
 
+      const timeParts = String(timeSlot).match(/(\d{1,2}:\d{2})\s*[-–~]\s*(\d{1,2}:\d{2})/);
+      const startTime = cls.scheduleData?.startTime || (timeParts ? timeParts[1] : '18:00');
+      const endTime = cls.scheduleData?.endTime || (timeParts ? timeParts[2] : '19:30');
+
       let daysToUse = [];
       if (Array.isArray(cls.scheduleData?.days) && cls.scheduleData.days.length > 0) {
         daysToUse = cls.scheduleData.days
@@ -61,7 +65,10 @@ export class TimetableSlotService extends BaseModuleService {
         slots.push({
           id: `T-${cls.id || index + 1}-${dIdx + 1}`,
           day,
+          dayNum: day === 'Chủ Nhật' ? 0 : Number(day.replace(/\D/g, '')) - 1,
           timeSlot,
+          startTime,
+          endTime,
           classId: cls.id,
           className: cls.name,
           subject: cls.subject || 'Wonders English ELA',
@@ -76,6 +83,120 @@ export class TimetableSlotService extends BaseModuleService {
     });
 
     return slots;
+  }
+
+  /**
+   * Tính toán danh sách 7 ngày trong tuần với ngày dương lịch thực tế (hỗ trợ điều hướng tuần)
+   */
+  static getWeekDays(offset = 0) {
+    const now = new Date();
+    const vnStr = now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const vnDate = new Date(vnStr);
+
+    const currentDay = vnDate.getDay(); // 0 is Sun, 1 is Mon...
+    const diffToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+
+    const monday = new Date(vnDate);
+    monday.setDate(vnDate.getDate() + diffToMonday + offset * 7);
+    monday.setHours(0, 0, 0, 0);
+
+    const days = [];
+    const viDayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+    const enDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dayNum = d.getDay();
+      const dayStr = String(d.getDate()).padStart(2, '0');
+      const monthStr = String(d.getMonth() + 1).padStart(2, '0');
+      const yearStr = d.getFullYear();
+      const dateFormatted = `${dayStr}/${monthStr}/${yearStr}`;
+      const shortDate = `${dayStr}/${monthStr}`;
+      const isoDate = `${yearStr}-${monthStr}-${dayStr}`;
+
+      const isToday = d.toDateString() === vnDate.toDateString();
+
+      days.push({
+        dateObj: d,
+        dateFormatted,
+        shortDate,
+        isoDate,
+        dayNum,
+        isToday,
+        dayKey: dayNum === 0 ? 'Chủ Nhật' : `Thứ ${dayNum + 1}`,
+        viDayName: viDayNames[dayNum],
+        enDayName: enDayNames[dayNum],
+      });
+    }
+    return days;
+  }
+
+  /**
+   * Tính toán trạng thái thời gian và kiểm soát khóa 15 phút vào Meet / Điểm danh
+   */
+  static getSessionTimingState(dateObj, startTimeStr, endTimeStr, now = new Date()) {
+    if (!dateObj) {
+      return { state: 'UPCOMING', canAccess: false, unlockTimeStr: '--:--' };
+    }
+    const [startH, startM] = (startTimeStr || '18:00').split(':').map(Number);
+    const [endH, endM] = (endTimeStr || '19:30').split(':').map(Number);
+
+    const start = new Date(dateObj);
+    start.setHours(startH, startM, 0, 0);
+
+    const end = new Date(dateObj);
+    end.setHours(endH, endM, 0, 0);
+
+    // Mở trước 15 phút
+    const unlock = new Date(start.getTime() - 15 * 60 * 1000);
+
+    const nowMs = now.getTime();
+    const startMs = start.getTime();
+    const endMs = end.getTime();
+    const unlockMs = unlock.getTime();
+
+    const unlockTimeStr = `${String(unlock.getHours()).padStart(2, '0')}:${String(unlock.getMinutes()).padStart(2, '0')}`;
+
+    if (nowMs < unlockMs) {
+      const diffMs = unlockMs - nowMs;
+      const diffMins = Math.ceil(diffMs / 60000);
+      return {
+        state: 'LOCKED',
+        canAccess: false,
+        unlockTimeStr,
+        unlockMs,
+        diffMins,
+        startMs,
+        endMs,
+      };
+    } else if (nowMs >= unlockMs && nowMs < startMs) {
+      const startsInMins = Math.ceil((startMs - nowMs) / 60000);
+      return {
+        state: 'STARTING_SOON',
+        canAccess: true,
+        startsInMins,
+        unlockTimeStr,
+        startMs,
+        endMs,
+      };
+    } else if (nowMs >= startMs && nowMs <= endMs) {
+      const remainingMins = Math.ceil((endMs - nowMs) / 60000);
+      return {
+        state: 'LIVE',
+        canAccess: true,
+        remainingMins,
+        startMs,
+        endMs,
+      };
+    } else {
+      return {
+        state: 'FINISHED',
+        canAccess: false,
+        startMs,
+        endMs,
+      };
+    }
   }
 
   static createScheduleSlot(timetable, values, teachers = []) {

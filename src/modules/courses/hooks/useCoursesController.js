@@ -49,17 +49,23 @@ export const useCoursesController = () => {
           !u.isDeleted
       )
       .map((u) => ({
+        ...u,
         id: u.id || u.code,
+        code: u.code || u.id,
         name: u.name,
         englishName: u.englishName || u.name,
         age: u.age || 7,
         level: u.level || 'WONDERS-G1',
         phone: u.phoneNumber || u.phone,
+        phone2: u.phone2 || '',
         email: u.email,
         parentName: u.parentName || '',
         tuitionStatus: u.tuitionStatus || 'PAID',
         amountDue: u.amountDue || 0,
         attendanceRate: 100,
+        enrolledClassIds: u.enrolledClassIds || [],
+        familyId: u.familyId || '',
+        status: u.status || 'Active',
       }));
   }, [allSystemUsers]);
 

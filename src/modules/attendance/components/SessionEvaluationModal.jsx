@@ -50,7 +50,7 @@ export const SessionEvaluationModal = ({
     >
       <Alert
         message={`Lớp đang điểm danh: ${selectedClass?.name || ''}`}
-        description="Kiểm tra sĩ số học viên trong phòng Zoom, chấm điểm 4 kỹ năng tiếng Anh và nhập nhận xét buổi học."
+        description="Kiểm tra sĩ số học viên trong phòng học trực tuyến, chấm điểm 4 kỹ năng tiếng Anh và nhập nhận xét buổi học."
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
@@ -91,7 +91,7 @@ export const SessionEvaluationModal = ({
               <Col>
                 <Space>
                   <Avatar icon={<UserOutlined />} size="small" />
-                  <Text strong>{st.name}</Text>
+                  <Text strong>{st.englishName && st.englishName !== st.name ? `${st.englishName} (${st.name})` : (st.englishName || st.name)}</Text>
                   <Text type="secondary" style={{ fontSize: 11 }}>({st.id})</Text>
                 </Space>
               </Col>

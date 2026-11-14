@@ -1,6 +1,6 @@
 import { BaseModuleService } from '../../../shared/services/BaseModuleService';
 import { db, IS_FIREBASE_ENABLED } from '../../../core/services/firebase';
-import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 
 /**
  * Service managing Course Catalog operations
@@ -190,5 +190,41 @@ export class CourseService extends BaseModuleService {
   static filterCourses(courses = [], keyword = '') {
     if (!keyword) return courses;
     return this.searchByFields(courses, keyword, ['id', 'name', 'level', 'description', 'objectives']);
+  }
+
+  /**
+   * Đọc kho tài liệu giáo trình (10 Drive links, PDF, Audio) của một Khóa học
+   */
+  static async getCourseMaterials(courseId) {
+    if (!courseId) return [];
+    if (IS_FIREBASE_ENABLED && db) {
+      try {
+        const docRef = doc(db, this.COLLECTION_NAME, courseId);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          return data.courseMaterials || data.curriculumVault || [];
+        }
+      } catch (err) {
+        console.warn(`[CourseService] Lỗi đọc tài liệu khóa học ${courseId}:`, err.message);
+      }
+    }
+    return [];
+  }
+
+  /**
+   * Lưu / Cập nhật tài liệu giáo trình vào Khung Khóa học
+   */
+  static async updateCourseMaterials(courseId, materials = [], actor) {
+    if (!courseId) throw new Error('COURSE_ID_REQUIRED');
+    if (IS_FIREBASE_ENABLED && db) {
+      const docRef = doc(db, this.COLLECTION_NAME, courseId);
+      await setDoc(docRef, {
+        courseMaterials: materials,
+        updatedAt: new Date().toISOString(),
+        lastUpdatedBy: actor?.id || '',
+      }, { merge: true });
+    }
+    return materials;
   }
 }

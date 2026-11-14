@@ -68,7 +68,7 @@ export const CourseCreationPage = () => {
       const durationWeeks = durationMonths * 4;
 
       const newCourseRecord = {
-        id: values.id?.trim() || `KH-${String(currentCourses.length + 1).padStart(3, '0')}`,
+        id: values.id?.trim() || CourseService.generateNextCourseId(currentCourses),
         name: values.name?.trim(),
         level: values.level,
         targetAge: values.targetAge?.trim() || '6 - 12 tuổi',
@@ -86,6 +86,8 @@ export const CourseCreationPage = () => {
         activeClasses: 0,
         enrolledStudents: 0,
         status: 'Active',
+        isDeleted: false,
+        deletedAt: null,
         createdAt: new Date().toISOString(),
       };
 

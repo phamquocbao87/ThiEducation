@@ -75,7 +75,10 @@
    - **Quy tắc bắt buộc:**
      - Trước khi gửi payload lên Firestore, mọi object payload **BẮT BUỘC** phải được làm sạch giá trị `undefined` (loại bỏ key hoặc chuyển sang rỗng `''` / `null` phù hợp).
      - Khi cập nhật các trường tùy chọn (ví dụ: đổi mật khẩu `newPassword`), chỉ gán trường đó nếu có giá trị nhập thật (`newPassword ? { password: ... } : {}`), và **BẢO TOÀN NGUYÊN VẸN** trạng thái tài khoản hiện tại (`status: user?.status || USER_STATUS.ACTIVE`), tuyệt đối không để trạng thái tự động bị reset về disabled/off.
-9. **Quy Chuẩn Bất Biến Về Độ Sạch Giao Diện & Tuyệt Đối Không Hiển Thị Thông Tin Kỹ Thuật Dự Án Cho Người Dùng (Zero Technical Jargon & Complete UI Information Purity Invariant):**
+9. **Quy Chuẩn Bất Biến Về Độ Sạch Giao Diện: Chỉ Hướng Dẫn Quy Trình Cho User & Tuyệt Đối Không Mô Tả Cơ Chế Hạ Tầng Kỹ Thuật Nội Bộ (Zero Technical Jargon & Pure User-Centric Workflow Invariant):**
+   - **Chỉ Nói Quy Trình Thao Tác Cho Người Dùng (User-Centric Operational Workflow):**
+     * Mọi văn bản hiển thị trên UI (nhãn form, gợi ý dropzone, placeholder, tooltip, modal title, helper text, banner subtitle) **CHỈ ĐƯỢC PHÉP HƯỚNG DẪN HÀNH ĐỘNG NGHIỆP VỤ CỦA NGƯỜI DÙNG** (Người dùng cần làm gì: *Kéo thả tài liệu, chọn khóa học, nhập thông tin, lưu trữ học liệu*).
+     * **TUYỆT ĐỐI CẤM** mô tả cơ chế hạ tầng kỹ thuật bên trong hệ thống (như: *"hệ thống tự động tạo thư mục trên Firebase Storage và mở hộp thoại..."*, *"gọi API lưu dữ liệu..."*, *"chạy cronjob ngầm..."*). Người dùng không quan tâm và không bao giờ được phép thấy các chi tiết kỹ thuật này.
    - **Nguyên tắc cốt lõi:** Người dùng cuối (Giám đốc, Giáo vụ, Giáo viên bản xứ, Kế toán, Học viên, Phụ huynh) chỉ tương tác với ngôn ngữ nghiệp vụ sư phạm & quản trị giáo dục thuần túy. Mọi thông tin kỹ thuật, tên thư viện, chi tiết cài đặt bên dưới phải được che giấu 100% trên toàn bộ giao diện người dùng.
    - **Phạm vi áp dụng toàn diện:**
      - Nhãn trường Form (`Form.Item label`), văn bản hướng dẫn phụ (`extra`, `help`), placeholder, gợi ý (hints, tooltips).
@@ -86,7 +89,7 @@
    - **Bảng Tra Cứu Các Nhóm Thông Tin Kỹ Thuật Bị CẤM Tuyệt Đối Trên Giao Diện:**
      | Nhóm Thông Tin | Các Từ Khóa Kỹ Thuật CẤM Hiển Thị | Thay Bằng Ngôn Ngữ Nghiệp Vụ Chuẩn |
      | :--- | :--- | :--- |
-     | **Tên Thư Viện / Công Nghệ** | `Rich Text Editor`, `TipTap`, `Antd / Ant Design`, `React`, `Vite`, `Firebase`, `Firestore`, `Google Drive API`, `OAuth`, `Node`, `Axios` | Dùng ngôn ngữ hành động người dùng: *Mục Tiêu Đào Tạo*, *Nội Dung Soạn Thảo*, *Lưu Trữ Đám Mây* |
+     | **Tên Thư Viện / Công Nghệ** | `Rich Text Editor`, `TipTap`, `Antd / Ant Design`, `React`, `Vite`, `Firebase`, `Firestore`, `Google Drive API`, `OAuth`, `Node`, `Axios` | Dùng ngôn ngữ hành động người dùng: *Mục Tiêu Đào Tạo*, *Nội Dung Soạn Thảo*, *Lưu Trữ Đám Mây*, *Hệ Thống* |
      | **Cấu Trúc / Thuật Ngữ Code** | `JSON`, `Array`, `Object`, `Schema`, `Regex / Biểu thức chính quy`, `State`, `Hook`, `Props`, `Payload`, `CRUD`, `Mutation`, `Query` | *Danh sách*, *Thông tin chi tiết*, *Định dạng hợp lệ*, *Dữ liệu đã lưu* |
      | **Tên Biến Kỹ Thuật / Key DB** | `student_id`, `teacher_id`, `created_at`, `status_code`, `token`, `uid`, `user_id`, `course_id` | *Mã học viên*, *Mã giáo viên*, *Ngày tạo*, *Trạng thái*, *Mã khóa học* |
      | **Ký Hiệu Thẻ HTML / Code** | `(H1)`, `(H2)`, `(H3)`, `(Rich Text)`, `(Input Text)`, `(Select Box)`, `(Enum)`, `(Boolean)` | *Tiêu đề mục lớn*, *Tiêu đề mục nhỏ*, *Ghi chú*, *Lựa chọn* |
@@ -209,4 +212,163 @@
 4. **Dropdown Modal tạo mới liên kết danh bạ thật**: Mọi ô chọn Giáo viên / Học viên bắt buộc dùng Select Dropdown liên kết với Firestore `allSystemUsers` (`GV791`...), tuyệt đối cấm nhập text tự do.
 5. **Dữ liệu rỗng hiển thị Empty State chuẩn mực**: Khi Firestore chưa có bản ghi, hiển thị Empty State trang nhã kèm nút tạo mới, tuyệt đối không bơm mock data lấp liếm.
 6. **Kiểm toán Tự Động Playwright E2E Khẳng Định Dữ Liệu Thật (`Automated Real-DB Assertion`)**: Trước khi bàn giao nghiệm thu phân hệ cho Sếp Bảo, bắt buộc chạy kiểm thử Playwright tự động để kiểm tra: ASSERT TRUE (dữ liệu nhân sự thật hiển thị đầy đủ: `GV791 Hellen`, `ACA545 Ngọc Nhi`, `ACA404 Diễm Quỳnh`...) và ASSERT FALSE (hoàn toàn không còn xuất hiện bất kỳ nhân sự mock giả lập nào: `David Smith`, `Emma Watson`, `Trần Thu Hà`, `Nguyễn Phương Thảo`...).
+
+
+
+---
+
+## 7. Quy Chuẩn Cô Lập Trạng Thái Tương Tác Cục Bộ & Chống Nhảy Layout Khi Thao Tác Lưới (`Fine-Grained Item-Level Pending State & Zero-Jitter Grid Invariant`)
+
+Để đảm bảo trải nghiệm người dùng mượt mà, phản hồi tức thì và không gây mỏi mắt (eye fatigue) khi thao tác liên tục trên các màn hình danh sách/lưới thẻ:
+
+1. **Tuyệt đối cấm dùng biến Boolean Pending toàn cục cho danh sách (`Zero Global Boolean Pending for Lists`)**:
+   - Khi giao diện có nhiều Card/Hàng tương tác độc lập (ví dụ: điểm danh từng học viên, bật/tắt công tắc từng lớp, duyệt từng đơn), Controller Hook **BẮT BUỘC lưu trạng thái Pending theo ID của phần tử** (dạng Map hoặc Set: `pendingChanges = { [id]: status }` hoặc `pendingIds = new Set()`).
+   - Chỉ phần tử đang trực tiếp xử lý mới nhận `isPending = true`. Tất cả các phần tử xung quanh **BẮT BUỘC giữ nguyên trạng thái hoạt động bình thường (`disabled = false`)**, không được chớp tắt, mờ nút hay giật style.
+   - Hỗ trợ thao tác liên tục (Multi-click queue): Không dùng ref lock đơn luồng toàn cục (`lock.current = true`) chặn đứng click của các phần tử khác. Cho phép người dùng bấm liên tiếp các phần tử khác nhau một cách mượt mà.
+
+2. **Kỷ luật Bọc `React.memo` & `useCallback` Cho Mọi Item Component Trong Lưới**:
+   - Mọi component đại diện cho 1 item trong lưới (`StudentSeat`, `ClassCard`, `ProductItem`...) **BẮT BUỘC bọc `React.memo`**.
+   - Các hàm callback truyền từ Hook xuống item component **BẮT BUỘC bọc `useCallback`**.
+   - Khi thao tác trên item A, React **phải bỏ qua 100% việc re-render các item B, C, D...** còn lại trong danh sách.
+
+3. **Tách biệt Tuyệt đối Spinner Đơn Lẻ & Spinner Toàn Bộ (`Single-Action vs. Bulk-Action Loading Separation`)**:
+   - Các thanh công cụ/hành động đáy trang (`FormActionBar`, Sticky Footer) chứa nút hành động hàng loạt (như *"Tất cả có mặt"*, *"Lưu tất cả"*, *"Duyệt tất cả"*) **CHỈ ĐƯỢC PHÉP hiển thị icon xoay tròn `loading={true}` khi thực sự bấm hành động hàng loạt đó** (`loading={isBulkPending}`).
+   - Tuyệt đối không để hành động click 1 item đơn lẻ làm nhảy spinner và co giãn chiều rộng của nút đáy trang.
+
+4. **Kỷ luật Gióng Thẳng Trục Lực & Cố Định Chiều Cao Text Trong CSS Grid**:
+   - Các trường văn bản có nguy cơ rớt dòng (như tên học viên, tiêu đề khóa học) **BẮT BUỘC có chiều cao cố định 2 dòng** (`min-height: 44px; max-height: 44px; line-height: 22px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;`).
+   - Thẻ Card cha áp dụng Flexbox lấp đầy 100% chiều cao hàng (`height: 100%; display: flex; flex-direction: column; justify-content: space-between;`).
+   - Hàng nút bấm hành động ở đáy Card (`.actions`) sử dụng `margin-top: auto; display: flex; gap: 8px;` với các nút con `flex: 1; min-height: 40px; border-radius: 8px;` để hàng nút bấm của toàn bộ các Card trên cùng một hàng luôn thẳng hàng tăm tắp theo phương ngang, độ lệch trục $\Delta y = 0$.
+
+---
+
+## 8. Quy Chuẩn Soạn Thảo Nhận Xét Sư Phạm, Placeholder Thông Minh & Lịch Sử Đánh Giá (`Pedagogical Evaluation Editor, Clean Placeholder & Privacy-First Evaluation History Invariant`)
+
+1. **Kỷ luật Tuyệt Đối Phân Biệt Placeholder vs. Value (`Clean Placeholder Invariant`):**
+   - **TUYỆT ĐỐI CẤM** tự ý điền sẵn văn bản mẫu (như *"Tham gia học tích cực."*, *"Completed assignment."*) vào giá trị `value` của ô nhập liệu hoặc editor nếu học viên chưa có ghi chú thực tế trong giờ.
+   - Khi chưa có ghi chú trong giờ, `value` **BẮT BUỘC là chuỗi rỗng (`""`)** để Giáo viên có thể click vào và gõ nhận xét ngay lập tức mà không phải thực hiện thao tác xóa (backspace).
+   - Các gợi ý chuẩn mực sư phạm bắt buộc hiển thị ở dạng **`placeholder` màu xám mờ** (Song ngữ: VI `Tham gia học tích cực, phát âm rất chuẩn và làm bài tập xuất sắc hôm nay...` / EN `Actively participated in class, pronunciation was very clear and completed homework well...`).
+   - Nếu học viên có ghi chú thực tế trong giờ (từ tính năng Quick Note), hệ thống mới tự động pre-fill nguyên văn ghi chú đó vào `value` để giáo viên chỉnh sửa nhanh.
+   - Khi xuất báo cáo gửi phụ huynh qua Zalo hoặc hiển thị Bảng tổng kết học viên, nếu ô nhận xét để trống thì hệ thống mới áp dụng câu nhận xét sư phạm tích cực này làm fallback.
+
+2. **Quy chuẩn Trình Soạn Thảo Nhận Xét Chuyên Dụng (`SimpleEvaluationEditor`):**
+   - Mọi ô nhận xét học viên trong bảng đánh giá sau giờ phải sử dụng component chuẩn `SimpleEvaluationEditor` với chiều cao tối thiểu $\ge 140 - 160\text{px}$ (cao gấp ~5 lần ô input 32px ban đầu).
+   - Tích hợp thanh công cụ sư phạm:
+     * Định dạng chữ: **Bold (`**text**`)**, *Italic (`*text*`)*, Danh sách gạch đầu dòng (`• `), Danh sách đánh số (`1. `).
+     * Nút bấm chèn nhanh 1 chạm: 🌟 Khen ngợi (Praise), 🔤 Phonics, 🗣️ Tương tác (Engagement), 📚 BTVN (Homework).
+     * Nút Xóa nhanh (Clear) màu đỏ để làm sạch nội dung khi cần viết lại từ đầu.
+   - **Chống Giật Lag Realtime (`Zero-Jitter Anti-Reset Shield`):** Sử dụng `localEditsRef` để cô lập và bảo toàn nội dung người dùng đang gõ, chặn đứng nguy cơ mất chữ hoặc kẹt ký tự khi đồng hồ lớp học realtime nhảy giây hoặc Firestore gửi snapshot ngầm.
+
+---
+
+## 9. Kỷ Luật Đồng Bộ Cơ Sở Dữ Liệu Node Script & Môi Trường Localhost (`Node Scripts & Vite Localhost DB Parity Invariant`)
+
+1. **Nguyên Tắc Đồng Bộ Nhất Quán Giữa CLI & Browser:**
+   - Trong `src/core/services/firebase.js`: Ở môi trường Node.js CLI (chạy qua `node scripts/...` hoặc Playwright Python), biến `typeof window === 'undefined'`.
+   - **BẮT BUỘC** nhận diện môi trường Node.js cục bộ và tự động kích hoạt `IS_DEVELOPMENT_FIREBASE = true` (kết nối cơ sở dữ liệu `lakeducation-dev`), đồng bộ 100% với phiên Vite dev server chạy trên `127.0.0.1:3000`.
+   - Tuyệt đối cấm logic chỉ kiểm tra `window.location.hostname` khiến Node.js script kết nối nhầm sang Production (`lakeducation`) trong khi trình duyệt lại đọc Development (`lakeducation-dev`), gây hiện tượng lệch DB (split-brain) và làm rớt các bài kiểm thử E2E tự động.
+   - Chỉ khi lập trình viên cố tình truyền biến môi trường `LAK_USE_PROD_FIREBASE=true`, Node.js script mới được phép kết nối sang Production.
+
+---
+
+## 10. Kỷ Luật Thép: Nghiêm Cấm Tuyệt Đối Tự Ý Tạo Dữ Liệu & Bắt Buộc Dọn Sạch 100% Dữ Liệu Test (`Strict Zero Test-Data Residue & No Unsolicited Data Invariant`)
+
+1. **Nghiêm Cấm Tạo Dữ Liệu Khi Chưa Có Lệnh:**
+   - **TUYỆT ĐỐI CẤM** tự ý tạo, hardcode hoặc seed dữ liệu mẫu/dữ liệu giả lập người dùng, giáo viên, học viên (tự ý gõ nhận xét, tự tạo bản ghi đánh giá buổi học, tự tạo bài tập giả mạo giáo viên) khi Sếp Bảo chưa yêu cầu rõ ràng.
+2. **Kỷ Luật Dọn Sạch Dữ Liệu Test 100% (Strict Teardown Invariant):**
+   - Mọi kịch bản kiểm thử E2E tự động (Playwright, Python, Node.js script) nếu có phát sinh dữ liệu tạm để kiểm thử giao diện/API thì **BẮT BUỘC phải dọn sạch hoàn toàn (hard-delete / teardown sạch sẽ 100%)** ngay trong khối `finally` của script. Tuyệt đối cấm để rò rỉ bất kỳ bản ghi test nào (`e2e_`, `test_`, `att_`, `LIVE_`) vào Cloud Firestore thật.
+3. **Bảo Toàn Trạng Thái Trống Thực Tế (Authentic Empty State):**
+   - Nếu thực tế học viên chưa có đánh giá nào từ giáo viên thật, giao diện BẮT BUỘC phải hiển thị trạng thái Trống (Empty State) *"Chưa có bản đánh giá nào từ giáo viên"* / *"No session evaluations yet"*, cấm tự vẽ hoặc giữ lại dữ liệu test để lấp chỗ trống.
+
+---
+
+## 10. Quy Chuẩn Vận Hành Thời Khóa Biểu, Lớp Học Chưa Diễn Ra & Soạn Giáo Án Đơn Giản (`Timetable Sessions, Upcoming Invariants & Simple Objectives Editor`)
+
+1. **Tính toán Thứ tự Buổi Học Động Theo Thời Khóa Biểu (`generateClassSessionDates`):**
+   - Mọi phân hệ liên quan đến buổi học của lớp (`classroom`, `curriculum`, `evaluation`, `schedules`) **BẮT BUỘC** tính toán thứ tự buổi học dựa trên thời khóa biểu và ngày khai giảng (`startDate`) thông qua `generateClassSessionDates(cls)`.
+   - **TUYỆT ĐỐI CẤM** fallback cứng số buổi (ví dụ: `c.session?.sessionIndex || 3` hoặc `|| 1`). Nếu ngày hiện tại không có lịch học, `currentSessionIndex` phải là `null`.
+   - **Tuyệt đối cấm hiển thị nhãn "(Hôm nay)" / "(Today)"** cho các buổi tương lai khi lớp chưa khai giảng hoặc ngày hiện tại không phải ngày học. Mặc định chọn Buổi 1 (ngày khai giảng) để chuẩn bị giáo án.
+
+2. **Kỷ Luật Khóa Tính Năng Đánh Giá Sư Phạm Khi Buổi Học Chưa Diễn Ra:**
+   - Khi buổi học chưa bắt đầu (`now < session.start` hoặc trước ngày khai giảng `startDate`), toàn bộ tính năng đánh giá học viên (chấm sao `Rate`, nhận xét `textarea`, nút Lưu toàn bộ `btn-save-all-evaluations`) **BẮT BUỘC ở trạng thái `disabled=true`**.
+   - Banner thông báo phải nêu rõ ngày, giờ bắt đầu dự kiến của buổi học và **TUYỆT ĐỐI KHÔNG CHỨA CỤM TỪ "Zalo phụ huynh"**.
+
+3. **Kế Thừa 100% Kho Giáo Trình Gốc Của Khóa Học & Zero Dummy Links:**
+   - Kho giáo trình trong lớp học (`curriculum-vault`) kế thừa động 100% từ Khóa học cấp cha (`courses/<courseId>`), gồm sách giáo khoa cốt lõi (`curriculumTextbooks`) và tài liệu số (`courseMaterials`).
+   - Tuyệt đối **CẤM** khai báo mảng link tĩnh hoặc link mẫu dummy.
+   - Dọn sạch 100% dữ liệu test residue trong Firestore sau khi kiểm thử tự động (`Zero Test-Data Residue`).
+
+4. **Dropdown TKB Thông Minh & Simple Objectives Editor (`SimpleObjectivesEditor.jsx`):**
+   - Khi soạn/chỉnh sửa giáo án, hợp nhất "Khung Bài Học (Unit & Week)" và "Ngày Giảng Dạy Dự Kiến" thành 1 ô Dropdown TKB thông minh duy nhất (`select-schedule-session`) sinh tự động từ thời khóa biểu của lớp. Khi chọn buổi, tự động điền đồng bộ `sessionIndex`, `date`, `unitWeek`.
+   - Trình soạn thảo mục tiêu bài học chuẩn sư phạm `SimpleObjectivesEditor.jsx` tích hợp các phím tắt 1-chạm nạp nhanh cấu trúc McGraw-Hill Wonders (`🎯 Question`, `📖 Reading`, `🔤 Phonics`, `💬 Words`, `🧩 Grammar`), bộ đếm số lượng mục tiêu/dòng thời gian thực và thanh công cụ Bold/Italic/Bullet trực quan.
+
+---
+
+## 11. Quy Chuẩn Chỉ Nói Quy Trình Cho User & Phòng Vệ Rò Rỉ Mã Khóa i18n (`User Workflow Focus & Defensive i18n Guardrail Invariant`)
+
+1. **Nguyên lý "Quy trình người dùng thay vì cơ chế máy móc":**
+   - **Lỗi sai điển hình:** *"Hệ thống tự động tạo thư mục trên Firebase Storage và mở dialog..."* (Mô tả cơ chế máy móc, lộ tên công nghệ hạ tầng).
+   - **Cách viết đúng chuẩn:** *"Kéo thả 1 hoặc nhiều tài liệu vào đây để nhập thông tin và phân loại theo khóa học. Hỗ trợ tệp PDF, Audio, Slide bài giảng."* (Mô tả hành động của người dùng và giá trị nhận được).
+   - Mọi thông điệp giao diện phải trả lời câu hỏi: *"Người dùng cần làm gì tiếp theo?"* thay vì *"Hệ thống sẽ làm gì bên dưới backend?"*.
+
+2. **Lớp bảo vệ i18n chống rò rỉ khóa kỹ thuật:**
+   - Trong `src/core/context/LanguageContext.jsx`, hàm `t` bắt buộc phải có lớp bảo vệ:
+     ```javascript
+     const t = useCallback((key, optionsOrFallback) => {
+       const fallback = typeof optionsOrFallback === 'string' ? optionsOrFallback : optionsOrFallback?.defaultValue;
+       const res = rawT(key, optionsOrFallback);
+       if (res === key) {
+         if (fallback) return fallback;
+         return ''; // Trả về chuỗi rỗng để pattern `t(key) || fallback` kích hoạt tự nhiên
+       }
+       return res;
+     }, [rawT]);
+     ```
+
+3. **Kỷ luật kiểm toán i18n tự động:**
+   - Chạy script đối soát regex quét toàn bộ `t('...')` trong module mới so với `vi.js` và `en.js` để bảo đảm không còn khóa nào bị thiếu (`Missing in VI: []`, `Missing in EN: []`) trước khi bàn giao.
+
+---
+
+## 12. Quy Chuẩn Xem Trước Media Sư Phạm & Giao Thức Nhúng An Toàn (Pedagogical Media Preview & Embed Protocol)
+
+1. **Kỷ luật Chặn đứng URL Tạm Thời (`Zero Dead Blob: URLs Invariant`):**
+   - **TUYỆT ĐỐI CẤM** lưu `URL.createObjectURL(file)` (`blob:...`) vào cơ sở dữ liệu Cloud Firestore.
+   - URL `blob:` chỉ tồn tại trong RAM của đúng phiên/tab tạo ra nó; khi mở ở thiết bị khác hoặc khi làm mới trang, đường dẫn sẽ chết (`ERR_FILE_NOT_FOUND / 404`), gây trắng khung xem trước. Mọi tài liệu phải dùng link lưu trữ vĩnh viễn (Google Drive hoặc Cloud Storage).
+   - **Lớp bảo vệ phòng vệ UI:** Trong `MaterialPreviewModal.jsx`, nếu phát hiện tệp mang URL `blob:`, bắt buộc hiển thị thẻ cảnh báo hướng dẫn thay vì mở iframe trắng.
+
+2. **Giao Thức Nhúng An Toàn Google Drive & YouTube (`Drive & YouTube Embed Protocol`):**
+   - Mọi liên kết chia sẻ Google Drive (`/view`, `/edit`, `?usp=sharing`) bắt buộc tự động chuyển đổi sang `/preview` (`https://drive.google.com/file/d/{id}/preview`) trong `resolveEmbedUrl()` để vượt qua rào cản `X-Frame-Options: SAMEORIGIN`.
+   - Video YouTube bắt buộc chuyển đổi sang `https://www.youtube-nocookie.com/embed/{id}?rel=0&modestbranding=1` để tăng cường bảo mật và không bị chặn nhúng.
+   - Khung xem trước Slide và Video bắt buộc đặt trong container tỷ lệ chuẩn điện ảnh `16:9` (`paddingBottom: '56.25%'` hoặc `aspectRatio: '16/9'`).
+
+3. **Bộ Điều Khiển Tốc Độ Audio Sư Phạm (ESL Playback Rate Tuning):**
+   - Thẻ `<audio>` liên kết `ref={audioRef}`. Khi người dùng chọn tốc độ `0.75x`, `1.0x`, `1.25x`, `1.5x`, cập nhật trực tiếp `audioRef.current.playbackRate = speed` để hỗ trợ học viên luyện nghe phát âm giáo viên bản ngữ.
+
+4. **Công Thái Học Di Động & Chống Rớt Chữ (Mobile Ergonomics & No Broken Words):**
+   - Toàn bộ nút hành động chân modal (`Mở Tab Mới`, `Tải Về`, `Đóng`) bắt buộc `whiteSpace: 'nowrap'`, chiều cao $\ge 38-40\text{px}$.
+   - Khẳng định `scrollWidth <= innerWidth` (Zero Overflow-X) trên cả Desktop (`1366px`) và Mobile (`390px`).
+
+---
+
+## 13. Quy Chuẩn Nhận Diện Nền Tảng Phòng Học Trực Tuyến Động & Khóa Nút Truy Cập Theo Thời Gian Thực (Dynamic Meeting Platform & 15m Time-Locked Access Protocol)
+
+1. **Triệt Tiêu Hardcode Tên Thương Hiệu (`Zero Hardcoded Platform Brand Invariant`):**
+   - **TUYỆT ĐỐI CẤM** viết cứng tên nền tảng (như `"Zoom"`, `"Vào Zoom"`, `"🎥 Vào Lớp Học Zoom Ngay"`) trên bất kỳ nút bấm, tiêu đề hay nhãn phòng học nào.
+   - Bắt buộc 100% sử dụng tiện ích nhận diện động `detectMeetingPlatform(url)` và huy hiệu `<MeetingPlatformBadge url={url} />` từ `src/shared/utils/meetingPlatformUtils.jsx` để tự động render đúng tên (`Google Meet`, `Zoom Meeting`, `Microsoft Teams`, `Phòng Trực Tuyến`), icon chính hãng và màu sắc thương hiệu.
+
+2. **Kỷ Luật Khóa Phòng Học Theo Thời Gian Thực (`15-Minute Threshold Time-Locked Access Invariant`):**
+   - Trạng thái phòng học trực tuyến phải được kiểm soát chặt chẽ theo thời gian thực qua `findClassSession(cls, now)` và `getSessionTimer(session, now)`:
+     * **Khi buổi học chưa đến giờ (còn > 15 phút / `startsIn > 900`):** Nút **BẮT BUỘC DISABLED** với nhãn `Phòng [Platform] Mở Trước 15 Phút` (`[Platform] Opens 15m Before`), kèm tooltip giải thích rõ ràng phòng sẽ tự động mở trước 15 phút.
+     * **Khi trong vòng 15 phút trước giờ học (`startsIn <= 900`):** Nút tự động chuyển trạng thái `primary` xanh sáng với nhãn `🎥 Vào Lớp Học [Platform] Ngay` (`🎥 Join [Platform] Now`).
+     * **Khi buổi học đang diễn ra (`timer.state === 'live'`):** Nút hiển thị `🔴 Vào Lớp [Platform] (Đang Diễn Ra)` (`🔴 Join Live [Platform]`).
+     * **Khi chưa cập nhật link:** Nút `disabled` với nhãn `Chưa Có Link Phòng Học` (`Meeting Link Not Available`).
+
+3. **Ưu Tiên Ca Học Gần Nhất Trên Banner (`Earliest Session Priority`):**
+   - Mọi banner ca học tiếp theo phải lấy từ ca học diễn ra sớm nhất theo thời gian thực (`sortedClasses[0]` dựa trên `sA.start - sB.start`), tuyệt đối không đọc index `[0]` tĩnh của mảng lớp.
+
+4. **Kỷ Luật Phòng Vệ Null-Safety Trong Utility Functions:**
+   - Mọi hàm phân tích lớp học như `findClassSession(cls, now)` bắt buộc kiểm tra `if (!cls) return null;` ở dòng đầu tiên để tránh lỗi sập DOM runtime.
+
+
 

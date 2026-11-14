@@ -25,6 +25,8 @@ import {
   DollarOutlined,
   UserOutlined,
   BookOutlined,
+  FolderOpenOutlined,
+  FormOutlined,
   AppstoreOutlined,
   SafetyCertificateOutlined,
   GlobalOutlined,
@@ -34,6 +36,7 @@ import {
   CheckOutlined,
   EyeOutlined,
   SearchOutlined,
+  IdcardOutlined,
 } from '@ant-design/icons';
 import { useAuth, CORE_ROLE_USERS } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -91,6 +94,21 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
         key: 'courses',
         icon: <BookOutlined />,
         label: t('menus.courses'),
+      },
+      {
+        key: 'students',
+        icon: <IdcardOutlined />,
+        label: t('menus.students', isEnglish ? 'Students' : 'Quản Lý Học Viên') || (isEnglish ? 'Students' : 'Quản Lý Học Viên'),
+      },
+      {
+        key: 'materials',
+        icon: <FolderOpenOutlined />,
+        label: t('menus.materials', isEnglish ? 'Learning Materials' : 'Tài Liệu Học Tập') || (isEnglish ? 'Learning Materials' : 'Tài Liệu Học Tập'),
+      },
+      {
+        key: 'exercises',
+        icon: <FormOutlined />,
+        label: t('menus.exercises', isEnglish ? 'English Exercises' : 'Bài Tập Tiếng Anh') || (isEnglish ? 'English Exercises' : 'Bài Tập Tiếng Anh'),
       },
       {
         key: 'schedules',

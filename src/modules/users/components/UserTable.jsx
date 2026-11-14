@@ -123,19 +123,74 @@ export const UserTable = ({
       title: t('users.table.colRole'),
       dataIndex: 'role',
       key: 'role',
-      width: 170,
+      width: 230,
       render: (role, record) => {
         const color = ROLE_COLORS[role] || 'default';
         const isStudent = role === USER_ROLES.STUDENT;
+        const isTeacher = role === USER_ROLES.TEACHER;
         const localizedRole = ROLE_LABELS[isEnglish ? 'en' : 'vi']?.[role] || record.roleLabel || role.toUpperCase();
+        
+        const hasEnrolledClasses = Array.isArray(record.enrolledClasses) && record.enrolledClasses.length > 0;
+        const hasTeachingClasses = Array.isArray(record.teachingClasses) && record.teachingClasses.length > 0;
+
         return (
           <div>
             <Tag color={color} style={{ padding: '3px 8px', fontSize: 12, borderRadius: 4 }}>
               {localizedRole}
             </Tag>
+
+            {/* Thông tin Lớp học của Học viên */}
             {isStudent && (
-              <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {Array.isArray(record.enrolledClassIds) && record.enrolledClassIds.length > 0 ? (
+              <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {hasEnrolledClasses ? (
+                  record.enrolledClasses.map((cls) => (
+                    <Tooltip
+                      key={cls.id}
+                      placement="topLeft"
+                      title={
+                        <div style={{ fontSize: 12, lineHeight: 1.5, padding: '2px 4px' }}>
+                          <div style={{ fontWeight: 700, color: '#93c5fd', marginBottom: 2 }}>
+                            {cls.id}: {cls.name}
+                          </div>
+                          {cls.courseName && (
+                            <div>📖 {t('users.table.courseLabel') || (isEnglish ? 'Course:' : 'Khóa học:')} {cls.courseName}</div>
+                          )}
+                          {cls.teacherName && (
+                            <div>👨‍🏫 {t('users.table.teacherLabel') || (isEnglish ? 'Teacher:' : 'Giáo viên:')} {cls.teacherName}</div>
+                          )}
+                          {cls.schedule && (
+                            <div>🕒 {t('users.table.scheduleLabel') || (isEnglish ? 'Schedule:' : 'Lịch học:')} {cls.schedule}</div>
+                          )}
+                        </div>
+                      }
+                    >
+                      <Tag
+                        color="processing"
+                        style={{
+                          fontSize: 11,
+                          margin: 0,
+                          borderRadius: 4,
+                          maxWidth: 215,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          border: '1px solid #91caff',
+                          background: '#e6f4ff',
+                          color: '#0958d9',
+                          fontWeight: 500,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span>📚</span>
+                        <span style={{ fontWeight: 700 }}>{cls.id}:</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{cls.name}</span>
+                      </Tag>
+                    </Tooltip>
+                  ))
+                ) : Array.isArray(record.enrolledClassIds) && record.enrolledClassIds.length > 0 ? (
                   <Tag color="cyan" style={{ fontSize: 10, margin: 0 }}>
                     {record.enrolledClassIds.join(', ')}
                   </Tag>
@@ -143,53 +198,74 @@ export const UserTable = ({
                   <Tag color="cyan" style={{ fontSize: 10, margin: 0 }}>
                     {record.className}
                   </Tag>
-                ) : null}
+                ) : (
+                  <Tag
+                    style={{
+                      fontSize: 10,
+                      margin: 0,
+                      borderRadius: 4,
+                      color: '#64748b',
+                      background: '#f8fafc',
+                      border: '1px dashed #cbd5e1',
+                      width: 'fit-content',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {t('users.table.notEnrolled') || (isEnglish ? 'Not Enrolled' : 'Chưa phân lớp')}
+                  </Tag>
+                )}
+
+                {/* Trạng thái học phí */}
                 <Tag
                   color={record.tuitionStatus === 'Đã đóng đủ' ? 'green' : 'gold'}
-                  style={{ fontSize: 10, margin: 0, width: 'fit-content' }}
+                  style={{ fontSize: 10, margin: 0, width: 'fit-content', borderRadius: 4 }}
                 >
                   {record.tuitionStatus === 'Đã đóng đủ'
                     ? (isEnglish ? 'Paid in Full' : 'Đã đóng đủ')
-                    : (isEnglish ? 'Pending' : (record.tuitionStatus || 'Chờ đối soát'))}
+                    : (isEnglish ? 'Pending' : (record.tuitionStatus || (isEnglish ? 'Pending Audit' : 'Chờ đối soát')))}
                 </Tag>
+              </div>
+            )}
+
+            {/* Thông tin Lớp phân công giảng dạy của Giáo viên */}
+            {isTeacher && hasTeachingClasses && (
+              <div style={{ marginTop: 6 }}>
+                <Tooltip
+                  placement="topLeft"
+                  title={
+                    <div style={{ fontSize: 12, lineHeight: 1.5, padding: '2px 4px' }}>
+                      <div style={{ fontWeight: 700, color: '#93c5fd', marginBottom: 2 }}>
+                        {isEnglish ? 'Assigned Teaching Classes:' : 'Lớp phân công giảng dạy:'}
+                      </div>
+                      {record.teachingClasses.map((tc) => (
+                        <div key={tc.id}>
+                          • <strong>{tc.id}</strong>: {tc.name} ({tc.schedule || (isEnglish ? 'No schedule' : 'Chưa có lịch')})
+                        </div>
+                      ))}
+                    </div>
+                  }
+                >
+                  <Tag
+                    color="purple"
+                    style={{
+                      fontSize: 10,
+                      margin: 0,
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      border: '1px solid #d3adf7',
+                      fontWeight: 500,
+                    }}
+                  >
+                    👨‍🏫 {record.teachingClasses.length} {isEnglish ? (record.teachingClasses.length > 1 ? 'classes' : 'class') : 'lớp phụ trách'}
+                  </Tag>
+                </Tooltip>
               </div>
             )}
           </div>
         );
       },
     },
-    {
-      title: t('users.table.colAuth'),
-      key: 'authProviders',
-      width: 140,
-      render: (_, record) => {
-        const isGmail = isGmailAddress(record.email);
-        return (
-          <Space size={4}>
-            {isGmail && (
-              <Tooltip title={t('users.table.gmailTooltip')}>
-                <Tag icon={<GoogleOutlined />} color="orange" style={{ margin: 0, fontSize: 11 }}>
-                  Google
-                </Tag>
-              </Tooltip>
-            )}
-            {record.email ? (
-              <Tooltip title={t('users.table.passwordTooltip')}>
-                <Tag icon={<KeyOutlined />} color="default" style={{ margin: 0, fontSize: 11 }}>
-                  Pass
-                </Tag>
-              </Tooltip>
-            ) : (
-              <Tooltip title={t('users.table.phonePasswordTooltip')}>
-                <Tag icon={<PhoneOutlined />} color="cyan" style={{ margin: 0, fontSize: 11 }}>
-                  SĐT & Pass
-                </Tag>
-              </Tooltip>
-            )}
-          </Space>
-        );
-      },
-    },
+
     {
       title: t('users.table.colStatus'),
       key: 'status',
@@ -252,7 +328,7 @@ export const UserTable = ({
     {
       title: t('users.table.colActions'),
       key: 'actions',
-      width: 140,
+      width: 90,
       align: 'center',
       render: (_, record) => {
         const canDelete = PermissionService.canDeleteUser(currentUser, record);
@@ -266,9 +342,7 @@ export const UserTable = ({
                 icon={<EditOutlined />}
                 onClick={() => onEditUser(record)}
                 style={{ borderRadius: 6 }}
-              >
-                {t('users.table.btnDetails')}
-              </Button>
+              />
             </Tooltip>
 
             {canDelete && (
@@ -317,7 +391,7 @@ export const UserTable = ({
             ? `Total ${total} accounts in system`
             : `Tổng cộng ${total} tài khoản trong hệ thống`,
       }}
-      scroll={{ x: 1000 }}
+      scroll={{ x: 960 }}
     />
   );
 };

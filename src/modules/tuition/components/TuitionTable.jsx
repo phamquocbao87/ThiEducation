@@ -58,11 +58,14 @@ export const TuitionTable = ({
         title: isEnglish ? 'Enrolled Classroom' : 'Lớp Đang Tham Gia',
         dataIndex: 'className',
         key: 'className',
-        render: (className) => (
-          <Text style={{ fontSize: 13, color: '#334155' }}>
-            {className || (isEnglish ? 'Not assigned' : 'Chưa phân lớp')}
-          </Text>
-        ),
+        render: (className) => {
+          const cleanName = String(className || '').replace(/\s*\((Zoom|Live Zoom)\)/gi, '').trim();
+          return (
+            <Text style={{ fontSize: 13, color: '#334155' }}>
+              {cleanName || (isEnglish ? 'Not assigned' : 'Chưa phân lớp')}
+            </Text>
+          );
+        },
       },
       {
         title: isEnglish ? 'Tuition Fee Due' : 'Học Phí Tháng',

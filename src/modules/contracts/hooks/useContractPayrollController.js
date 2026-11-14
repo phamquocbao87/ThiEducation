@@ -74,15 +74,19 @@ export const useContractPayrollController = () => {
     return StaffPayrollService.buildStaffPayrollsFromRealUsers(allSystemUsers, classes);
   }, [allSystemUsers, classes]);
 
-  const scopedContracts = useMemo(
-    () => TeacherContractService.getScopedContracts(contracts, currentUser),
-    [contracts, currentUser]
-  );
+  // Chỉ hiển thị hợp đồng của Giáo viên đang hoạt động thực tế
+  const scopedContracts = useMemo(() => {
+    const activeTeacherIds = new Set(realTeachers.map((t) => t.id));
+    const validContracts = contracts.filter((c) => activeTeacherIds.has(c.teacherId));
+    return TeacherContractService.getScopedContracts(validContracts, currentUser);
+  }, [contracts, currentUser, realTeachers]);
 
-  const scopedPayrolls = useMemo(
-    () => TeacherPayrollService.getScopedPayrolls(payrolls, currentUser),
-    [payrolls, currentUser]
-  );
+  // Chỉ hiển thị bảng lương của Giáo viên đang hoạt động thực tế
+  const scopedPayrolls = useMemo(() => {
+    const activeTeacherIds = new Set(realTeachers.map((t) => t.id));
+    const validPayrolls = payrolls.filter((p) => activeTeacherIds.has(p.teacherId));
+    return TeacherPayrollService.getScopedPayrolls(validPayrolls, currentUser);
+  }, [payrolls, currentUser, realTeachers]);
 
   const teacherPayrollTotal = useMemo(
     () => TeacherPayrollService.calculateTotalBudget(scopedPayrolls),

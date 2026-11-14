@@ -67,8 +67,7 @@ export const BaseStudentMultiAutocomplete = ({
         filterOption={(input, option) =>
           matchLikeSearch(option?.searchText || '', input)
         }
-        maxTagCount="responsive"
-        style={{ width: '100%', borderRadius: 8, ...style }}
+        style={{ width: '100%', minHeight: 190, borderRadius: 8, ...style }}
       >
         {students.map((s) => {
           const conflicts = studentConflictMap[s.id] || [];

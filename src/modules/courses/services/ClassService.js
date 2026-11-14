@@ -67,6 +67,31 @@ export class ClassService extends BaseModuleService {
   }
 
   /**
+   * Cập nhật riêng thông tin Link phòng học trực tuyến (Giáo viên phụ trách hoặc Giáo vụ)
+   */
+  static async updateClassMeetingLinks(classId, { zoomHostLink, zoomStudentLink, meetingId, passcode }) {
+    if (!classId) throw new Error('Missing classId');
+    if (IS_FIREBASE_ENABLED && db) {
+      try {
+        const docRef = doc(db, this.COLLECTION_NAME, classId);
+        const payload = {
+          zoomHostLink: zoomHostLink || '',
+          zoomStudentLink: zoomStudentLink || '',
+          meetingId: meetingId || '',
+          passcode: passcode || '',
+          meetingUpdatedAt: new Date().toISOString(),
+        };
+        await setDoc(docRef, payload, { merge: true });
+        return { id: classId, ...payload };
+      } catch (err) {
+        console.error('[ClassService] Lỗi cập nhật link phòng học:', err.message);
+        throw err;
+      }
+    }
+    return { id: classId, zoomHostLink, zoomStudentLink, meetingId, passcode };
+  }
+
+  /**
    * Sinh mã Lớp học mới không bao giờ trùng lặp với các lớp hiện có hoặc lớp đã xóa mềm
    */
   static generateNextClassId(existingClasses = []) {

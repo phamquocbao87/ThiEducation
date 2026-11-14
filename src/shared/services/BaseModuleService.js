@@ -86,11 +86,31 @@ export class BaseModuleService {
   }
 
   /**
-   * Generate standardized sequential ERP ID
+   * Generate standardized sequential ERP ID without colliding with existing or soft-deleted records
    */
-  static generateId(prefix, currentList = []) {
-    const nextNumber = String(currentList.length + 1).padStart(2, '0');
-    return `${prefix}-${nextNumber}`;
+  static generateId(prefix, currentList = [], padLength = 2) {
+    const existingIds = new Set(
+      (currentList || []).map((item) => String(item?.id || '').toUpperCase())
+    );
+    let maxNum = (currentList || []).length;
+    const escapedPrefix = String(prefix).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`^${escapedPrefix}-(\\d+)$`, 'i');
+    for (const idStr of existingIds) {
+      const match = idStr.match(regex);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!Number.isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+    let candidateNum = maxNum + 1;
+    let candidateId = `${prefix}-${String(candidateNum).padStart(padLength, '0')}`;
+    while (existingIds.has(candidateId.toUpperCase())) {
+      candidateNum += 1;
+      candidateId = `${prefix}-${String(candidateNum).padStart(padLength, '0')}`;
+    }
+    return candidateId;
   }
 }
 

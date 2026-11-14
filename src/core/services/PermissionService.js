@@ -30,8 +30,13 @@ export class PermissionService {
   static canAccessModule(role, moduleKey) {
     const accessMatrix = {
       dashboard: ['admin', 'director', 'academic', 'teacher', 'accountant', 'student'],
+      classroom: ['admin', 'director', 'academic', 'teacher', 'student'],
       courses: ['admin', 'director', 'academic', 'teacher', 'student'],
+      students: ['admin', 'director', 'academic', 'teacher', 'accountant'],
       coursesManage: ['admin', 'director', 'academic'],
+      materials: ['admin', 'director', 'academic', 'teacher', 'student'],
+      exercises: ['admin', 'director', 'academic', 'teacher', 'student'],
+      materialsManage: ['admin', 'director', 'academic'],
       curriculum: ['admin', 'director', 'academic', 'teacher', 'student'],
       curriculumManage: ['admin', 'director', 'academic'],
       schedules: ['admin', 'director', 'academic', 'teacher', 'student'],
@@ -102,6 +107,11 @@ export class PermissionService {
     // Map rootSlug sang moduleKey chuẩn
     const slugToModule = {
       dashboard: 'dashboard',
+      classroom: 'classroom',
+      'courses-classes': 'courses',
+      students: 'students',
+      'learning-materials': 'materials',
+      'english-exercises': 'exercises',
       'zoom-schedules': 'schedules',
       'class-attendance-evaluation': 'attendance',
       'contracts-payroll': 'contracts',
@@ -118,6 +128,10 @@ export class PermissionService {
   }
 
   static canManageCourses(role) {
+    return ['admin', 'director', 'academic'].includes(role);
+  }
+
+  static canManageMaterials(role) {
     return ['admin', 'director', 'academic'].includes(role);
   }
 
@@ -307,6 +321,17 @@ export class PermissionService {
 
   static canCheckInClass(role) {
     return ['teacher', 'academic'].includes(role);
+  }
+
+  static canTakeClassroomAttendance(role) {
+    return role === this.ROLES.TEACHER;
+  }
+
+  static canViewClassroom(user, cls) {
+    if (!user || !cls || cls.isDeleted || cls.status === 'Deleted') return false;
+    return ['admin', 'director', 'academic'].includes(user.role)
+      || (user.role === 'teacher' && cls.teacherId === user.id)
+      || (user.role === 'student' && (cls.studentIds || []).includes(user.id));
   }
 
   static canEvaluateStudents(role) {

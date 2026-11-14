@@ -8,7 +8,7 @@ import { TuitionPaymentService } from '../services/TuitionPaymentService';
 import { TuitionReminderService } from '../services/TuitionReminderService';
 
 export const useTuitionController = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, allSystemUsers } = useAuth();
   const role = currentUser?.role;
 
   const [bills, setBills] = useState([]);
@@ -38,21 +38,32 @@ export const useTuitionController = () => {
   }, [loadTuitionBills]);
 
   /**
-   * Lọc và phân quyền hiển thị hóa đơn học phí
+   * Lọc và phân quyền hiển thị hóa đơn học phí (chỉ hiển thị hóa đơn của học viên đang hoạt động)
    */
-  const scopedStudents = useMemo(
-    () =>
-      TuitionBillingService.getScopedTuitionRecords(bills, currentUser, {
-        searchText,
-        statusFilter,
-      }),
-    [bills, currentUser, searchText, statusFilter]
-  );
+  const scopedStudents = useMemo(() => {
+    const activeStudentIds = new Set(
+      (allSystemUsers || [])
+        .filter(
+          (u) =>
+            (u.role || '').toLowerCase() === 'student' &&
+            !u.isDeleted &&
+            u.status !== 'deleted'
+        )
+        .map((u) => u.id || u.code)
+    );
+    const validBills = bills.filter((b) =>
+      activeStudentIds.has(b.studentId || b.studentCode || b.id)
+    );
+    return TuitionBillingService.getScopedTuitionRecords(validBills, currentUser, {
+      searchText,
+      statusFilter,
+    });
+  }, [bills, currentUser, searchText, statusFilter, allSystemUsers]);
 
   /**
    * Tính toán thống kê tài chính thực tế theo thời gian thực (0ms)
    */
-  const summary = useMemo(() => TuitionBillingService.calculateTuitionSummary(bills), [bills]);
+  const summary = useMemo(() => TuitionBillingService.calculateTuitionSummary(scopedStudents), [scopedStudents]);
 
   const permissions = {
     canConfirmPayment: PermissionService.canConfirmTuitionPayment(role),

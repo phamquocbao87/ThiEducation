@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Table, Tag, Space, Rate, Button, Typography } from 'antd';
+import { Table, Tag, Space, Rate, Button, Typography, Empty } from 'antd';
 import {
   GlobalOutlined,
   SoundOutlined,
@@ -39,7 +39,7 @@ export const SessionEvaluationTable = ({ attendances }) => {
         ),
       },
       {
-        title: isEnglish ? 'Zoom Attendance' : 'Điểm Danh Phòng Zoom',
+        title: isEnglish ? 'Class Attendance' : 'Điểm Danh Lớp Học',
         key: 'attendance',
         render: (_, record) => (
           <Space>
@@ -49,13 +49,14 @@ export const SessionEvaluationTable = ({ attendances }) => {
             <Tag color={record.absentCount > 0 ? 'volcano' : 'default'}>
               {isEnglish ? `Absent: ${record.absentCount}` : `Vắng: ${record.absentCount}`}
             </Tag>
+            {record.unmarkedCount > 0 && <Tag>{t('classroom.unmarkedCount', { count: record.unmarkedCount })}</Tag>}
           </Space>
         ),
       },
       {
         title: isEnglish ? '4 Skills Evaluation (⭐ 1-5 Stars)' : 'Đánh Giá 4 Kỹ Năng (⭐ 1-5 Sao)',
         key: 'scores',
-        render: (_, record) => (
+        render: (_, record) => record.sessionId && record.pronunciationScore == null ? <Text type="secondary">—</Text> : (
           <Space direction="vertical" size={2} style={{ fontSize: 12 }}>
             <div>
               <Text type="secondary"><SoundOutlined /> {isEnglish ? 'Pronunciation:' : 'Phát âm:'}</Text>{' '}
@@ -107,6 +108,18 @@ export const SessionEvaluationTable = ({ attendances }) => {
       rowKey="id"
       scroll={{ x: 920 }}
       pagination={{ pageSize: 5 }}
+      locale={{
+        emptyText: (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description={
+              isEnglish
+                ? 'No session evaluations recorded yet. Teachers can take attendance and evaluate live sessions above.'
+                : 'Chưa có buổi học nào được điểm danh. Giáo viên hoặc Giáo vụ có thể bấm "Điểm Danh" ở thẻ lớp phía trên.'
+            }
+          />
+        ),
+      }}
     />
   );
 };

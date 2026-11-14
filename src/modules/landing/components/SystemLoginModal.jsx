@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   Form,
@@ -77,12 +77,10 @@ export const SystemLoginModal = ({
   const watchedIdentifier = Form.useWatch('identifier', form) || '';
   const detectedType = detectLoginIdentifierType(watchedIdentifier);
 
-  // Tự động chuyển đổi ngôn ngữ thông báo lỗi khi người dùng đổi ngôn ngữ EN / VI
-  useEffect(() => {
-    if (authError) {
-      setAuthError((prev) => localizeSystemMessage(prev, language));
-    }
-  }, [language]);
+  // Tự động chuyển đổi ngôn ngữ thông báo lỗi khi hiển thị
+  const displayAuthError = useMemo(() => (
+    authError ? localizeSystemMessage(authError, language) : ''
+  ), [authError, language]);
 
   const handleModalClose = () => {
     setCandidateProfiles(null);
@@ -189,11 +187,11 @@ export const SystemLoginModal = ({
             </Text>
           </div>
 
-          {authError && (
+          {displayAuthError && (
             <Alert
               type="error"
               showIcon
-              message={authError}
+              message={displayAuthError}
               style={{ marginBottom: 14 }}
               closable
               onClose={() => setAuthError('')}
@@ -304,11 +302,11 @@ export const SystemLoginModal = ({
         </Text>
       </div>
 
-      {authError && (
+      {displayAuthError && (
         <Alert
           type="error"
           showIcon
-          message={authError}
+          message={displayAuthError}
           style={{ marginBottom: 16 }}
           closable
           onClose={() => setAuthError('')}

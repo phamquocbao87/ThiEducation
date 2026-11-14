@@ -97,12 +97,14 @@ ThiEducation/
    - Cơ chế giả lập / Impersonation (*"Admin Xem Dưới Tên User"*) và Modal chuyển đổi vai trò demo trên Header đã được **gỡ bỏ hoàn toàn**.
    - Mỗi người dùng đăng nhập và làm việc trực tiếp bằng tài khoản thật của mình (Google OAuth hoặc Email/Mật khẩu).
    - Toàn bộ các tài khoản mẫu (`ACA001..ACA003`, `ACC001`, `GV002..GV007`, `HV001..HV005`) đã được loại bỏ khỏi danh sách hoạt động; giao diện Quản trị người dùng (`/user-management`) và Hồ sơ cá nhân (`/my-profile`) chỉ hiển thị người dùng thực tế:
-     * 🛠️ **`ADM001` — Phạm Quốc Bảo:** IT Quản Trị Hệ Thống (`phamquocbao87@gmail.com` / `0898794116`)
-     * 👑 **`DIR505` — Phạm Hiếu Thi:** Giám Đốc Điều Hành & Sáng Lập (`lakvietnam@lakeducation.com` / `0908794116`)
-     * 💰 **`ACC330` — Lê Thị Mỹ Dung:** Kế Toán Tài Chính (`lemydung49@gmail.com` / `0983548212`)
-     * 🎓 **`ACA545` — Ngọc Nhi & `ACA404` — Diễm Quỳnh:** Điều Phối Viên Giáo Vụ Đào Tạo
-     * 👨‍🏫 **`GV791` — Hellen:** Giáo Viên Bản Xứ (Teacher)
-     * Và các Cán bộ / Giáo viên / Học viên thực tế được đăng ký mới qua form.
+     * 🛠️ **`ADM001` — Phạm Quốc Bảo:** IT Quản Trị Hệ Thống (`phamquocbao87@gmail.com` / `0898794116` — Mật khẩu: `@Bcd123456`)
+     * 👑 **`DIR505` — Phạm Thị Hiếu Thi:** Giám Đốc Điều Hành & Sáng Lập (`lakvietnam@lakeducation.com` / `0961557696` — Mật khẩu: `271025`)
+     * 💰 **`ACC330` — Lê Thị Mỹ Dung:** Kế Toán Tài Chính (`lemydung49@gmail.com` / `0983548212` — Mật khẩu: `LakEducation@2026`)
+     * 🎓 **`ACA404` — Diễm Quỳnh:** Điều Phối Viên Giáo Vụ (`quynhdao0210@gmail.com` / `09878987` — Mật khẩu: `LakEducation@2026`)
+     * 🎓 **`ACA545` — Ngọc Nhi:** Điều Phối Viên Giáo Vụ (`nngoc.nhi0302@gmail.com` / `0904492894` — Mật khẩu: `LakEducation@2026`)
+     * 👨‍🏫 **`GV952` — Teacher Maj:** Giáo Viên Bản Xứ Phụ Trách Lớp `LH005`, `LH002`, `LH004` (`paguntalan.marjorie05@gmail.com` / `090544134` — Mật khẩu: `@Bcd123456`)
+     * 🎒 **15 Học viên thực tế (`HV151`..`HV971`):** Đăng nhập bằng SĐT Phụ huynh — Mật khẩu chung: `LakEducation@2026`
+     * 📋 **Danh bạ đầy đủ & URL 1-Click SSO kiểm thử từng Role:** Xem tại [`docs/LOCAL_DEV_ACCOUNTS.md`](file:///Volumes/DATA/projects/ThiEducation/docs/LOCAL_DEV_ACCOUNTS.md) và JSON [`docs/local_dev_accounts.json`](file:///Volumes/DATA/projects/ThiEducation/docs/local_dev_accounts.json).
    - **Quy Chuẩn Kiến Trúc Sub-Feature Service Kết Nối 100% Cloud Firestore:**
      * **Khóa học (`courses`):** [`CourseService.js`](file:///Volumes/DATA/projects/ThiEducation/src/modules/courses/services/CourseService.js) (`getAllCourses`, `saveCourse`, `deleteCourse` trên Firestore `courses`).
      * **Lớp học (`classes`):** [`ClassService.js`](file:///Volumes/DATA/projects/ThiEducation/src/modules/courses/services/ClassService.js) (`getAllClasses`, `saveClass`, `deleteClass` trên Firestore `classes`).
@@ -113,6 +115,10 @@ ThiEducation/
      * **Dọn sạch rác `localStorage`:** Khi ứng dụng khởi chạy, tự động purge (`localStorage.removeItem`) các key rác cũ (`lak_erp_classes`, `lak_erp_timetable`, `lak_erp_courses`) để tránh tình trạng dữ liệu rác cũ (như *"Súng Bắn Ốc, Vặn Vít"*, *"erw"*, *"a223"*) bị sống lại.
      * **Dropdown Modal liên kết danh bạ thật:** Mọi ô chọn Giáo viên / Học viên khi tạo hợp đồng hoặc phân công giảng dạy bắt buộc trích xuất từ danh bạ Firestore `allSystemUsers` (`GV791`...), tuyệt đối cấm ô input nhập text tự do hoặc gán giáo viên demo cũ.
      * **Kiểm toán Tự Động Playwright E2E Khẳng Định Dữ Liệu Thật (`Automated Real-DB Assertion`):** Trước khi bàn giao nghiệm thu bất kỳ phân hệ nào, bắt buộc chạy kiểm thử Playwright tự động để kiểm tra: ASSERT TRUE (dữ liệu nhân sự thật hiển thị đầy đủ: `GV791 Hellen`, `ACA545 Ngọc Nhi`, `ACA404 Diễm Quỳnh`...) và ASSERT FALSE (hoàn toàn không còn xuất hiện bất kỳ nhân sự mock giả lập nào: `David Smith`, `Emma Watson`, `Trần Thu Hà`, `Nguyễn Phương Thảo`...).
+     * **🚨 KỶ LUẬT THÉP BẤT BIẾN: NGHIÊM CẤM TUYỆT ĐỐI TỰ Ý TẠO DỮ LIỆU & BẮT BUỘC DỌN SẠCH 100% DỮ LIỆU TEST (STRICT ZERO TEST-DATA RESIDUE & NO UNSOLICITED DATA GENERATION):**
+       - **TUYỆT ĐỐI CẤM** tự ý tạo, hardcode hoặc seed dữ liệu mẫu/dữ liệu giả mạo người dùng, giáo viên, học viên (như tự ý gõ nhận xét, tự tạo bản ghi đánh giá buổi học, tự tạo bài tập giả danh giáo viên) khi Sếp Bảo chưa có yêu cầu rõ ràng.
+       - **BẮT BUỘC DỌN SẠCH 100% (Strict Teardown Invariant):** Mọi kịch bản kiểm thử E2E tự động (Playwright, Python, Node.js script) nếu có phát sinh dữ liệu tạm để kiểm thử giao diện/API thì **BẮT BUỘC phải dọn sạch hoàn toàn (hard-delete / teardown sạch sẽ 100%)** ngay trong khối `finally` của script. Tuyệt đối cấm để rò rỉ bất kỳ bản ghi test nào (`e2e_`, `test_`, `att_`, `LIVE_`) vào Cloud Firestore thật.
+       - **BẢO TOÀN TRẠNG THÁI TRỐNG THỰC TẾ (Authentic Empty State):** Nếu thực tế học viên chưa có đánh giá nào từ giáo viên thật, giao diện BẮT BUỘC phải hiển thị trạng thái Trống (Empty State) *"Chưa có bản đánh giá nào từ giáo viên"* / *"No session evaluations yet"*, cấm tự vẽ hoặc giữ lại dữ liệu test để lấp chỗ trống.
 5. **Chuẩn Đa Ngôn Ngữ (`Localization / i18n` — Mặc định Tiếng Anh `en`, Thứ hai Tiếng Việt `vi`):**
    - **Tập trung hóa 100% UI Labels vào 2 File Từ Điển Độc Lập:**
      * 🇬🇧 **Tiếng Anh (Mặc định):** [`src/core/i18n/locales/en.js`](file:///Volumes/DATA/projects/ThiEducation/src/core/i18n/locales/en.js)
@@ -126,11 +132,20 @@ ThiEducation/
    - **Quy tắc `useMemo` tránh kẹt cache ngôn ngữ (Zero Mixed-Language):** Mọi danh sách Menu Sidebar (`allMenuDefinitions`), danh sách cột bảng (`columns`), hoặc các đối tượng nhãn giao diện phụ thuộc ngôn ngữ **BẮT BUỘC PHẢI KHAI BÁO `[isEnglish]` (hoặc `[language]`) trong Dependency Array của `useMemo`**. Tuyệt đối không chỉ khai báo `[t]` vì instance `t` của i18next không đổi tham chiếu khi chuyển đổi ngôn ngữ, dẫn đến menu bị kẹt nhãn tiếng Anh khi chọn tiếng Việt.
    - **An toàn Dữ liệu Firestore (Zero-Undefined):** Tuyệt đối không truyền giá trị `undefined` vào `setDoc` / `updateDoc`. Luôn bảo toàn trạng thái tài khoản `status` khi đổi mật khẩu hoặc cập nhật hồ sơ.
    - **Quy tắc chống đơ DOM (`No MutationObserver Loop`):** Tuyệt đối không dùng `MutationObserver` gán lại `textContent` và không khai báo key-value trùng nhau trong `VI_TO_EN_UI_LABELS`; luôn kiểm tra `targetText !== rawText` trước khi cập nhật.
-7. **Quy Chuẩn Bất Biến Về Độ Sạch Giao Diện & Tuyệt Đối Không Hiển Thị Thông Tin Kỹ Thuật Cho Người Dùng (Zero Technical Jargon & Complete UI Information Purity Invariant):**
-   - Mọi nhãn form (`Form.Item label`), tooltip, gợi ý (`extra`), placeholder, tiêu đề bảng, thông báo hệ thống (Toasts, Alert, Modal) **TUYỆT ĐỐI KHÔNG ĐƯỢC CHỨA CÁC THUẬT NGỮ KỸ THUẬT LẬP TRÌNH HOẶC TÊN THƯ VIỆN BÊN DƯỚI** (như `Rich Text Editor`, `TipTap`, `Antd`, `Regex`, `JSON`, `API`, `H1/H2/H3`, `student_id`...).
+7. **Quy Chuẩn Bất Biến Về Độ Sạch Giao Diện: Chỉ Hướng Dẫn Quy Trình Thao Tác Cho User & Tuyệt Đối Không Mô Tả Cơ Chế Hạ Tầng Kỹ Thuật Nội Bộ (Zero Technical Jargon & Pure User-Centric Workflow Invariant):**
+   - **Chỉ Nói Quy Trình Thao Tác Cho Người Dùng (User-Centric Operational Workflow):**
+     * Mọi văn bản hiển thị trên UI (nhãn form, gợi ý dropzone, placeholder, tooltip, modal title, helper text, banner subtitle) **CHỈ ĐƯỢC PHÉP HƯỚNG DẪN HÀNH ĐỘNG NGHIỆP VỤ CỦA NGƯỜI DÙNG** (Người dùng cần làm gì: *Kéo thả tài liệu, chọn khóa học, nhập thông tin, lưu trữ học liệu*).
+     * **TUYỆT ĐỐI CẤM** mô tả cơ chế hạ tầng kỹ thuật bên trong hệ thống (như: *"hệ thống tự động tạo thư mục trên Firebase Storage và mở hộp thoại..."*, *"gọi API lưu dữ liệu..."*, *"chạy cronjob ngầm..."*). Người dùng không quan tâm và không bao giờ được phép thấy các chi tiết kỹ thuật này.
+   - **Bảng Cấm & Thay Thế Từ Ngữ Hạ Tầng Trên Toàn Bộ Giao Diện:**
+     * `Firebase / Firebase Storage / Firestore` $\rightarrow$ Thay bằng: *Hệ thống*, *Kho học liệu số*, *Thư mục lưu trữ*, *Tải lên*.
+     * `API / Endpoint / JSON / Payload` $\rightarrow$ Thay bằng: *Dữ liệu*, *Thông tin chi tiết*, *Đồng bộ*.
+     * `Rich Text Editor / TipTap / Antd / Regex` $\rightarrow$ Thay bằng: *Nội dung soạn thảo*, *Mục tiêu bài học*, *Định dạng chuẩn*.
    - **100% sử dụng ngôn ngữ nghiệp vụ sư phạm & quản trị giáo dục thuần túy.**
    - Chuẩn soạn thảo giáo trình dùng **`@tiptap/react`** (hỗ trợ chính thức React 19; không import riêng `extension-underline` vì StarterKit v3 đã tích hợp sẵn).
    - Khi hiển thị tóm tắt ngoài Card hoặc Table, **bắt buộc dùng hàm `stripHtml()`** để lọc sạch mã HTML.
+   - **Phòng Vệ Đa Ngôn Ngữ Chống Rò Rỉ Mã Khóa Kỹ Thuật (Defensive i18n Guardrail):**
+     * Hàm bọc `t(key, fallback)` tại `LanguageContext.jsx` bắt buộc chặn đứng mọi trường hợp i18next trả về tên khóa thô (`res === key`), lập tức kích hoạt chuỗi fallback nghiệp vụ song ngữ an toàn.
+     * Trước khi bàn giao bất kỳ tính năng nào có i18n, bắt buộc chạy script đối soát đảm bảo 100% khóa mới đã được định nghĩa đầy đủ ở cả 2 tệp `src/core/i18n/locales/vi.js` và `en.js`.
 8. **Chuẩn Base Layout, Bộ 8 Base Controls Dùng Chung & Kỷ Luật Mobile First:**
    - Mọi form mới/sửa bắt buộc kế thừa từ `src/shared/components/layout/` (`BaseFormPageLayout`, `FormSectionCard`, `FormActionBar`) và `src/shared/components/controls/` (`BaseRichTextEditor`, `BaseDatePicker`, `BaseCurrencyInput`, `BaseRangeSelector`, `BaseSearchInput`, `BaseStatusTag`, `BaseUserSelect`, `BaseFileUpload`).
    - **Kỷ luật Mobile First:** Trên mobile (`< 768px`), nút Submit/Lưu bắt buộc nằm ở đáy trang hoặc trên thanh Sticky Action Bar (`FormActionBar`), tuyệt đối cấm đặt trước các trường cấu hình.
@@ -171,6 +186,34 @@ ThiEducation/
     - **Tối ưu Lượt ghi & Vòng đời Tab:** Dùng `arrayUnion(currentUser.id)` khi đánh dấu đã đọc (bỏ qua nếu đã đọc để tốn `0 Write`), dùng `writeBatch` khi bấm *"Đã đọc tất cả"*, cô lập cache theo từng user (`lak_erp_notifications_cache_<userId>`), và tự động tạm ngắt listener khi tab ẩn quá 5 phút (`visibilitychange`).
     - **Hiển thị Audit cho IT Admin ([`NotificationBellPopover.jsx`](file:///Volumes/DATA/projects/ThiEducation/src/core/layout/NotificationBellPopover.jsx)):** Khi `currentUser.role === 'admin'`, hiển thị thanh kiểm toán trên từng thông báo (`Khởi tạo: <actorName> (<actorId>) • Đã đọc: <count>`).
     - **Lưu ý Kiểm thử Playwright E2E với `onSnapshot`:** Khi dùng Playwright kiểm thử các trang có kết nối WebSocket/Firestore `onSnapshot`, luôn dùng `wait_until="domcontentloaded"` thay vì `wait_until="networkidle"`.
+16. **Quy Chuẩn Chống Nhảy Layout Lưới Thẻ & Cô Lập Trạng Thái Pending (`Zero-Jitter Grid & Item-Level Pending Invariant`):**
+    - Khi tương tác trên từng Card của danh sách (như điểm danh học viên tại `/classroom/:classId`), **BẮT BUỘC cô lập trạng thái Pending theo ID phần tử** (`pendingChanges = { [id]: status }`).
+    - Nút bấm của các Card khác không bị ảnh hưởng, không bị disable tập thể.
+    - Bọc `React.memo` cho Item Component và `useCallback` cho event handlers để chặn đứng re-render chéo.
+    - Cố định chiều cao text 2 dòng (`min-height: 44px; max-height: 44px;`) và Flex Card (`justify-content: space-between; height: 100%;`) để các nút bấm đáy card gióng thẳng hàng 100% ($\Delta y = 0$), bảo đảm `Diff Before vs During = None`.
+17. **Quy Chuẩn Soạn Thảo Nhận Xét Sư Phạm & Placeholder Thông Minh (`Clean Placeholder & SimpleEvaluationEditor Invariant`):**
+    - **CẤM điền cứng text mẫu vào `value`:** Khi học viên chưa có ghi chú thực tế trong giờ, ô nhận xét bắt buộc là chuỗi rỗng `""` để Giáo viên gõ ngay không cần xóa (backspace).
+    - **Gợi ý sư phạm nằm ở `placeholder` mờ:** Câu gợi ý chuẩn mực sư phạm (VI: `Tham gia học tích cực...` / EN: `Actively participated in class...`) hiển thị ở dạng placeholder mờ, biến mất ngay khi giáo viên gõ chữ.
+    - **Trình soạn thảo chuyên dụng (`SimpleEvaluationEditor`):** Chiều cao $\ge 140 - 160\text{px}$ (cao gấp 5 lần ô input 32px), tích hợp Bold, Italic, Bullets, Ordered lists, Snippets 1 chạm (🌟 Lời khen, 🔤 Phonics, 🗣️ Tương tác, 📚 BTVN, Clear), và bọc `localEditsRef` chống mất chữ/reset do đồng hồ realtime nhảy giây.
+18. **Quy Chuẩn Lịch Sử Đánh Giá 100% Real Database & Đồng Bộ Node Script Localhost (`Evaluation History & DB Parity Invariant`):**
+    - **Lịch sử đánh giá thực tế (`EvaluationHistoryDrawer`):** Kết nối trực tiếp 100% Cloud Firestore `session_evaluations` qua `ClassroomRealtimeService.getEvaluationHistory(classId)`. Tuyệt đối cấm tạo hàm sinh dữ liệu mẫu (`buildHistoricalSessions`) giả lập Buổi 1, Buổi 2; lớp chưa có lịch sử bắt buộc hiển thị Empty State trang nhã.
+    - **Bảo mật quyền riêng tư học viên (Zero Peer-Data Leakage):** Giáo viên & Giáo vụ được xem toàn bộ học viên cả lớp; Học viên chỉ xem duy nhất tiến trình và nhận xét của chính mình.
+    - **Đồng bộ Cơ sở dữ liệu Node Script & Localhost:** Mọi script Node.js chạy trong môi trường phát triển cục bộ (`typeof window === 'undefined'`) tự động kết nối cơ sở dữ liệu `lakeducation-dev`, đồng bộ 100% với Vite trên `127.0.0.1:3000`, chống lỗi lệch database (split-brain).
+19. **Quy Chuẩn Xem Trước Học Liệu Đa Định Dạng & Kỷ Luật Chặn Đứng URL Tạm Thời (`Multi-Format Learning Material Preview & Zero Dead Blob: URLs Protocol`):**
+    - **Kỷ Luật Chặn Đứng URL Tạm Thời (`Zero Dead Blob: URLs Invariant`):**
+      * **TUYỆT ĐỐI CẤM** lưu đường dẫn tạm thời `blob:...` vào cơ sở dữ liệu Firestore hoặc danh bạ khóa học.
+      * Liên kết `blob:` chỉ tồn tại trong RAM của phiên trình duyệt hiện tại và sẽ chết (404 / `ERR_FILE_NOT_FOUND`) khi mở ở máy khác hoặc khi làm mới trang. Mọi tài liệu phải dùng link lưu trữ chính thức (Google Drive hoặc Cloud Storage).
+      * **Phòng vệ giao diện (Defensive Guardrail):** Trong `MaterialPreviewModal.jsx`, nếu phát hiện tệp mang URL `blob:`, bắt buộc hiển thị thẻ cảnh báo hướng dẫn thay vì mở iframe trắng.
+    - **Giao Thức Nhúng Google Drive An Toàn (`Drive Embed Protocol`):**
+      * Mọi liên kết Google Drive (`/view`, `/edit`, `?usp=sharing`) bắt buộc chuyển đổi tự động sang `/preview` (`https://drive.google.com/file/d/{fileId}/preview`) để vượt qua rào cản `X-Frame-Options: SAMEORIGIN`.
+    - **Tiêu Chuẩn Sư Phạm 4 Định Dạng Học Liệu:**
+      * 🎧 **Audio (Nghe phát âm):** Trang bị bộ chọn tốc độ đọc sư phạm (`0.75x` nghe chậm, `1.0x` chuẩn, `1.25x` nhanh) phục vụ học viên ESL luyện nghe phát âm giáo viên bản ngữ; hiển thị sóng âm thanh khi phát.
+      * 🖥️ **Slide (Trình chiếu):** Khung tỷ lệ chuẩn `16:9`, tích hợp nút mở rộng **Toàn màn hình** (*Fullscreen*) phục vụ giảng dạy trực tuyến và chiếu tại lớp.
+      * 🎬 **Video (Bài học):** Khung 16:9 nhận diện đa nguồn: File MP4 trực tiếp (HTML5 video player), YouTube (`youtube-nocookie.com/embed/{id}`), và Google Drive Video.
+      * 📑 **PDF (Giáo trình):** Khung đọc tương tác đầy đủ 220 trang, lật trang, phóng to, thu nhỏ và in ấn.
+    - **Công Thái Học Di Động (Mobile Ergonomics):**
+      * Tuyệt đối không tràn ngang (`scrollWidth <= innerWidth`).
+      * Toàn bộ nút thao tác chân modal (`Mở Tab Mới`, `Tải Về`, `Đóng`) bắt buộc `whiteSpace: 'nowrap'`, chiều cao $\ge 38-40\text{px}$, không bao giờ rớt chữ.
 
 ---
 
@@ -208,13 +251,38 @@ ThiEducation/
 2. **TUYỆT ĐỐI KHÔNG TỰ Ý COMMIT / PUSH LÊN GIT HOẶC DEPLOY LÊN FIREBASE KHI CHƯA CÓ LỆNH (`No Unsolicited Commit / Push / Deploy`):**
    - Agent **CẤM TUYỆT ĐỐI** tự động chạy `git add`, `git commit`, `git push`, hoặc `firebase deploy` sau khi sửa code nếu Sếp Bảo chưa ra lệnh rõ ràng.
    - Sau khi sửa code, chạy `npm run build` và kiểm thử Phòng QC trên local xong, giữ nguyên trạng thái ở máy local để Sếp Bảo nghiệm thu trước.
-3. **QUY TRÌNH 5 BƯỚC BẮT BUỘC KHI CÓ LỆNH DEPLOY TỪ SẾP BẢO (`Strict 5-Step Production Release Pipeline`):**
-   - Ngay khi Sếp Bảo ra lệnh **"deploy"** (hoặc *"deploy lên firebase"*, *"push và deploy"*), Agent **BẮT BUỘC thực thi tuần tự 5 bước không bỏ sót bước nào**:
-     1. **Bước 1 — Bật Phòng QC Test Full Quy Trình Nghiệp Vụ (`python3 scripts/qc_layout_auditor.py`):** Chạy kiểm thử E2E toàn diện các tính năng trên cả Desktop (`1366x850`) và Mobile (`390x844`).
-     2. **Bước 2 — Xóa Sạch 100% Dữ Liệu Test Do Phòng QC Tạo Ra (`Zero Test-Data Residue Teardown`):** Mọi dữ liệu thử nghiệm (khoá học test, lớp học nháp, lịch sử đổi lịch thử nghiệm, cờ `sessionStorage`/`localStorage` hoặc bản ghi `[QC-TEST]`) sinh ra trong quá trình Phòng QC kiểm thử **BẮT BUỘC PHẢI ĐƯỢC XÓA SẠCH VÀ KHÔI PHỤC VỀ TRẠNG THÁI GỐC** ngay khi kết thúc bài test, tuyệt đối không để lọt dữ liệu rác của QC lên bản build/production.
-     3. **Bước 3 — Build Tăng Version & Mã Build Ngày (`npm run build`):** Tự động tăng `Version 1.2.x` và `build YYYYMMDDNNv` qua `scripts/bump_build_version.js`, đóng gói sạch `dist/landing` và `dist/erp`.
-     4. **Bước 4 — Git Commit, Tag & Push (`git commit` + `git tag` + `git push`):** Commit toàn bộ code sạch kèm thông điệp chuẩn version (`release: Version 1.2.x • build YYYYMMDDNNv`), gắn thẻ Git Tag (`v1.2.x-YYYYMMDDNNv`) và đẩy (`git push origin main --tags`) lên kho lưu trữ Git.
-     5. **Bước 5 — Deploy Lên Firebase Hosting & Báo Cáo Nghiệm Thu (`firebase deploy --only hosting`):** Đẩy đồng thời 2 site lên Firebase Hosting (`lakeducation.edu.vn` và `erp.lakeducation.edu.vn` bằng tài khoản `vnthietbigarage@gmail.com`), xác nhận `HTTP 200` và xuất trình Báo cáo Release & Nghiệm thu Phòng QC cho Sếp Bảo.
+3. **QUY TRÌNH 8 BƯỚC BẮT BUỘC KHI CÓ LỆNH DEPLOY TỪ SẾP BẢO (`Strict 8-Step Git-Diff Impact Analysis, Dual-Env E2E & Production Teardown Pipeline`):**
+   - Ngay khi Sếp Bảo ra lệnh **"deploy"** (hoặc *"deploy lên firebase"*, *"push và deploy"*), Agent **BẮT BUỘC thực thi tuần tự 8 bước không bỏ sót bước nào**:
+     1. **Bước 1 — So Sánh Git Diff, Bóc Tách Tính Năng & Đánh Giá Tác Động (`Git Diff Impact Analysis`):**
+        - Chạy lệnh `git diff HEAD` (hoặc so sánh commit gần nhất) để bóc tách chính xác:
+          * *Code này đang làm tính năng mới nào? Fix bug ở function/module nào?*
+          * *Các component, service hoặc model nào bị ảnh hưởng trực tiếp và gián tiếp?*
+          * *Lập ma trận Test Case & Integration Test tương ứng cho chức năng thay đổi và các phân hệ liên đới.*
+     2. **Bước 2 — Bật Phòng QC Test E2E & Integration Test Trên Môi Trường DEV (`DEV E2E & Integration Test`):**
+        - Chạy kiểm thử tự động toàn diện các Test Case đã lập trên `localhost:3000` (môi trường `lakeducation-dev`) trên cả Desktop (`1366x850`) và Mobile (`390x844`).
+        - Khẳng định 100% chức năng mới và bug fix hoạt động hoàn hảo, không có lỗi hồi quy (zero regression).
+     3. **Bước 3 — Xóa Sạch Dữ Liệu Test Trên DEV (`DEV Zero Test-Data Residue Teardown`):**
+        - Xóa sạch 100% dữ liệu thử nghiệm, cờ cache sinh ra trong quá trình test DEV, khôi phục trạng thái sạch.
+     4. **Bước 4 — Kiểm Tra Đồng Bộ Schema Dữ Liệu Cũ & Bảo Vệ Database PROD (`Pre-deploy Database Migration Check`):**
+        - Rà soát: Tính năng mới / Bug fix có đòi hỏi các Document cũ trên PROD phải có thêm field mới nào không?
+        - **Kỷ luật cốt lõi (Không đưa dữ liệu DEV lên PROD):** `firebase deploy` tuyệt đối không đẩy document dữ liệu. Nếu cần bổ sung field cho document cũ trên PROD, phải dùng script migration tại `scripts/migrations/` chạy trực tiếp trên các document thật của PROD với cờ `{ merge: true }`, tuyệt đối **CẤM** export từ DEV rồi import vào PROD.
+        - Nếu có migration làm thay đổi cấu trúc dữ liệu PROD: Bắt buộc tạo bản backup nhanh trước khi chạy.
+     5. **Bước 5 — Deploy Firestore Security Rules & Composite Indexes Lên PROD (`Deploy Security & Indexes First`):**
+        - Nếu tính năng mới có thêm Collection mới hoặc câu truy vấn lọc/sắp xếp phức tạp, phải deploy Rules và Indexes lên PROD trước khi đẩy code Web:
+          ```bash
+          firebase deploy --only firestore:rules,firestore:indexes --project prod
+          ```
+        - Bước này đảm bảo Firestore PROD sẵn sàng mở quyền và index, chặn đứng 100% lỗi `Missing or insufficient permissions` hoặc `The query requires an index`.
+     6. **Bước 6 — Build Tăng Version & Mã Build Ngày (`npm run build`):** Tự động tăng `Version 1.2.x` và `build YYYYMMDDNNv` qua `scripts/bump_build_version.js`, đóng gói sạch `dist/landing` và `dist/erp`.
+     7. **Bước 7 — Git Commit, Tag & Push (`git commit` + `git tag` + `git push`):** Commit toàn bộ code sạch kèm thông điệp chuẩn version (`release: Version 1.2.x • build YYYYMMDDNNv`), gắn thẻ Git Tag (`v1.2.x-YYYYMMDDNNv`) và đẩy (`git push origin main --tags`) lên kho lưu trữ Git.
+     8. **Bước 8 — Deploy Hosting & Kiểm Thử E2E Trực Tiếp Trên PROD Có Tiền Tố, Chụp Ảnh Minh Chứng & Xóa Sạch 100% Dữ Liệu Test (`PROD E2E Evidence & Zero-Residue Teardown`):**
+        - Chạy `firebase deploy --only hosting` lên `lakeducation.edu.vn` & `erp.lakeducation.edu.vn`.
+        - **Kiểm thử trực tiếp trên Production thật:**
+          * Tạo dữ liệu test bắt buộc có tiền tố chuẩn: **`[TEST:DEPLOY:YYYYMMDD]`** (ví dụ: `[TEST:DEPLOY:20261112] Lớp kiểm thử sau release`).
+          * Chạy kiểm thử Playwright tự động thực tế trên domain PROD (`https://erp.lakeducation.edu.vn` và `https://lakeducation.edu.vn`).
+          * **Chụp ảnh màn hình lưu bằng chứng (Evidence Screenshots)** vào `test-results/` xác nhận tính năng chạy mượt mà trên Production thật.
+          * **DỌN SẠCH 100% DỮ LIỆU TEST TRÊN PROD NGAY LẬP TỨC:** Xóa sạch toàn bộ document/bản ghi có tiền tố `[TEST:...]` vừa tạo trên Firestore PROD, xác nhận lại `remainingTestDocs === 0`.
+          * Xuất trình Báo cáo Release, Ảnh Evidence và Biên bản Nghiệm thu Phòng QC cho Sếp Bảo.
 
 ---
 
@@ -276,6 +344,11 @@ ThiEducation/
 3. **Minh chứng trước dọn dẹp:** Sau khi chạy test, chụp ảnh các điểm kiểm tra quan trọng (Desktop và Mobile khi có UI); lưu theo thư mục tác vụ trong `test-results/` hoặc vị trí test hiện hành, với tên gắn ticket/feature và thời gian. Không đưa dữ liệu nhạy cảm vào ảnh/báo cáo.
 4. **Teardown bắt buộc:** Ngay sau khi đã lấy minh chứng, xóa toàn bộ dữ liệu có tiền tố `[TEST:...]`, tệp tải lên, các quan hệ phụ thuộc và cờ/cache được tạo trong lần test; sau đó truy vấn hoặc kiểm tra lại để xác nhận không còn dư liệu test. Không xóa bất kỳ dữ liệu thật nào.
 5. **Bằng chứng trong báo cáo:** Mỗi báo cáo phải ghi: tiền tố đã dùng, danh sách loại dữ liệu đã tạo, đường dẫn ảnh minh chứng, cách/xác nhận dọn dẹp và kết quả cuối cùng là **“0 test residue”**. Nếu không thể dọn dẹp do giới hạn quyền hoặc lỗi hạ tầng, phải dừng bàn giao, báo rõ bản ghi còn lại và xin hướng dẫn.
+6. **Môi trường local tự động cô lập:** Khi chạy trên `localhost`, hệ thống tự động kết nối vào project DEV (`lakeducation-dev`) hoặc Firebase Local Emulator (`demo-lakeducation`) theo [`docs/quality/LOCAL_TEST_ENVIRONMENT.md`](docs/quality/LOCAL_TEST_ENVIRONMENT.md), tuyệt đối không ghi dữ liệu test vào Production. Chỉ domain production (`lakeducation.edu.vn`, `erp.lakeducation.edu.vn`) mới kết nối dữ liệu thật; nhận diện môi trường DEV qua thanh banner màu xanh lá ở đỉnh trang.
+7. **Clone Production sang Development có kiểm soát & Tối ưu chi phí (3 Phương án):** Khi cần tái hiện bug bằng snapshot dữ liệu thật, Agent bắt buộc tuân thủ [`docs/quality/PROD_TO_DEV_CLONE_RUNBOOK.md`](docs/quality/PROD_TO_DEV_CLONE_RUNBOOK.md). Luôn áp dụng thứ tự ưu tiên:
+   - *Ưu tiên 1 (Targeted Scope - 0đ):* Chạy `node scripts/sync_target_doc.js --doc=<col>/<id>` hoặc `--col=<col>` để kéo đúng bản ghi bị lỗi về DEV trong 500ms, không tốn chi phí GCS.
+   - *Ưu tiên 2 (Test phá hủy - 0đ):* Chạy Local Emulator (`npm run dev:emulator`).
+   - *Ưu tiên 3 (Full Snapshot qua GCS):* Chỉ dùng khi release lớn, bắt buộc có manifest xác nhận và kiểm tra source/target rõ ràng; tuyệt đối không deploy hoặc đồng bộ dữ liệu DEV ngược về Production.
 
 ### 7.4. Mẫu Báo Cáo Bắt Buộc
 
@@ -285,3 +358,75 @@ ThiEducation/
 | Hoàn thành bug | Ca lỗi gốc và regression đã PASS, file thay đổi, build/QC, ảnh, test data cleanup, phạm vi ngoài thay đổi được bảo toàn |
 | Đề xuất feature | Mục tiêu/actor/acceptance criteria, kiến trúc/module, impact, tài liệu nghiệp vụ và sơ đồ, test plan, các điểm cần duyệt |
 | Hoàn thành feature | Hành vi đã triển khai, file/tài liệu cập nhật, test matrix PASS/không áp dụng, build/QC, ảnh, cleanup và rủi ro còn lại |
+
+### 7.5. Cơ Chế Ghi Nhớ Lỗi & Ngăn Tái Phát (Bug Prevention Memory)
+
+> **Mục tiêu:** Agent không được chỉ ghi nhận một lỗi đã sửa trong hội thoại. Mọi lỗi có khả năng lặp lại phải được chuyển thành tri thức tồn tại trong repository và một kiểm thử tự động hoặc kiểm tra lặp lại được.
+
+1. **Nguồn tri thức trung tâm:** Dùng [`docs/quality/BUG_REGISTRY.md`](docs/quality/BUG_REGISTRY.md) làm danh mục lỗi đã xử lý. Trước khi phân tích, code hoặc fix một tính năng, Agent phải tìm trong registry theo module, chức năng và từ khóa nghiệp vụ liên quan.
+2. **Khi nào bắt buộc ghi nhận:** Với mọi bug mức L2 trở lên, hoặc bug L1 đã từng lặp lại, Agent bắt buộc bổ sung/cập nhật một dòng registry trong cùng thay đổi. Lỗi hiển thị thuần túy, một lần, không có pattern tái phát có thể chỉ ghi trong báo cáo bàn giao.
+3. **Nội dung tối thiểu của một bản ghi:** ID (`BUG-YYYYMMDD-XXX`), module/phạm vi, triệu chứng ngắn, nguyên nhân gốc/pattern, guardrail phòng ngừa, đường dẫn test regression, trạng thái và version/build đã kiểm chứng. Không đưa PII, token, dữ liệu Firestore thật, lỗi raw hay thông tin bí mật vào registry.
+4. **Regression là bắt buộc:** Một bug chỉ được coi là đã phòng ngừa tái phát khi có ít nhất một trong các biện pháp sau, ưu tiên theo thứ tự: (a) test tự động unit/service/component/E2E; (b) kiểm tra lặp lại được trong QC script; (c) trường hợp chưa tự động hóa được thì có test case manual định danh rõ, điều kiện tiền đề và bằng chứng. Registry không thay thế test.
+5. **Guardrail trong code:** Nếu nguyên nhân có thể tái diễn ở từ hai nơi trở lên, Agent phải đề xuất đưa guardrail vào utility, base service, component chuẩn hoặc rule phù hợp. Nếu guardrail ảnh hưởng `src/shared/`, `src/core/`, RBAC, Firestore Rules hoặc nhiều module, phải dừng và xin duyệt theo Mục 2.6 trước khi thay đổi.
+6. **Không làm phình quy trình:** Không tạo tài liệu dài cho từng bug. Registry giữ dạng bảng ngắn; chỉ tạo tài liệu chi tiết tại `docs/quality/bugs/<bug-id>.md` khi là lỗi L3/L4, có dữ liệu/migration/phân quyền nhạy cảm hoặc cần sơ đồ để tái hiện.
+7. **Điều kiện đóng bug:** Báo cáo hoàn thành phải ghi ID registry (nếu áp dụng), guardrail đã thêm, lệnh/ca regression đã PASS và kết quả retest lỗi gốc. Nếu chưa thể tạo regression test, phải nêu lý do, ca manual thay thế và rủi ro còn lại; không được tuyên bố đã loại bỏ hoàn toàn nguy cơ tái phát.
+
+---
+
+## 🏫 11. Quy Chuẩn Vận Hành Lớp Học 3 Tab, Soạn Giáo Án Đa Buổi & Bảo Mật Ghi Chú Sư Phạm (AS05 G1 Standard)
+
+Áp dụng chuẩn hóa theo phân hệ vận hành lớp học McGraw-Hill Wonders (`AS05 G1`):
+1. **Kiến trúc 3 Tab Hợp nhất Tại `/classroom/:classId`**:
+   - **Tab 1 (`seating`): Sơ đồ lớp & Note nhanh**:
+     * Tích hợp nút `[📝 Note]` trực tiếp trên từng bàn học sinh: Giáo viên 1 chạm chọn các tag sư phạm (`🌟 Đọc to rõ`, `🗣️ Phát biểu tốt`, `🔤 Phát âm cần sửa`, `🧩 Đặt câu S-V-O`, `⚠️ Cần tập trung`) hoặc gõ nhận xét nhanh; tự động hiển thị huy hiệu `[Đã note]` và trích đoạn ghi chú.
+     * Chấm sao tương tác trực tiếp (`⭐ 1–5 Stars`) ngay trên bàn học sinh.
+   - **Tab 2 (`curriculum`): Soạn giáo án đa buổi & Kho học liệu**:
+     * Thanh Timeline Pills các buổi học (*Buổi 1, 2, 3, 4, 5...*).
+     * Nạp nhanh mẫu giáo trình Wonders G1 (`Essential Question`, `Anchor Text`, `Phonics`, `High-Frequency Words`), sao chép từ buổi trước, đính kèm link Google Slides và chọn trạng thái `🟢 Sẵn Sàng (Ready)` hoặc `✏️ Bản Nháp (Draft)`.
+     * **Kỷ Luật Bảo Mật Sư Phạm Bất Biến (Strict Pedagogy Security Invariant)**:
+       - Học viên được xem bài đọc cần chuẩn bị trước (`studentPrep`: trang sách *Reading/Writing Companion, Decodable*) và bài tập về nhà (`homework`).
+       - **TUYỆT ĐỐI 100% STRIP KHỎI DOM & GIẤU TOÀN BỘ GHI CHÚ NỘI BỘ (`teacherNotes`) và các buổi học trạng thái `DRAFT` đối với tài khoản Học viên (`ASSERT FALSE: teacherNotes not in DOM`)**.
+       - Học viên không thấy các nút chỉnh sửa/soạn giáo án.
+     * **Kho Học Liệu Khóa Học Kế Thừa Tự Động (Course Vault Auto-Inheritance)**:
+       - Khi Giáo vụ tải tài liệu/Google Drive lên Khóa học (`courses/{courseId}`), toàn bộ các lớp học, giáo viên và học viên trực thuộc đều **tự động kế thừa và tải được tài liệu (0ms đồng bộ)** mà không phải upload lặp lại ở từng lớp.
+   - **Tab 3 (`evaluation`): Đánh giá sau buổi học & Chăm sóc PH**:
+     * Tự động điền (Pre-fill) số sao và nhận xét từ các ghi chú nhanh trong giờ học. Nếu đã chấm sao trong giờ mà chưa gõ comment, hệ thống tự động fallback lấy nội dung ghi chú nhanh để không bao giờ bị rỗng.
+     * Nút `[Zalo PH]` dành cho Giáo vụ: Mở pop-up mẫu tin nhắn đã định dạng chuẩn (Tên bé, ngày học, số sao ⭐⭐⭐⭐⭐, nhận xét giáo viên, bài tập về nhà) kèm nút mở thẳng liên kết `https://zalo.me/<SĐT_Phụ_Huynh>`.
+     * Dành cho Học viên: Hiển thị duy nhất "Phiếu Nhận Xét Buổi Học Dành Cho Con" (Student Report Card) với số sao, lời khen và bài tập về nhà.
+2. **Kỷ Luật Chống Re-render Làm Mất Dữ Liệu Gõ Do Timer Đồng Hồ (High-Frequency Clock Input Protection Invariant)**:
+   - Trong các màn hình có bộ đếm thời gian thực (clock nhảy mỗi 1s như `useClassroomClock`):
+     * Mọi form, bảng hoặc ô nhập liệu **BẮT BUỘC** phải có cơ chế bảo vệ văn bản người dùng đang gõ bằng `useRef` (ví dụ: `localEditsRef`).
+     * Tuyệt đối không để `useEffect` gọi `setState` đè lên giá trị người dùng đang gõ khi timer nhảy chu kỳ.
+     * Các ô nhận xét sư phạm phải sử dụng `<Input.TextArea autoSize={{ minRows: 1, maxRows: 4 }} maxLength={1000} />` thay vì thẻ `<Input>` đơn dòng gây hẹp tầm nhìn và tạo cảm giác kẹt chữ.
+     * Bọc `useMemo` với dependency hạt nhân (`presence`, `quickNotes`, `studentEvaluations`) cho các props truyền vào modal để triệt tiêu re-render thừa.
+3. **Kỷ Luật Kiểm Thử Lớp Học Có Lịch Học Cố Định (Session Test Fixture Discipline)**:
+   - Khi kiểm thử tự động Playwright với các lớp học có lịch học cố định theo tuần, sử dụng script Node.js (`scripts/temp_enable_lh005_session.js` / `scripts/temp_restore_lh005_session.js`) để tạm mở phiên 24/7 và **bắt buộc phục hồi 100% lịch học ban đầu trong khối `finally:` (Zero Test Residue)**.
+4. **Kỷ Luật Buổi Học Chưa Diễn Ra & Khóa Đánh Giá Sư Phạm (Upcoming Session Invariant)**:
+   - Khi một lớp học hoặc buổi học chưa diễn ra (`now < session.start` hoặc trước ngày khai giảng `startDate`):
+     * Tuyệt đối **CẤM** đặt fallback cứng số thứ tự buổi (như `|| 3`). Bắt buộc tính toán động thứ tự buổi dựa trên `generateClassSessionDates(cls)`.
+     * Tuyệt đối **CẤM** hiển thị nhãn `(Hôm nay)` / `(Today)` trên timeline nếu ngày hiện tại không có lịch học. Khi chưa khai giảng, mặc định chọn Buổi 1 (ngày khai giảng) để chuẩn bị bài trước.
+     * **Khóa toàn bộ tính năng đánh giá học viên sau giờ:** Các control đánh giá (chấm sao `Rate`, nhận xét học viên `textarea`, nút Lưu toàn bộ `btn-save-all-evaluations`) bắt buộc phải ở trạng thái `disabled=true`.
+     * **Chuẩn hiển thị Banner thông báo:** Banner giải thích lý do khóa phải nêu rõ ngày, giờ bắt đầu dự kiến của buổi học và **TUYỆT ĐỐI KHÔNG CHỨA CỤM TỪ "Zalo phụ huynh"**.
+5. **Kế Thừa 100% Kho Giáo Trình Gốc Của Khóa Học & Zero Dummy Links (Course Vault Inheritance Invariant)**:
+   - Kho giáo trình trong lớp học (`curriculum-vault`) kế thừa động 100% từ Khóa học cấp cha (`courses/<courseId>`), gồm sách giáo khoa cốt lõi (`curriculumTextbooks`) và tài liệu số (`courseMaterials`).
+   - Tuyệt đối **CẤM** khai báo mảng link tĩnh hoặc link mẫu dummy (như chèn link Grade 1 vào lớp Grade 5).
+   - Dọn sạch 100% dữ liệu test residue trong Firestore sau khi kiểm thử tự động (`Zero Test-Data Residue`).
+6. **Soạn Giáo Án Thông Minh Theo Thời Khóa Biểu & Simple Objectives Editor**:
+   - Khi soạn/chỉnh sửa giáo án, hợp nhất "Khung Bài Học (Unit & Week)" và "Ngày Giảng Dạy Dự Kiến" thành **1 ô Dropdown TKB thông minh duy nhất** (`select-schedule-session`) sinh tự động từ thời khóa biểu của lớp. Khi chọn buổi, hệ thống tự động điền đồng bộ `sessionIndex`, `date`, `unitWeek`.
+   - Trình soạn thảo mục tiêu bài học chuẩn sư phạm `SimpleObjectivesEditor.jsx` tích hợp các phím tắt 1-chạm nạp nhanh cấu trúc McGraw-Hill Wonders (`🎯 Question`, `📖 Reading`, `🔤 Phonics`, `💬 Words`, `🧩 Grammar`), bộ đếm số lượng mục tiêu/dòng thời gian thực và thanh công cụ Bold/Italic/Bullet trực quan.
+7. **Quy Chuẩn Nhận Diện Phòng Học Trực Tuyến Động & Khóa Nút Truy Cập Theo Thời Gian Thực (Dynamic Meeting Platform & 15m Time-Locked Access Invariant)**:
+   - **Triệt Tiêu Hardcode Thương Hiệu (Zero Hardcoded Platform Brand Invariant)**:
+     * Tuyệt đối **CẤM** viết cứng tên nền tảng (như `"Zoom"`, `"Vào Zoom"`, `"🎥 Vào Lớp Học Zoom Ngay"`) trên bất kỳ nút bấm, tiêu đề hay nhãn phòng học nào.
+     * Bắt buộc 100% sử dụng tiện ích nhận diện động `detectMeetingPlatform(url)` và huy hiệu `<MeetingPlatformBadge url={url} />` từ `src/shared/utils/meetingPlatformUtils.jsx` để tự động render đúng tên (`Google Meet`, `Zoom Meeting`, `Microsoft Teams`, `Phòng Trực Tuyến`), icon chính hãng và màu sắc thương hiệu.
+   - **Kỷ Luật Khóa Phòng Học Theo Thời Gian Thực (15-Minute Threshold Time-Locked Access Invariant)**:
+     * Trạng thái phòng học trực tuyến phải được kiểm soát chặt chẽ theo thời gian thực qua `findClassSession(cls, now)` và `getSessionTimer(session, now)`:
+       - **Khi buổi học chưa đến giờ (còn > 15 phút):** Nút **BẮT BUỘC DISABLED** với nhãn `Phòng [Platform] Mở Trước 15 Phút` (`[Platform] Opens 15m Before`), kèm tooltip giải thích rõ ràng phòng sẽ tự động mở trước 15 phút.
+       - **Khi trong vòng 15 phút trước giờ học:** Nút tự động chuyển trạng thái `primary` xanh sáng với nhãn `🎥 Vào Lớp Học [Platform] Ngay` (`🎥 Join [Platform] Now`).
+       - **Khi buổi học đang diễn ra (`timer.state === 'live'`):** Nút hiển thị `🔴 Vào Lớp [Platform] (Đang Diễn Ra)` (`🔴 Join Live [Platform]`).
+       - **Khi chưa cập nhật link:** Nút `disabled` với nhãn `Chưa Có Link Phòng Học` (`Meeting Link Not Available`).
+   - **Ưu Tiên Ca Học Gần Nhất Trên Banner (Earliest Session Priority)**:
+     * Mọi banner ca học tiếp theo phải lấy từ ca học diễn ra sớm nhất theo thời gian thực (`sortedClasses[0]` dựa trên `sA.start - sB.start`), tuyệt đối không đọc index `[0]` tĩnh của mảng lớp.
+   - **Kỷ Luật Phòng Vệ Null-Safety Trong Utility Functions**:
+     * Mọi hàm phân tích lớp học như `findClassSession(cls, now)` bắt buộc kiểm tra `if (!cls) return null;` ở dòng đầu tiên để tránh lỗi sập DOM runtime.
+
+

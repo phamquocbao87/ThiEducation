@@ -30,6 +30,7 @@ const { Text } = Typography;
 
 export const AdminSystemHealthPanel = ({
   healthData,
+  adminDemographics = {},
   selectedCutoffYear,
   onChangeCutoffYear,
   isBackingUp,
@@ -40,6 +41,8 @@ export const AdminSystemHealthPanel = ({
   onCutoffYearToDrive,
 }) => {
   const { isEnglish, language, t } = useLanguage();
+
+  const { totalActiveUsers = 0, totalDisabledUsers = 0, countsByRole = {} } = adminDemographics;
 
   const serviceColumns = useMemo(
     () => [
@@ -109,6 +112,69 @@ export const AdminSystemHealthPanel = ({
 
   return (
     <div>
+      {/* 0. Hàng Thống Kê Cơ Cấu 6 Roles RBAC Thực Tế */}
+      <Card
+        bordered={false}
+        style={{
+          marginBottom: 16,
+          borderRadius: 12,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          borderTop: '3px solid #1890ff',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <Space>
+            <SafetyCertificateOutlined style={{ color: '#1890ff', fontSize: 18 }} />
+            <Text strong style={{ fontSize: 15 }}>
+              {isEnglish ? 'System User Demographics Across 6 RBAC Roles' : 'Cơ Cấu Tài Khoản Hệ Thống Theo 6 Roles RBAC'}
+            </Text>
+          </Space>
+          <Space>
+            <Tag color="green">{isEnglish ? 'Active:' : 'Hoạt động:'} {totalActiveUsers}</Tag>
+            {totalDisabledUsers > 0 && <Tag color="volcano">{isEnglish ? 'Disabled:' : 'Tạm khóa:'} {totalDisabledUsers}</Tag>}
+          </Space>
+        </div>
+
+        <Row gutter={[12, 12]}>
+          <Col xs={12} sm={8} md={4}>
+            <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 8, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#64748b' }}>IT Admin</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#cf1322' }}>{countsByRole.admin || 0}</div>
+            </div>
+          </Col>
+          <Col xs={12} sm={8} md={4}>
+            <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 8, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#64748b' }}>Director</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#fa8c16' }}>{countsByRole.director || 0}</div>
+            </div>
+          </Col>
+          <Col xs={12} sm={8} md={4}>
+            <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 8, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#64748b' }}>Academic</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#722ed1' }}>{countsByRole.academic || 0}</div>
+            </div>
+          </Col>
+          <Col xs={12} sm={8} md={4}>
+            <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 8, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#64748b' }}>Teacher</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#16a34a' }}>{countsByRole.teacher || 0}</div>
+            </div>
+          </Col>
+          <Col xs={12} sm={8} md={4}>
+            <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 8, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#64748b' }}>Accountant</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#13c2c2' }}>{countsByRole.accountant || 0}</div>
+            </div>
+          </Col>
+          <Col xs={12} sm={8} md={4}>
+            <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 8, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#64748b' }}>Student</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#1890ff' }}>{countsByRole.student || 0}</div>
+            </div>
+          </Col>
+        </Row>
+      </Card>
+
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} xl={6}>
           <Card style={{ borderColor: '#52c41a', borderRadius: 8, height: '100%' }}>

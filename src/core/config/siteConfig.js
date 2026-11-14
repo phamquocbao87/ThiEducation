@@ -10,6 +10,10 @@ export const APP_BUILD_VERSION_LABEL = `Version ${APP_VERSION} • build ${APP_B
 export const SITE_DOMAINS = {
   LANDING_PRODUCTION: 'https://lakeducation.edu.vn',
   ERP_PRODUCTION: 'https://erp.lakeducation.edu.vn',
+  LANDING_PRODUCTION_FIREBASE: 'https://lakeducation.web.app',
+  ERP_PRODUCTION_FIREBASE: 'https://lakeducation-erp-portal.web.app',
+  LANDING_DEV: 'https://lakeducation-dev.web.app',
+  ERP_DEV: 'https://lakeducation-dev-erp.web.app',
 };
 
 /**
@@ -49,18 +53,43 @@ export const ROLE_WORKSPACE_DESCRIPTIONS = {
 export const isProductionLandingDomain = () => {
   if (typeof window === 'undefined') return false;
   const host = window.location.hostname;
-  return host === 'lakeducation.edu.vn' || host === 'www.lakeducation.edu.vn' || host === 'lakeducation.com';
+  return (
+    host === 'lakeducation.edu.vn' ||
+    host === 'www.lakeducation.edu.vn' ||
+    host === 'lakeducation.com' ||
+    host === 'lakeducation.web.app' ||
+    host === 'lakeducation.firebaseapp.com'
+  );
 };
 
 export const isProductionErpDomain = () => {
   if (typeof window === 'undefined') return false;
   const host = window.location.hostname;
-  return host === 'erp.lakeducation.edu.vn' || host === 'erp.lakeducation.com';
+  return (
+    host === 'erp.lakeducation.edu.vn' ||
+    host === 'erp.lakeducation.com' ||
+    host === 'lakeducation-erp-portal.web.app' ||
+    host === 'lakeducation-erp-portal.firebaseapp.com'
+  );
+};
+
+export const isDevLandingDomain = () => {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return host === 'lakeducation-dev.web.app' || host === 'lakeducation-dev.firebaseapp.com';
+};
+
+export const isDevErpDomain = () => {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return host === 'lakeducation-dev-erp.web.app' || host === 'lakeducation-dev-erp.firebaseapp.com';
 };
 
 /**
  * Tạo đường dẫn đích sau khi người dùng Login thành công trên Landing Page
  * - Nếu đang ở trên domain thật lakeducation.edu.vn -> Chuyển hướng sang https://erp.lakeducation.edu.vn/<route>?sso_uid=<id>&lang=<lang>
+ * - Nếu đang ở trên domain production firebase lakeducation.web.app -> Chuyển hướng sang https://lakeducation-erp-portal.web.app/<route>?sso_uid=<id>&lang=<lang>
+ * - Nếu đang ở trên domain dev lakeducation-dev.web.app -> Chuyển hướng sang https://lakeducation-dev-erp.web.app/<route>?sso_uid=<id>&lang=<lang>
  * - Nếu đang ở trên localhost (hoặc cùng domain) -> Trả về path nội bộ /<route>
  */
 export const resolveErpTargetAfterLogin = (user, lang = 'en') => {
@@ -68,12 +97,30 @@ export const resolveErpTargetAfterLogin = (user, lang = 'en') => {
 
   if (isProductionLandingDomain()) {
     const params = new URLSearchParams({
-      sso_uid: user.id,
+      sso_uid: user.id || user.code,
+      lang,
+    });
+    const host = typeof window !== 'undefined' ? window.location.hostname : '';
+    const erpBase =
+      host.includes('web.app') || host.includes('firebaseapp.com')
+        ? SITE_DOMAINS.ERP_PRODUCTION_FIREBASE
+        : SITE_DOMAINS.ERP_PRODUCTION;
+
+    return {
+      isExternalRedirect: true,
+      url: `${erpBase}/${targetSlug}?${params.toString()}`,
+      path: `/${targetSlug}`,
+    };
+  }
+
+  if (isDevLandingDomain()) {
+    const params = new URLSearchParams({
+      sso_uid: user.id || user.code,
       lang,
     });
     return {
       isExternalRedirect: true,
-      url: `${SITE_DOMAINS.ERP_PRODUCTION}/${targetSlug}?${params.toString()}`,
+      url: `${SITE_DOMAINS.ERP_DEV}/${targetSlug}?${params.toString()}`,
       path: `/${targetSlug}`,
     };
   }

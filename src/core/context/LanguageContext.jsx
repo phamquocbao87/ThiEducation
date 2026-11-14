@@ -32,10 +32,29 @@ const UI_LABEL_SELECTORS = [
 ].join(', ');
 
 export const LanguageProvider = ({ children }) => {
-  const { t } = useTranslation();
+  const { t: rawT } = useTranslation();
   const [language, setLanguageState] = useState(() => {
     return localStorage.getItem(STORAGE_LANG_KEY) || DEFAULT_LANGUAGE;
   });
+
+  // An toàn tuyệt đối: Không bao giờ để rò rỉ mã khóa i18n kỹ thuật (vd: classroom.multiSessionTag) ra giao diện
+  const t = useCallback(
+    (key, optionsOrFallback) => {
+      const fallback =
+        typeof optionsOrFallback === 'string'
+          ? optionsOrFallback
+          : optionsOrFallback?.defaultValue;
+      const res = rawT(key, optionsOrFallback);
+      // Khi i18next không tìm thấy key (trả về chính chuỗi key kỹ thuật)
+      if (res === key) {
+        if (fallback) return fallback;
+        // Trả về chuỗi rỗng để pattern `t(key) || fallback` kích hoạt nhánh fallback tự nhiên
+        return '';
+      }
+      return res;
+    },
+    [rawT]
+  );
 
   // Khóa triệt để tính năng Google Translate / Trình duyệt tự dịch đè lên i18n
   const syncHtmlLangAttributes = useCallback((lang) => {

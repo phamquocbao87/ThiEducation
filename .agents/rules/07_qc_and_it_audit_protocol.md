@@ -109,10 +109,53 @@ Mỗi khi báo cáo hoàn thành cho Sếp Bảo, Agent bắt buộc phải đí
 2. **Quy Chuẩn Định Dạng Version & Build ID Ở Chân Trang (`Footer Build Version Standard`):**
    - Dưới dòng `LAK EDUCATION (lakeducation.com) ©2026` luôn hiển thị: **`Version 1.2.x • build YYYYMMDDNNv`** (ví dụ: `Version 1.2.1 • build 2026110801v`).
    - Mỗi lần chạy `npm run build`, script `scripts/bump_build_version.js` tự động tăng `Version` lên 1 bậc (`1.2.0` $\rightarrow$ `1.2.1` $\rightarrow$ `1.2.2`) và tăng số thứ tự bản build trong ngày (`01`, `02`, `03`...) theo múi giờ Việt Nam.
-3. **Quy Trình 5 Bước Cưỡng Chế Khi Có Lệnh Deploy Từ Sếp Bảo:**
-   - **Bước 1 (Full E2E QC Audit):** Bật Phòng QC chạy kiểm thử toàn bộ luồng nghiệp vụ (`python3 scripts/qc_layout_auditor.py`) trên Desktop & Mobile.
-   - **Bước 2 (Zero Test-Data Residue — Xóa Sạch Dữ Liệu Test QC):** Sau khi kết thúc kiểm thử, Phòng QC **BẮT BUỘC xóa sạch 100% dữ liệu tạm / dữ liệu thử nghiệm** được tạo ra trong quá trình test và khôi phục trạng thái sạch ban đầu.
-   - **Bước 3 (Build Production):** Khi 100% bài test PASS và dữ liệu test đã được dọn sạch, chạy `npm run build` để nâng `Version 1.2.x • build YYYYMMDDNNv` và xuất `dist/landing` + `dist/erp`.
-   - **Bước 4 (Git Commit + Tag + Push):** Thực hiện `git add`, `git commit -m "release: Version 1.2.x • build YYYYMMDDNNv"`, tạo tag `git tag v1.2.x-YYYYMMDDNNv` và `git push` lên Git.
-   - **Bước 5 (Firebase Hosting Deploy & Report):** Chạy `firebase deploy --only hosting` (tài khoản `vnthietbigarage@gmail.com`) lên `https://lakeducation.edu.vn` & `https://erp.lakeducation.edu.vn`, kiểm tra `HTTP 200` và báo cáo kết quả cho Sếp Bảo.
+3. **Quy Trình 8 Bước Cưỡng Chế Khi Có Lệnh Deploy Từ Sếp Bảo (`Strict 8-Step Git-Diff Impact Analysis, Dual-Env E2E & Production Teardown Pipeline`):**
+   - **Bước 1 (Git Diff Impact Analysis — So Sánh Code Cũ & Mới):**
+     * Chạy `git diff HEAD` (hoặc commit gần nhất) để bóc tách: *Code thay đổi thuộc tính năng mới nào? Fix bug ở function nào?*
+     * Xác định phạm vi ảnh hưởng (Impact Scope) và lập ma trận Test Case & Integration Test.
+   - **Bước 2 (DEV E2E & Integration Test):** Chạy kiểm thử tự động toàn diện các Test Case đã lập trên `localhost:3000` (`lakeducation-dev`) trên cả Desktop (`1366x850`) và Mobile (`390x844`), bảo đảm zero regression.
+   - **Bước 3 (DEV Zero Test-Data Residue):** Xóa sạch 100% dữ liệu tạm / dữ liệu thử nghiệm trên DEV sau khi test xong.
+   - **Bước 4 (Pre-deploy Database Migration Check & Pre-backup):**
+     * Rà soát: Tính năng mới / Bug fix có đòi hỏi các Document cũ trên PROD phải có thêm field mới nào không?
+     * **Kỷ luật bất biến:** `firebase deploy` không bao giờ đẩy data document. Nếu cần bổ sung field cho document cũ trên PROD, phải dùng script migration tại `scripts/migrations/` chạy trực tiếp trên các document thật của PROD với cờ `{ merge: true }`, tuyệt đối **CẤM** export từ DEV rồi import vào PROD.
+     * Nếu có migration làm thay đổi cấu trúc dữ liệu PROD: Bắt buộc tạo bản backup snapshot nhanh trước khi chạy.
+   - **Bước 5 (Deploy Security Rules & Composite Indexes Lên PROD):**
+     * Nếu có thêm Collection mới hoặc câu query phức tạp, phải deploy Rules và Indexes lên PROD trước khi đẩy code Web:
+       `firebase deploy --only firestore:rules,firestore:indexes --project prod`
+     * Đảm bảo Firestore PROD sẵn sàng mở quyền và index, chặn đứng 100% lỗi `Missing or insufficient permissions` hoặc `The query requires an index`.
+   - **Bước 6 (Build Production):** Khi 100% bài test PASS và dữ liệu test đã được dọn sạch, chạy `npm run build` để nâng `Version 1.2.x • build YYYYMMDDNNv` và xuất `dist/landing` + `dist/erp`.
+   - **Bước 7 (Git Commit + Tag + Push):** Thực hiện `git add`, `git commit -m "release: Version 1.2.x • build YYYYMMDDNNv"`, tạo tag `git tag v1.2.x-YYYYMMDDNNv` và `git push` lên Git.
+   - **Bước 8 (Deploy Hosting & PROD E2E Evidence & Zero-Residue Teardown):**
+     * Chạy `firebase deploy --only hosting` (tài khoản `vnthietbigarage@gmail.com`) lên `https://lakeducation.edu.vn` & `https://erp.lakeducation.edu.vn`.
+     * **Kiểm thử trực tiếp trên Production thật:** Tạo dữ liệu test bắt buộc có tiền tố **`[TEST:DEPLOY:YYYYMMDD]`**, chạy Playwright E2E trên domain thật.
+     * **Chụp ảnh màn hình lưu bằng chứng (Evidence Screenshots)** vào `test-results/`.
+     * **DỌN SẠCH 100% DỮ LIỆU TEST TRÊN PROD:** Xóa sạch toàn bộ document vừa tạo trên PROD, xác nhận lại `0 test residue` và xuất trình báo cáo cho Sếp Bảo.
 
+
+
+---
+
+## 🛑 5. Kỷ Luật Thép: Nghiêm Cấm Tự Ý Tạo Dữ Liệu & Bắt Buộc Dọn Rác Test 100% (`Strict Zero Test-Data Residue & No Unsolicited Data Invariant`)
+
+1. **Tuyệt Đối Không Tự Ý Tạo Dữ Liệu Khi Chưa Có Lệnh:**
+   - **NGHIÊM CẤM TUYỆT ĐỐI** tự ý tạo, hardcode hoặc seed dữ liệu mẫu / dữ liệu giả mạo người dùng, giáo viên, học viên (như tự ý gõ nhận xét, tự tạo bản ghi đánh giá buổi học, tự tạo bài tập giả danh giáo viên) khi Sếp Bảo chưa yêu cầu rõ ràng bằng lời.
+   - Tuyệt đối không suy đoán chủ quan hoặc nhầm lẫn dữ liệu test do script sinh ra là dữ liệu thật do người dùng nhập.
+
+2. **Kỷ Luật Dọn Sạch Dữ Liệu Test 100% (Strict Teardown Invariant):**
+   - Mọi kịch bản kiểm thử E2E tự động (Playwright, Python, Node.js script) nếu có phát sinh dữ liệu tạm để kiểm thử giao diện/API thì **BẮT BUỘC phải dọn sạch hoàn toàn (hard-delete / teardown sạch sẽ 100%)** ngay trong khối `finally` của script.
+   - Tuyệt đối cấm để rò rỉ bất kỳ bản ghi test nào (`e2e_`, `test_`, `att_`, `asg_`, `LIVE_`) vào Cloud Firestore thật.
+   - Khi hoàn thành bài test, phải assert xác nhận số lượng bản ghi test tồn lưu trong database bằng `0` (`remainingTestDocs === 0`).
+
+3. **Bảo Toàn Trạng Thái Trống Thực Tế (Authentic Empty State):**
+   - Nếu thực tế học viên chưa có đánh giá nào từ giáo viên thật, giao diện **BẮT BUỘC phải hiển thị trạng thái Trống (Empty State)**:
+     * 🇻🇳 Tiếng Việt: *"Chưa có bản đánh giá nào từ giáo viên"*
+     * 🇬🇧 Tiếng Anh: *"No session evaluations yet"*
+   - Tuyệt đối cấm tự vẽ ra nhận xét mẫu hoặc giữ lại dữ liệu test để lấp chỗ trống.
+
+4. **Bộ Lọc Bảo Vệ Chống Đánh Giá Ngày Tương Lai (Future Session Protection):**
+   - Trong mọi service đọc lịch sử đánh giá buổi học (`StudentDashboardService`), bắt buộc áp dụng điều kiện chặn:
+     ```javascript
+     const todayStr = new Date().toISOString().split('T')[0];
+     if (docData.date && docData.date > todayStr) return;
+     ```
+   - Tuyệt đối không để buổi học ngày tương lai chưa diễn ra hiển thị như một buổi học đã hoàn thành.

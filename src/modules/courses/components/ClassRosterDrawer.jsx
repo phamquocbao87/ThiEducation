@@ -28,12 +28,16 @@ import {
   MessageOutlined,
   UserAddOutlined,
   HistoryOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import { CLASS_STATUS_COLORS } from '../models/courses.model';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { ClassService } from '../services/ClassService';
 import { formatScheduleForViewer } from '../../../shared/utils/scheduleUtils';
 import { AdminAuditInfo } from '../../../shared/components/AdminAuditInfo';
+import { detectMeetingPlatform, MeetingPlatformBadge } from '../../../shared/utils/meetingPlatformUtils';
+import { ClassAbsenceReportModal } from '../../attendance/components/ClassAbsenceReportModal';
+import { TeacherMeetingRoomModal } from './TeacherMeetingRoomModal';
 
 const { Title, Text } = Typography;
 
@@ -57,6 +61,8 @@ export const ClassRosterDrawer = ({
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 768
   );
+  const [absenceModalOpen, setAbsenceModalOpen] = useState(false);
+  const [teacherMeetingModalOpen, setTeacherMeetingModalOpen] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -243,6 +249,41 @@ export const ClassRosterDrawer = ({
           <Button onClick={onClose} style={{ height: 40, borderRadius: 8, minWidth: 90 }}>
             {isEnglish ? 'Close' : 'Đóng'}
           </Button>
+
+          {/* Nút Báo Vắng Mặt / Xin Nghỉ Dành Cho Học Viên & Giáo Viên Thuộc Lớp */}
+          {(isAlreadyEnrolled || (isTeacherRole && (targetClass.teacherId === currentUid || targetClass.teacherId === currentUser?.id)) || canManage) && (
+            <Button
+              icon={<ExclamationCircleOutlined style={{ color: '#fa8c16' }} />}
+              onClick={() => setAbsenceModalOpen(true)}
+              style={{
+                height: 40,
+                borderRadius: 8,
+                borderColor: '#fa8c16',
+                color: '#d46b08',
+                fontWeight: 600,
+              }}
+            >
+              {isEnglish ? 'Report Absence / Leave' : 'Báo Vắng Mặt / Xin Nghỉ'}
+            </Button>
+          )}
+
+          {/* Nút Cập Nhật Link Phòng Dành Cho Giáo Viên Phụ Trách Lớp */}
+          {isTeacherRole && (targetClass.teacherId === currentUid || targetClass.teacherId === currentUser?.id) && (
+            <Button
+              icon={<EditOutlined style={{ color: '#1890ff' }} />}
+              onClick={() => setTeacherMeetingModalOpen(true)}
+              style={{
+                height: 40,
+                borderRadius: 8,
+                borderColor: '#1890ff',
+                color: '#0958d9',
+                fontWeight: 600,
+              }}
+            >
+              {isEnglish ? 'Edit Meeting Links' : 'Sửa Link Phòng'}
+            </Button>
+          )}
+
           {canViewClassRoomLinks && zaloUrl && (
             <Button
               icon={<MessageOutlined />}
@@ -260,7 +301,7 @@ export const ClassRosterDrawer = ({
           )}
           {canViewClassRoomLinks && (
             <Button
-              icon={<LinkOutlined />}
+              icon={detectMeetingPlatform(canManage || isTeacherRole ? hostZoomUrl : studentZoomUrl).icon}
               onClick={() =>
                 window.open(canManage || isTeacherRole ? hostZoomUrl : studentZoomUrl, '_blank')
               }
@@ -270,9 +311,12 @@ export const ClassRosterDrawer = ({
                 borderColor: '#722ed1',
                 color: '#722ed1',
                 fontWeight: 500,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
               }}
             >
-              {isEnglish ? 'Open Zoom Room' : 'Mở Phòng Zoom'}
+              {isEnglish ? 'Join Meeting Room' : 'Vào Phòng Học'}
             </Button>
           )}
           {canManage && onEdit && (
@@ -845,6 +889,26 @@ export const ClassRosterDrawer = ({
         size="small"
         scroll={{ x: 600 }}
         style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0' }}
+      />
+
+      {/* Modal Báo Vắng Mặt */}
+      <ClassAbsenceReportModal
+        open={absenceModalOpen}
+        classData={targetClass}
+        onClose={() => setAbsenceModalOpen(false)}
+        onSuccess={() => {
+          setAbsenceModalOpen(false);
+        }}
+      />
+
+      {/* Modal Cập Nhật Link Phòng Cho Giáo Viên */}
+      <TeacherMeetingRoomModal
+        open={teacherMeetingModalOpen}
+        classData={targetClass}
+        onClose={() => setTeacherMeetingModalOpen(false)}
+        onSuccess={() => {
+          setTeacherMeetingModalOpen(false);
+        }}
       />
     </Drawer>
   );

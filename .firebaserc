@@ -1,6 +1,8 @@
 {
   "projects": {
-    "default": "lakeducation"
+    "default": "lakeducation",
+    "prod": "lakeducation",
+    "dev": "lakeducation-dev"
   },
   "targets": {
     "lakeducation": {
@@ -10,6 +12,16 @@
         ],
         "erp": [
           "lakeducation-erp-portal"
+        ]
+      }
+    },
+    "lakeducation-dev": {
+      "hosting": {
+        "landing": [
+          "lakeducation-dev"
+        ],
+        "erp": [
+          "lakeducation-dev-erp"
         ]
       }
     }

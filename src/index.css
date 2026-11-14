@@ -8,6 +8,21 @@
   background-color: #f5f9ff;
 }
 
+.lak-local-development-banner {
+  position: sticky;
+  top: 0;
+  z-index: 2000;
+  min-height: 26px;
+  padding: 5px 12px;
+  background: #16a34a;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 16px;
+  text-align: center;
+}
+
 .lak-display-font {
   font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif !important;
   letter-spacing: -0.02em;
@@ -64,6 +79,17 @@ body {
 .ant-btn > span {
   white-space: normal !important;
   word-break: break-word;
+}
+
+/* Explicit Table Action Buttons & No-Wrap Controls (ASSERT No Broken Words) */
+.ant-table-cell .ant-btn,
+.ant-table-cell .ant-btn > span,
+.lak-table-action-btn,
+.lak-table-action-btn > span,
+.lak-nowrap-btn,
+.lak-nowrap-btn > span {
+  white-space: nowrap !important;
+  word-break: normal !important;
 }
 
 .ant-tag {
@@ -264,4 +290,230 @@ body {
     height: 44px !important;
   }
 }
+
+/* ==========================================================================
+   Real-time Classroom Pulse Animation (LAK Live Attendance & Status Pulse)
+   ========================================================================== */
+@keyframes lak-pulse-red {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.6);
+    border-color: #ff4d4f;
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 77, 79, 0);
+    border-color: #ff7875;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0);
+    border-color: #ff4d4f;
+  }
+}
+
+@keyframes lak-pulse-blue {
+  0% {
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0.6);
+    border-color: #1890ff;
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(24, 144, 255, 0);
+    border-color: #4096ff;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0);
+    border-color: #1890ff;
+  }
+}
+
+@keyframes lak-pulse-green {
+  0% {
+    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.6);
+    border-color: #52c41a;
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(82, 196, 26, 0);
+    border-color: #73d13d;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0);
+    border-color: #52c41a;
+  }
+}
+
+.lak-card-pulse-red {
+  animation: lak-pulse-red 1.6s infinite ease-in-out !important;
+  border-width: 2px !important;
+}
+
+.lak-card-pulse-blue {
+  animation: lak-pulse-blue 1.6s infinite ease-in-out !important;
+  border-width: 2px !important;
+}
+
+.lak-card-pulse-green {
+  animation: lak-pulse-green 1.6s infinite ease-in-out !important;
+  border-width: 2px !important;
+}
+
+/* ==========================================================================
+   LAK Real-time Heartbeat & Pulse Animations for Class Session Timer
+   ========================================================================== */
+@keyframes lak-heartbeat-blue {
+  0% {
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0.45);
+    border-color: #91caff;
+  }
+  20% {
+    box-shadow: 0 0 0 5px rgba(24, 144, 255, 0.22);
+    border-color: #4096ff;
+  }
+  40% {
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+    border-color: #91caff;
+  }
+  60% {
+    box-shadow: 0 0 0 6px rgba(24, 144, 255, 0.18);
+    border-color: #1677ff;
+  }
+  80% {
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0);
+    border-color: #91caff;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0);
+    border-color: #91caff;
+  }
+}
+
+@keyframes lak-heartbeat-green {
+  0% {
+    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.5);
+    border-color: #b7eb8f;
+  }
+  20% {
+    box-shadow: 0 0 0 5px rgba(82, 196, 26, 0.25);
+    border-color: #73d13d;
+  }
+  40% {
+    box-shadow: 0 0 0 2px rgba(82, 196, 26, 0.1);
+    border-color: #b7eb8f;
+  }
+  60% {
+    box-shadow: 0 0 0 6px rgba(82, 196, 26, 0.2);
+    border-color: #52c41a;
+  }
+  80% {
+    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0);
+    border-color: #b7eb8f;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0);
+    border-color: #b7eb8f;
+  }
+}
+
+@keyframes lak-heartbeat-red {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.55);
+    border-color: #ffa39e;
+  }
+  20% {
+    box-shadow: 0 0 0 6px rgba(255, 77, 79, 0.28);
+    border-color: #ff7875;
+  }
+  40% {
+    box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.12);
+    border-color: #ffa39e;
+  }
+  60% {
+    box-shadow: 0 0 0 7px rgba(255, 77, 79, 0.22);
+    border-color: #ff4d4f;
+  }
+  80% {
+    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0);
+    border-color: #ffa39e;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0);
+    border-color: #ffa39e;
+  }
+}
+
+@keyframes lak-icon-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  20% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  60% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+}
+
+.lak-timer-pulse-upcoming {
+  animation: lak-heartbeat-blue 1.8s infinite ease-in-out !important;
+  border: 1px solid #91caff !important;
+  background: #e6f4ff !important;
+  color: #0958d9 !important;
+}
+
+.lak-timer-pulse-live-green {
+  animation: lak-heartbeat-green 1.8s infinite ease-in-out !important;
+  border: 1px solid #b7eb8f !important;
+  background: #f6ffed !important;
+  color: #237804 !important;
+}
+
+.lak-timer-pulse-live-red {
+  animation: lak-heartbeat-red 1.5s infinite ease-in-out !important;
+  border: 1px solid #ffa39e !important;
+  background: #fff2f0 !important;
+  color: #cf1322 !important;
+}
+
+.lak-heartbeat-icon {
+  display: inline-block;
+  animation: lak-icon-pulse 1.8s infinite ease-in-out;
+}
+
+/* Control Gán Học Viên Vào Lớp cao gấp 5 lần (~190px - 200px) */
+.lak-student-multi-autocomplete .ant-select-selector {
+  min-height: 190px !important;
+  max-height: 280px !important;
+  overflow-y: auto !important;
+  padding: 8px 10px !important;
+  align-content: flex-start !important;
+  border-radius: 8px !important;
+  background-color: #fafbfc !important;
+}
+
+.lak-student-multi-autocomplete .ant-select-selection-overflow {
+  gap: 6px !important;
+  align-items: flex-start !important;
+}
+
+.lak-student-multi-autocomplete .ant-select-selection-item {
+  height: 30px !important;
+  line-height: 28px !important;
+  padding: 0 10px !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  background: #f0f7ff !important;
+  border-color: #bae0ff !important;
+  color: #0958d9 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
 

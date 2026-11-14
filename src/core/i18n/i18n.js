@@ -16,6 +16,7 @@ export const VI_TO_EN_UI_LABELS = {
   'Tổng Quan (Dashboard)': 'Dashboard Overview',
   'Hợp Đồng & Bảng Lương': 'Contracts & Payroll',
   'Khóa Học & Thời Khóa Biểu': 'Courses & Schedule',
+  'Tài Liệu Học Tập': 'Learning Materials',
   'Lớp Học, Hồ Sơ & Đánh Giá': 'Classes, Profiles & Evaluation',
   'Quản Lý Đóng Học Phí': 'Tuition & Billing',
 
@@ -26,7 +27,8 @@ export const VI_TO_EN_UI_LABELS = {
   'Trưởng bộ phận Giáo vụ': 'Head of Academic Affairs',
   'Giáo vụ ca Tối & Cuối tuần': 'Evening & Weekend Academic Coordinator',
   'Giáo vụ CSKH & Học phí': 'Student Care & Tuition Coordinator',
-  'Giáo Viên Bản Xứ (Native Teacher)': 'Native Foreign Teacher',
+  'Giáo Viên Bản Xứ (Native Teacher)': 'Teacher',
+  'Giáo Viên Bản Xứ (Teacher)': 'Teacher',
   'Kế Toán Tài Chính (Accountant)': 'Finance & Payroll Accountant',
   'Học Viên (Student)': 'Student / Learner',
   'Admin Xem Dưới Tên User: ': 'Admin View-As: ',
@@ -371,6 +373,18 @@ i18n.use(initReactI18next).init({
     escapeValue: false,
   },
 });
+
+// Vite Hot Module Replacement (HMR) cho các từ điển locales
+if (import.meta.hot) {
+  import.meta.hot.accept(['./locales/en', './locales/vi'], ([newEn, newVi]) => {
+    if (newEn?.default || newEn?.en) {
+      i18n.addResourceBundle('en', 'translation', newEn.default || newEn.en, true, true);
+    }
+    if (newVi?.default || newVi?.vi) {
+      i18n.addResourceBundle('vi', 'translation', newVi.default || newVi.vi, true, true);
+    }
+  });
+}
 
 export default i18n;
 

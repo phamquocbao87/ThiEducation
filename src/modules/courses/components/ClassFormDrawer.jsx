@@ -35,6 +35,7 @@ import {
   BaseStudentMultiAutocomplete,
 } from '../../../shared/components/controls';
 import { parseScheduleToStructured } from '../../../shared/utils/scheduleUtils';
+import { MeetingPlatformBadge, detectMeetingPlatform } from '../../../shared/utils/meetingPlatformUtils';
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -64,6 +65,11 @@ export const ClassFormDrawer = ({
   const [liveScheduleData, setLiveScheduleData] = useState(() =>
     parseScheduleToStructured('Thứ 2, Thứ 4 (18:00 - 19:30)')
   );
+
+  const hostLinkVal = Form.useWatch('zoomHostLink', form);
+  const studentLinkVal = Form.useWatch('zoomStudentLink', form);
+  const hostPlatform = detectMeetingPlatform(hostLinkVal);
+  const studentPlatform = detectMeetingPlatform(studentLinkVal);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -553,36 +559,40 @@ export const ClassFormDrawer = ({
 
         <Divider style={{ margin: '8px 0 16px 0' }} />
 
-        {/* KHỐI 4: 2 LINK PHÒNG HỌC ZOOM (TEACHER HOST & STUDENT) + NHÓM CHAT ZALO */}
+        {/* KHỐI 4: 2 LINK PHÒNG HỌC (TEACHER HOST & STUDENT) + NHÓM CHAT ZALO */}
         <div style={{ marginBottom: 4 }}>
           <Text strong style={{ fontSize: 14, color: '#0f172a', display: 'block' }}>
             {isEnglish
-              ? '4. Zoom Classroom URLs (Host & Student) & Zalo Group Chat'
-              : '4. Cấu Hình 2 Link Phòng Học Zoom (Host GV & Học Viên) & Nhóm Chat Zalo'}
+              ? '4. Virtual Meeting Room URLs (Host & Student) & Zalo Group Chat'
+              : '4. Cấu Hình 2 Link Phòng Học (Host GV & Học Viên) & Nhóm Chat Zalo'}
           </Text>
           <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
             {isEnglish
-              ? 'Separate Zoom Host link for Teacher and Join link for Students, plus class Zalo group'
-              : 'Tách biệt đường dẫn mở phòng (Host) cho Giáo viên, đường dẫn vào học cho Học viên và nhóm Zalo của lớp'}
+              ? 'Separate Host link for Teacher and Join link for Students (Google Meet, Zoom, Teams...), plus class Zalo group'
+              : 'Tách biệt đường dẫn mở phòng (Host) cho Giáo viên, đường dẫn vào học cho Học viên (tự động nhận diện Google Meet, Zoom...) và nhóm Zalo của lớp'}
           </Text>
         </div>
 
-        {/* Hàng 4: Link Zoom Teacher (Host) & Link Zoom Học Viên (50% / 50%) */}
+        {/* Hàng 4: Link Giáo Viên (Host) & Link Tham Gia (Học Viên) (50% / 50%) */}
         <Row gutter={16}>
           <Col xs={24} sm={12}>
             <Form.Item
               name="zoomHostLink"
               label={
-                <Space>
-                  <VideoCameraOutlined style={{ color: '#1890ff' }} />
-                  <Text strong>
-                    {isEnglish ? 'Zoom URL for Teacher (Host)' : 'Link Zoom Giáo Viên (Host)'}
-                  </Text>
-                </Space>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8 }}>
+                  <Space size={6}>
+                    {hostPlatform.icon}
+                    <Text strong>
+                      {isEnglish ? 'Host Meeting URL (Teacher)' : 'Link Giáo Viên (Host)'}
+                    </Text>
+                  </Space>
+                  {hostLinkVal && <MeetingPlatformBadge url={hostLinkVal} size="small" />}
+                </div>
               }
             >
               <Input
-                placeholder="https://zoom.us/s/888999111?role=host"
+                prefix={hostPlatform.icon}
+                placeholder="https://meet.google.com/xyz hoặc https://zoom.us/s/..."
                 style={{ width: '100%', height: 40, borderRadius: 8 }}
               />
             </Form.Item>
@@ -592,26 +602,30 @@ export const ClassFormDrawer = ({
             <Form.Item
               name="zoomStudentLink"
               label={
-                <Space>
-                  <VideoCameraOutlined style={{ color: '#722ed1' }} />
-                  <Text strong>
-                    {isEnglish ? 'Zoom URL for Students (Join)' : 'Link Zoom Học Viên (Vào Học)'}
-                  </Text>
-                </Space>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8 }}>
+                  <Space size={6}>
+                    {studentPlatform.icon}
+                    <Text strong>
+                      {isEnglish ? 'Join Meeting URL (Students)' : 'Link Tham Gia (Học Viên)'}
+                    </Text>
+                  </Space>
+                  {studentLinkVal && <MeetingPlatformBadge url={studentLinkVal} size="small" />}
+                </div>
               }
             >
               <Input
-                placeholder="https://zoom.us/j/888999111"
+                prefix={studentPlatform.icon}
+                placeholder="https://meet.google.com/xyz hoặc https://zoom.us/j/..."
                 style={{ width: '100%', height: 40, borderRadius: 8 }}
               />
             </Form.Item>
           </Col>
         </Row>
 
-        {/* Hàng 5: Zoom Meeting ID & Passcode (50% / 50%) */}
+        {/* Hàng 5: Meeting ID & Passcode (50% / 50%) */}
         <Row gutter={16}>
           <Col xs={24} sm={12}>
-            <Form.Item name="meetingId" label={<Text strong>Zoom Meeting ID</Text>}>
+            <Form.Item name="meetingId" label={<Text strong>{isEnglish ? 'Meeting ID (Optional)' : 'Meeting ID (Nếu có)'}</Text>}>
               <Input
                 placeholder="888 999 111"
                 style={{ width: '100%', height: 40, borderRadius: 8 }}
@@ -620,7 +634,7 @@ export const ClassFormDrawer = ({
           </Col>
 
           <Col xs={24} sm={12}>
-            <Form.Item name="passcode" label={<Text strong>Zoom Passcode</Text>}>
+            <Form.Item name="passcode" label={<Text strong>{isEnglish ? 'Passcode / PIN (Optional)' : 'Mật mã phòng / PIN (Nếu có)'}</Text>}>
               <Input
                 placeholder="123456"
                 style={{ width: '100%', height: 40, borderRadius: 8 }}

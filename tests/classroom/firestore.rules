@@ -1,0 +1,49 @@
+rules_version = '2';
+// ISOLATED EMULATOR ONLY. Public fixture-directory reads support the existing login bootstrap.
+// Never deploy this test ruleset to a cloud project.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function profileId() {
+      return request.auth.token.get('profileId', request.auth.uid);
+    }
+    function actor() { return get(/databases/$(database)/documents/users/$(profileId())).data; }
+    function active() { return request.auth != null && actor().status == 'active'; }
+    function monitor() { return active() && actor().role in ['admin', 'academic', 'director']; }
+    function cls(id) { return get(/databases/$(database)/documents/classes/$(id)).data; }
+    function canView(id) { return monitor() || (active() && actor().role == 'teacher' && cls(id).teacherId == profileId()); }
+    function teacher(id) { return active() && actor().role == 'teacher' && cls(id).teacherId == profileId() && !cls(id).isDeleted; }
+    function valid(data, id) {
+      return data.classId == id && data.auditTrail.actorId == profileId()
+        && data.presence.keys().toSet() == cls(id).studentIds.toSet()
+        && data.presence.values().hasOnly(['ONLINE', 'OFFLINE', 'UNMARKED'])
+        && data.presentCount == data.presentIds.size() && data.absentCount == data.absentIds.size()
+        && data.unmarkedCount == data.unmarkedIds.size()
+        && data.presentIds.concat(data.absentIds).concat(data.unmarkedIds).toSet() == cls(id).studentIds.toSet()
+        && data.presentCount + data.absentCount + data.unmarkedCount == cls(id).studentIds.size()
+        && request.time.toMillis() >= data.sessionStart && request.time.toMillis() < data.sessionEnd;
+    }
+    match /users/{id} { allow read: if true; allow write: if false; }
+    match /classes/{id} {
+      allow read: if monitor() || (active() && actor().role == 'teacher' && resource.data.teacherId == profileId());
+    }
+    match /classroom_live/{id} {
+      allow read: if monitor() || (active() && actor().role == 'teacher' && resource.data.teacherId == profileId());
+      allow create, update: if teacher(id) && request.resource.data.teacherId == cls(id).teacherId
+        && valid(request.resource.data, id)
+        && getAfter(/databases/$(database)/documents/session_evaluations/$(request.resource.data.sessionId)).data.presence == request.resource.data.presence;
+    }
+    match /session_evaluations/{id} {
+      allow get: if monitor() || (active() && actor().role == 'teacher' &&
+        (!exists(/databases/$(database)/documents/session_evaluations/$(id)) || canView(resource.data.classId)));
+      allow list: if monitor() || (active() && actor().role == 'teacher' && resource.data.teacherId == profileId());
+      allow create, update: if teacher(request.resource.data.classId) && valid(request.resource.data, request.resource.data.classId)
+        && getAfter(/databases/$(database)/documents/classroom_live/$(request.resource.data.classId)).data.presence == request.resource.data.presence;
+    }
+    match /notifications/{id} {
+      allow read: if monitor() || (active() && resource.data.targetKeys.hasAny(['ALL', 'USER:' + profileId(), 'ROLE:' + actor().role]));
+      allow create: if monitor() && request.resource.data.type == 'CLASSROOM_ABSENCE_REMINDER'
+        && request.resource.data.targetKeys == ['USER:' + cls(request.resource.data.metadata.classId).teacherId]
+        && request.resource.data.createdBy == profileId();
+    }
+  }
+}

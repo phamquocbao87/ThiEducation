@@ -56,6 +56,7 @@ import {
   ScissorOutlined,
   StarFilled,
   WarningOutlined,
+  PaperClipOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../core/context/AuthContext';
 import { useLanguage } from '../../core/context/LanguageContext';
@@ -72,6 +73,7 @@ import {
   USER_STATUS,
   ROLE_LABELS,
   ROLE_COLORS,
+  NATIONALITY_OPTIONS,
   isGmailAddress,
   resolveAuthProvidersByEmail,
   toEnglishName,
@@ -134,6 +136,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
   const [rawSelectedFile, setRawSelectedFile] = useState(null);
   const [linkedClasses, setLinkedClasses] = useState([]);
   const [familyMembers, setFamilyMembers] = useState([]);
+  const [certificateFile, setCertificateFile] = useState(null);
 
   // Danh sách các lớp học đang hoạt động trong hệ thống (Đọc trực tiếp từ Cloud Firestore qua ClassService)
   const [availableClasses, setAvailableClasses] = useState([]);
@@ -160,7 +163,8 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
   const watchedEmail = Form.useWatch('email', form) ?? user?.email ?? '';
   const watchedPhone = Form.useWatch('phoneNumber', form) ?? user?.phoneNumber ?? '';
   const watchedRole = Form.useWatch('role', form) || user?.role || USER_ROLES.STUDENT;
-  const watchedEditEnrolledClassIds = Form.useWatch('enrolledClassIds', form) || [];
+  const rawWatchedClassIds = Form.useWatch('enrolledClassIds', form);
+  const watchedEditEnrolledClassIds = useMemo(() => rawWatchedClassIds || [], [rawWatchedClassIds]);
   const isTargetStudent = watchedRole === USER_ROLES.STUDENT;
   const isGmail = isGmailAddress(watchedEmail);
 
@@ -560,6 +564,21 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
         status: user?.status || USER_STATUS.ACTIVE,
         authProviders: resolveAuthProvidersByEmail(values.email),
       };
+
+      if (certificateFile) {
+        try {
+          message.loading({ content: isEnglish ? 'Uploading teaching certificate...' : 'Đang tải tệp chứng chỉ sư phạm...', key: 'uploadCert' });
+          const uploadRes = await DriveStorageService.uploadFile(certificateFile, {
+            folderPath: 'teacher_certificates',
+            userId: user?.id || user?.code,
+          });
+          updatePayload.certificateUrl = uploadRes?.url || uploadRes?.downloadUrl || uploadRes?.fileUrl || uploadRes?.cdnUrl || '';
+          updatePayload.certificateFileName = certificateFile.name;
+          message.success({ content: isEnglish ? 'Teaching certificate uploaded successfully' : 'Tải chứng chỉ sư phạm thành công', key: 'uploadCert' });
+        } catch (uploadErr) {
+          console.warn('Certificate upload failed, saving filename instead:', uploadErr);
+        }
+      }
 
       if (user?.role === USER_ROLES.STUDENT) {
         const editEnrolled = Array.isArray(values.enrolledClassIds) ? values.enrolledClassIds : [];
@@ -1042,6 +1061,14 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
 
                       <Descriptions.Item label={isEnglish ? 'Date of Birth' : 'Ngày Sinh'}>
                         {user.dateOfBirth || '—'}
+                      </Descriptions.Item>
+                      <Descriptions.Item label={isEnglish ? 'Nationality' : 'Quốc Tịch'}>
+                        {user.nationality ? (
+                          <Space size={6}>
+                            <GlobalOutlined style={{ color: '#0284c7' }} />
+                            <span>{user.nationality}</span>
+                          </Space>
+                        ) : '—'}
                       </Descriptions.Item>
                       <Descriptions.Item label={isEnglish ? 'Citizen ID / Passport' : 'Số CCCD / Hộ Chiếu'}>
                         {user.idCardNumber || '—'}
@@ -1788,7 +1815,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                       </Col>
                     </Row>
 
-                    {/* Hàng 3: Giới Tính + Ngày Sinh + Số Định Danh */}
+                    {/* Hàng 3: Giới Tính + Ngày Sinh + Quốc Tịch */}
                     <Row gutter={16}>
                       <Col xs={24} sm={8} md={8}>
                         <Form.Item
@@ -1821,6 +1848,39 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
 
                       <Col xs={24} sm={8} md={8}>
                         <Form.Item
+                          name="nationality"
+                          label={<Text strong>{isEnglish ? 'Nationality' : 'Quốc Tịch'}</Text>}
+                          style={{ marginBottom: 14 }}
+                        >
+                          <Select
+                            placeholder={isEnglish ? 'Select nationality' : 'Chọn quốc tịch'}
+                            style={{ width: '100%', height: 38, borderRadius: 8 }}
+                            optionLabelProp="label"
+                          >
+                            {NATIONALITY_OPTIONS.map((item) => {
+                              const displayLabel = isEnglish ? item.labelEn : item.labelVi;
+                              return (
+                                <Select.Option
+                                  key={item.value}
+                                  value={item.value}
+                                  label={displayLabel}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontSize: 16 }}>{item.flag}</span>
+                                    <span>{displayLabel.replace(/^[^\s]+\s/, '')}</span>
+                                  </div>
+                                </Select.Option>
+                              );
+                            })}
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                    </Row>
+
+                    {/* Hàng 4: Số CCCD + Tỉnh/Thành Phố + Địa Chỉ */}
+                    <Row gutter={16}>
+                      <Col xs={24} sm={8} md={8}>
+                        <Form.Item
                           name="idCardNumber"
                           label={<Text strong>{isEnglish ? 'Citizen ID / Passport' : 'Số CCCD / Hộ Chiếu / Mã Định Danh'}</Text>}
                           style={{ marginBottom: 14 }}
@@ -1828,23 +1888,6 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                           <Input
                             prefix={<IdcardOutlined style={{ color: '#94a3b8' }} />}
                             placeholder={isEnglish ? 'Enter ID number or passport...' : 'Nhập số CCCD hoặc Passport...'}
-                            style={{ width: '100%', height: 38, borderRadius: 8 }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-
-                    {/* Hàng 4: Địa Chỉ Thường Trú + Tỉnh / Thành Phố */}
-                    <Row gutter={16}>
-                      <Col xs={24} sm={16} md={16}>
-                        <Form.Item
-                          name="address"
-                          label={<Text strong>{isEnglish ? 'Permanent / Current Address' : 'Địa Chỉ Thường Trú / Tạm Trú'}</Text>}
-                          style={{ marginBottom: 14 }}
-                        >
-                          <Input
-                            prefix={<HomeOutlined style={{ color: '#94a3b8' }} />}
-                            placeholder={isEnglish ? 'Street address, ward, district...' : 'Số nhà, tên đường, phường/xã, quận/huyện...'}
                             style={{ width: '100%', height: 38, borderRadius: 8 }}
                           />
                         </Form.Item>
@@ -1858,6 +1901,20 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                         >
                           <Input
                             placeholder={isEnglish ? 'Ho Chi Minh City' : 'TP. Hồ Chí Minh'}
+                            style={{ width: '100%', height: 38, borderRadius: 8 }}
+                          />
+                        </Form.Item>
+                      </Col>
+
+                      <Col xs={24} sm={8} md={8}>
+                        <Form.Item
+                          name="address"
+                          label={<Text strong>{isEnglish ? 'Permanent / Current Address' : 'Địa Chỉ Thường Trú / Tạm Trú'}</Text>}
+                          style={{ marginBottom: 14 }}
+                        >
+                          <Input
+                            prefix={<HomeOutlined style={{ color: '#94a3b8' }} />}
+                            placeholder={isEnglish ? 'Street address, ward, district...' : 'Số nhà, tên đường, phường/xã, quận/huyện...'}
                             style={{ width: '100%', height: 38, borderRadius: 8 }}
                           />
                         </Form.Item>
@@ -2149,43 +2206,120 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                       </Row>
                     )}
 
-                    {/* Dynamic Fields: DÀNH CHO GIÁO VIÊN BẢN XỨ (Teacher) */}
+                    {/* Dynamic Fields: DÀNH CHO GIÁO VIÊN (Teacher) */}
                     {user.role === 'teacher' && (
-                      <Row gutter={20}>
-                        <Col xs={24} sm={12} md={8}>
-                          <Form.Item name="nationality" label={<Text strong>{isEnglish ? 'Nationality' : 'Quốc Tịch'}</Text>}>
-                            <Input prefix={<GlobalOutlined style={{ color: '#94a3b8' }} />} placeholder={isEnglish ? 'USA, UK, Canada...' : 'Mỹ (US), Anh (UK)...'} style={{ borderRadius: 8 }} />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12} md={8}>
-                          <Form.Item name="certificate" label={<Text strong>{isEnglish ? 'Teaching Certificate' : 'Bằng Cấp / Chứng Chỉ Sư Phạm'}</Text>}>
-                            <Input prefix={<TrophyOutlined style={{ color: '#94a3b8' }} />} placeholder="TESOL, CELTA, TEFL..." style={{ borderRadius: 8 }} />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12} md={8}>
-                          <Form.Item name="hourlyRate" label={<Text strong>{isEnglish ? 'Session Rate (VND / Session)' : 'Đơn Giá Tiết Dạy (VNĐ / Tiết)'}</Text>}>
-                            <InputNumber
-                              disabled={!canEditSensitive}
-                              min={100000}
-                              step={50000}
-                              formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                              parser={(v) => v.replace(/\$\s?|(,*)/g, '')}
-                              style={{ width: '100%', borderRadius: 8 }}
-                              addonAfter={isEnglish ? 'VND' : 'VNĐ'}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12} md={12}>
-                          <Form.Item name="assignedClasses" label={<Text strong>{isEnglish ? 'Assigned Classes' : 'Các Lớp Đang Phụ Trách'}</Text>}>
-                            <Input disabled={!canEditSensitive} placeholder="GK-A, G1-B, G3-Online..." style={{ borderRadius: 8 }} />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12} md={12}>
-                          <Form.Item name="bio" label={<Text strong>{isEnglish ? 'Teacher Bio / Introduction' : 'Giới Thiệu Bản Thân / Profile Giáo Viên'}</Text>}>
-                            <Input placeholder={isEnglish ? 'Over 5 years experience teaching Wonders ELA for young learners...' : 'Hơn 5 năm kinh nghiệm giảng dạy Wonders ELA cho lứa tuổi mầm non và tiểu học...'} style={{ borderRadius: 8 }} />
-                          </Form.Item>
-                        </Col>
-                      </Row>
+                      <div style={{ marginTop: 8 }}>
+                        <Row gutter={[16, 12]}>
+                          <Col xs={24} sm={12}>
+                            <Form.Item name="hourlyRate" label={<Text strong>{isEnglish ? 'Session Rate (VND / Session)' : 'Đơn Giá Tiết Dạy (VNĐ / Tiết)'}</Text>}>
+                              <InputNumber
+                                disabled={!canEditSensitive}
+                                min={100000}
+                                step={50000}
+                                formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                parser={(v) => v.replace(/\$\s?|(,*)/g, '')}
+                                style={{ width: '100%', height: 40, borderRadius: 8 }}
+                                addonAfter={isEnglish ? 'VND' : 'VNĐ'}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col xs={24} sm={12}>
+                            <Form.Item name="assignedClasses" label={<Text strong>{isEnglish ? 'Assigned Classes' : 'Các Lớp Đang Phụ Trách'}</Text>}>
+                              <Input disabled={!canEditSensitive} placeholder="GK-A, G1-B, G3-Online..." style={{ width: '100%', height: 40, borderRadius: 8 }} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={24}>
+                            <Form.Item name="bio" label={<Text strong>{isEnglish ? 'Teacher Bio / Introduction' : 'Giới Thiệu Bản Thân / Profile Giáo Viên'}</Text>}>
+                              <Input.TextArea rows={2} placeholder={isEnglish ? 'Over 5 years experience teaching Wonders ELA for young learners...' : 'Hơn 5 năm kinh nghiệm giảng dạy Wonders ELA cho lứa tuổi mầm non và tiểu học...'} style={{ borderRadius: 8 }} />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+
+                        {/* Khung Riêng Biệt: Bằng Cấp & Chứng Chỉ Sư Phạm (Dedicated Upload Box) */}
+                        <div
+                          style={{
+                            marginTop: 8,
+                            padding: '16px 18px',
+                            borderRadius: 10,
+                            border: '1.5px dashed #1890ff',
+                            backgroundColor: '#f0f7ff',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                            <Space size={8}>
+                              <TrophyOutlined style={{ fontSize: 18, color: '#1890ff' }} />
+                              <Text strong style={{ fontSize: 14, color: '#0958d9' }}>
+                                {isEnglish ? 'Teaching Certificate & Pedagogical Qualifications' : 'Bằng Cấp & Chứng Chỉ Sư Phạm (Teaching Certificate)'}
+                              </Text>
+                            </Space>
+                            {user.certificateUrl && (
+                              <a
+                                href={user.certificateUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}
+                              >
+                                <EyeOutlined /> {isEnglish ? 'View Current Certificate' : 'Xem Chứng Chỉ Hiện Tại'}
+                              </a>
+                            )}
+                          </div>
+
+                          <Row gutter={[16, 12]}>
+                            <Col xs={24} sm={12}>
+                              <Form.Item
+                                name="certificate"
+                                label={<Text strong>{isEnglish ? 'Certificate Title / Type' : 'Tên Bằng Cấp / Loại Chứng Chỉ'}</Text>}
+                                extra={<span style={{ fontSize: 12, color: '#64748b' }}>{isEnglish ? 'e.g. TESOL 120h, CELTA Cambridge, TEFL, B.Ed' : 'VD: TESOL 120h, CELTA Cambridge, TEFL, Cử Nhân Sư Phạm'}</span>}
+                                style={{ marginBottom: 8 }}
+                              >
+                                <Input
+                                  prefix={<TrophyOutlined style={{ color: '#1890ff' }} />}
+                                  placeholder="TESOL / CELTA / TEFL"
+                                  style={{ width: '100%', height: 40, borderRadius: 8 }}
+                                />
+                              </Form.Item>
+                            </Col>
+
+                            <Col xs={24} sm={12}>
+                              <Form.Item
+                                label={<Text strong>{isEnglish ? 'Attach Certificate File (PDF / Images)' : 'Đính Kèm Tệp Chứng Chỉ (PDF / Hình Ảnh)'}</Text>}
+                                style={{ marginBottom: 8 }}
+                              >
+                                <Upload.Dragger
+                                  name="certificateFile"
+                                  multiple={false}
+                                  maxCount={1}
+                                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                                  beforeUpload={(file) => {
+                                    setCertificateFile(file);
+                                    return false;
+                                  }}
+                                  onRemove={() => setCertificateFile(null)}
+                                  fileList={certificateFile ? [certificateFile] : []}
+                                  style={{
+                                    padding: '12px 10px',
+                                    background: '#ffffff',
+                                    borderRadius: 8,
+                                    borderColor: '#91caff',
+                                  }}
+                                >
+                                  <p className="ant-upload-drag-icon" style={{ margin: '0 0 6px' }}>
+                                    <PaperClipOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+                                  </p>
+                                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#1d39c4' }}>
+                                    {certificateFile
+                                      ? certificateFile.name
+                                      : (isEnglish ? 'Click or drag new certificate scan here' : 'Nhấp hoặc kéo thả tệp chứng chỉ mới vào đây')}
+                                  </p>
+                                  <p style={{ margin: '4px 0 0', fontSize: 11, color: '#8c8c8c' }}>
+                                    {isEnglish ? 'Supports PDF, JPG, PNG, DOCX (Max 25MB)' : 'Hỗ trợ định dạng PDF, JPG, PNG, DOCX (Tối đa 25MB)'}
+                                  </p>
+                                </Upload.Dragger>
+                              </Form.Item>
+                            </Col>
+                          </Row>
+                        </div>
+                      </div>
                     )}
 
                     {/* Dynamic Fields: DÀNH CHO GIÁO VỤ (Academic) */}

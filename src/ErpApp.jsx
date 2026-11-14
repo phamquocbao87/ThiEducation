@@ -9,10 +9,15 @@ import { ProtectedRoute } from './core/router/ProtectedRoute';
 import { SITE_DOMAINS, APP_BUILD_VERSION_LABEL } from './core/config/siteConfig';
 import { MODULE_SLUGS, getModuleFromSlug, getSlugFromModule } from './shared/utils/slug';
 import { SystemLoginModal } from './modules/landing/components/SystemLoginModal';
+import { LocalDevelopmentBanner } from './core/layout/LocalDevelopmentBanner';
 
 // Independent Domain Modules for Internal ERP (erp.lakeducation.edu.vn)
 import DashboardModule from './modules/dashboard';
+import ClassroomModule from './modules/classroom';
 import CoursesModule from './modules/courses';
+import StudentsModule from './modules/students';
+import MaterialsModule from './modules/materials';
+import ExercisesModule from './modules/exercises';
 import CurriculumModule from './modules/curriculum';
 import SchedulesModule from './modules/schedules';
 import AttendanceModule from './modules/attendance';
@@ -137,6 +142,7 @@ function ErpRoutes() {
   return (
     <AppLayout activeTab={activeTab} setActiveTab={handleTabChange}>
       <Routes>
+        <Route path="/classroom/:classId" element={<ProtectedRoute moduleKey="classroom"><ClassroomModule /></ProtectedRoute>} />
         <Route path="/" element={<Navigate to={`/${MODULE_SLUGS.dashboard}`} replace />} />
         <Route
           path={`/${MODULE_SLUGS.dashboard}`}
@@ -159,6 +165,30 @@ function ErpRoutes() {
           element={
             <ProtectedRoute moduleKey="coursesManage">
               <CoursesModule />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={`/${MODULE_SLUGS.students}`}
+          element={
+            <ProtectedRoute moduleKey="students">
+              <StudentsModule />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={`/${MODULE_SLUGS.materials}`}
+          element={
+            <ProtectedRoute moduleKey="materials">
+              <MaterialsModule />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={`/${MODULE_SLUGS.exercises}`}
+          element={
+            <ProtectedRoute moduleKey="exercises">
+              <ExercisesModule />
             </ProtectedRoute>
           }
         />
@@ -270,13 +300,16 @@ function ErpRoutes() {
 
 export default function ErpApp() {
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <ErpRoutes />
-        </BrowserRouter>
-      </AuthProvider>
-    </LanguageProvider>
+    <>
+      <LocalDevelopmentBanner />
+      <LanguageProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <ErpRoutes />
+          </BrowserRouter>
+        </AuthProvider>
+      </LanguageProvider>
+    </>
   );
 }
 

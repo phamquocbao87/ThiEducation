@@ -1,0 +1,50 @@
+// REVIEWABLE INTEGRATION FRAGMENT, NOT A STANDALONE PRODUCTION RULESET.
+// Merge inside /databases/{database}/documents after reviewing the existing rules.
+// Existing broad allow statements on these collections must be narrowed: allow rules are additive.
+// Identity requires signed profileId claim, or users/{auth.uid}; never trust a client role.
+function classroomProfileId() { return request.auth.token.get('profileId', request.auth.uid); }
+function classroomActor() { return get(/databases/$(database)/documents/users/$(classroomProfileId())).data; }
+function classroomActive() {
+  return request.auth != null && classroomActor().uid == request.auth.uid && classroomActor().status == 'active';
+}
+function classroomMonitor() { return classroomActive() && classroomActor().role in ['admin', 'academic', 'director']; }
+function classroomClass(id) { return get(/databases/$(database)/documents/classes/$(id)).data; }
+function classroomTeacher(id) {
+  return classroomActive() && classroomActor().role == 'teacher'
+    && classroomClass(id).teacherId == classroomProfileId() && !classroomClass(id).get('isDeleted', false);
+}
+function classroomValid(data, id) {
+  return data.classId == id && data.teacherId == classroomClass(id).teacherId
+    && data.auditTrail.actorId == classroomProfileId()
+    && data.presence.keys().toSet() == classroomClass(id).studentIds.toSet()
+    && data.presence.values().hasOnly(['ONLINE', 'OFFLINE', 'UNMARKED'])
+    && data.presentCount == data.presentIds.size() && data.absentCount == data.absentIds.size()
+    && data.unmarkedCount == data.unmarkedIds.size()
+    && data.presentIds.concat(data.absentIds).concat(data.unmarkedIds).toSet() == classroomClass(id).studentIds.toSet()
+    && data.presentCount + data.absentCount + data.unmarkedCount == classroomClass(id).studentIds.size()
+    && request.time.toMillis() >= data.sessionStart && request.time.toMillis() < data.sessionEnd;
+}
+match /classroom_live/{classId} {
+  allow read: if classroomMonitor() || (classroomActive() && classroomActor().role == 'teacher'
+    && resource.data.teacherId == classroomProfileId());
+  allow create, update: if classroomTeacher(classId) && classroomValid(request.resource.data, classId)
+    && getAfter(/databases/$(database)/documents/session_evaluations/$(request.resource.data.sessionId)).data.presence == request.resource.data.presence;
+}
+// Apply these constraints to LIVE_ records only when merging with legacy evaluation rules.
+// Keep existing, reviewed legacy rules separately; a second broad allow would bypass these checks.
+match /session_evaluations/{sessionId} {
+  allow get: if sessionId.matches('LIVE_.*') && (classroomMonitor() || (classroomActive()
+    && classroomActor().role == 'teacher' && (!exists(/databases/$(database)/documents/session_evaluations/$(sessionId))
+      || resource.data.teacherId == classroomProfileId())));
+  allow list: if classroomMonitor() || (classroomActive() && classroomActor().role == 'teacher'
+    && resource.data.teacherId == classroomProfileId());
+  allow create, update: if sessionId.matches('LIVE_.*') && classroomTeacher(request.resource.data.classId)
+    && classroomValid(request.resource.data, request.resource.data.classId)
+    && getAfter(/databases/$(database)/documents/classroom_live/$(request.resource.data.classId)).data.presence == request.resource.data.presence;
+}
+// Merge the following creation constraint with the existing notifications read/readBy update rules.
+match /notifications/{noticeId} {
+  allow create: if classroomMonitor() && request.resource.data.type == 'CLASSROOM_ABSENCE_REMINDER'
+    && request.resource.data.targetKeys == ['USER:' + classroomClass(request.resource.data.metadata.classId).teacherId]
+    && request.resource.data.createdBy == classroomProfileId();
+}

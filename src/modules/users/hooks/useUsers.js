@@ -3,13 +3,80 @@ import { message } from 'antd';
 import { useAuth } from '../../../core/context/AuthContext';
 import { UserService } from '../services/UserService';
 import { UserAuditService } from '../services/UserAuditService';
+import { ClassService } from '../../courses/services/ClassService';
 import { USER_STATUS } from '../models/user.model';
 import { matchesMultiFields } from '../../../shared/utils/searchUtils';
+
+/**
+ * Ánh xạ dữ liệu Lớp học động từ ClassService vào từng bản ghi Người dùng
+ */
+export const enrichUserWithClasses = (user, activeClasses = []) => {
+  const userId = String(user.id || user.code || '').trim();
+  const userEnrolledIds = Array.isArray(user.enrolledClassIds) ? user.enrolledClassIds.map(String) : [];
+
+  // Tìm các lớp học viên đang theo học (qua studentIds của lớp hoặc enrolledClassIds của user)
+  const enrolledClasses = activeClasses
+    .filter((cls) => {
+      const clsId = String(cls.id || '').trim();
+      const inStudentIds =
+        Array.isArray(cls.studentIds) &&
+        cls.studentIds.some((sId) => String(sId).trim() === userId);
+      const inEnrolledIds = userEnrolledIds.some((eId) => eId.trim() === clsId);
+      return inStudentIds || inEnrolledIds;
+    })
+    .map((cls) => ({
+      id: cls.id,
+      name: cls.name || '',
+      courseName: cls.courseName || cls.subject || '',
+      teacherName: cls.teacherName || '',
+      teacherId: cls.teacherId || '',
+      schedule: cls.schedule || '',
+      room: cls.room || '',
+      platform: cls.platform || 'Zoom Meeting',
+    }));
+
+  // Tìm các lớp giáo viên đang phụ trách giảng dạy (qua teacherId của lớp)
+  const teachingClasses = activeClasses
+    .filter((cls) => String(cls.teacherId || '').trim() === userId)
+    .map((cls) => ({
+      id: cls.id,
+      name: cls.name || '',
+      courseName: cls.courseName || cls.subject || '',
+      schedule: cls.schedule || '',
+      totalStudents: Array.isArray(cls.studentIds)
+        ? cls.studentIds.length
+        : cls.totalStudents || 0,
+    }));
+
+  const enrolledClassNames = enrolledClasses
+    .map((c) => `${c.id} ${c.name} ${c.courseName}`)
+    .join(' ');
+  const teachingClassNames = teachingClasses
+    .map((c) => `${c.id} ${c.name} ${c.courseName}`)
+    .join(' ');
+
+  return {
+    ...user,
+    enrolledClasses,
+    teachingClasses,
+    enrolledClassNames,
+    teachingClassNames,
+    enrolledClassIds:
+      enrolledClasses.length > 0
+        ? enrolledClasses.map((c) => c.id)
+        : user.enrolledClassIds || [],
+    className:
+      enrolledClasses.length > 0
+        ? enrolledClasses.map((c) => c.name).join(', ')
+        : user.className || '',
+  };
+};
 
 export const useUsers = () => {
   const { currentUser } = useAuth();
 
   const [users, setUsers] = useState([]);
+  const [classesList, setClassesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
@@ -26,12 +93,23 @@ export const useUsers = () => {
   const [auditLogs, setAuditLogs] = useState([]);
   const [auditLoading, setAuditLoading] = useState(false);
 
-  // Tải danh sách Users
+  // Tải danh sách Users đồng bộ động với ClassService
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await UserService.getAllUsers();
-      setUsers(data);
+      const [rawUsers, rawClasses] = await Promise.all([
+        UserService.getAllUsers(),
+        ClassService.getAllClasses().catch(() => []),
+      ]);
+      const activeClasses = (rawClasses || []).filter(
+        (c) => !c.isDeleted && c.status !== 'Deleted'
+      );
+      setClassesList(activeClasses);
+
+      const enriched = (rawUsers || []).map((u) =>
+        enrichUserWithClasses(u, activeClasses)
+      );
+      setUsers(enriched);
     } catch (err) {
       message.error(`Lỗi tải danh sách người dùng: ${err.message}`);
     } finally {
@@ -65,8 +143,9 @@ export const useUsers = () => {
   const handleCreateUser = async (formData) => {
     try {
       const created = await UserService.createUser(currentUser, formData);
+      const enriched = enrichUserWithClasses(created, classesList);
       message.success(`Đã tạo thành công tài khoản: ${created.name} (${created.code})`);
-      setUsers((prev) => [created, ...prev]);
+      setUsers((prev) => [enriched, ...prev]);
       setIsFormModalOpen(false);
       return true;
     } catch (err) {
@@ -90,9 +169,10 @@ export const useUsers = () => {
   const handleUpdateUser = async (targetUser, updateData) => {
     try {
       const updated = await UserService.updateUserProfile(currentUser, targetUser, updateData);
+      const enriched = enrichUserWithClasses(updated, classesList);
       message.success(`Đã cập nhật thành công hồ sơ của ${updated.name}`);
       setUsers((prev) =>
-        prev.map((u) => ((u.id === targetUser.id || u.code === targetUser.code) ? updated : u))
+        prev.map((u) => ((u.id === targetUser.id || u.code === targetUser.code) ? enriched : u))
       );
       closeEditModal();
       return true;
@@ -166,7 +246,7 @@ export const useUsers = () => {
     }
   };
 
-  // Dữ liệu lọc tìm kiếm
+  // Dữ liệu lọc tìm kiếm đa trường (bao gồm cả Tên lớp, Mã lớp, Giáo viên phụ trách)
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
       const matchRole = roleFilter === 'ALL' || u.role === roleFilter;
@@ -182,6 +262,9 @@ export const useUsers = () => {
         'extraInfo',
         'department',
         'position',
+        'className',
+        'enrolledClassNames',
+        'teachingClassNames',
       ]);
 
       return matchRole && matchStatus && matchKeyword;
@@ -203,6 +286,7 @@ export const useUsers = () => {
     users: filteredUsers,
     allUsersCount: users.length,
     loading,
+    classesList,
     stats,
     searchText,
     setSearchText,

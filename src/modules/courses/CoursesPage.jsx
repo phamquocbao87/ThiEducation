@@ -1,7 +1,7 @@
 import React from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Tabs, Row, Col, Card, Statistic, Typography } from 'antd';
-import { BookOutlined, TeamOutlined, UserOutlined, CalendarOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { useNavigate, useSearchParams, Navigate } from 'react-router-dom';
+import { Tabs, Row, Col, Card, Statistic, Typography, message, Button } from 'antd';
+import { BookOutlined, TeamOutlined, UserOutlined, CalendarOutlined, AppstoreOutlined, IdcardOutlined } from '@ant-design/icons';
 import { useLanguage } from '../../core/context/LanguageContext';
 import { useCoursesController } from './hooks/useCoursesController';
 import { CourseCatalogTab } from './components/CourseCatalogTab';
@@ -11,6 +11,8 @@ import { ClassFormDrawer } from './components/ClassFormDrawer';
 import { ClassRosterDrawer } from './components/ClassRosterDrawer';
 import { CurriculumLevelsPage } from '../curriculum/CurriculumLevelsPage';
 import { CurriculumLevelService } from '../curriculum/services/CurriculumLevelService';
+import { StudentCardGrid } from './components/StudentCardGrid';
+import { UserService } from '../users/services/UserService';
 
 const { Title, Text } = Typography;
 
@@ -95,18 +97,61 @@ export const CoursesPage = () => {
     }
   }, [searchParams, allClasses, setActiveTab, setRosterClass, setEditingClass, setIsClassModalOpen]);
 
+  const handleTabChange = (key) => {
+    setActiveTab(key);
+    navigate(`/courses-classes?tab=${key}`, { replace: true });
+  };
+
+  const handleToggleStudentStatus = async (student, checked) => {
+    try {
+      const newStatus = checked ? 'Active' : 'Disabled';
+      await UserService.toggleUserStatus(currentUser, student, newStatus);
+      message.success(
+        isEnglish
+          ? `Updated status for ${student.name} to ${checked ? 'Active' : 'Paused'}`
+          : `Đã cập nhật trạng thái học viên ${student.name} thành ${checked ? 'Đang học' : 'Tạm dừng'}`
+      );
+    } catch (err) {
+      message.error(err.message || 'Lỗi cập nhật trạng thái học viên');
+      throw err;
+    }
+  };
+
+  const tabParam = searchParams.get('tab');
+  if (tabParam === 'students') {
+    return <Navigate to="/students" replace />;
+  }
+
   return (
     <div>
       {/* 1. Header Tiêu Đề */}
-      <div style={{ marginBottom: 20 }}>
-        <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
-          {t('courses.pageTitle')}
-        </Title>
-        <Text type="secondary">
-          {isEnglish
-            ? 'Organize McGraw-Hill Wonders curriculum programs, set up online classes, and assign 1 Native Teacher per class.'
-            : 'Quản trị chương trình đào tạo McGraw-Hill Wonders ELA, khởi tạo lớp học và phân công 01 Giáo viên bản xứ phụ trách.'}
-        </Text>
+      <div
+        style={{
+          marginBottom: 20,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
+        <div>
+          <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
+            {t('courses.pageTitle')}
+          </Title>
+          <Text type="secondary">
+            {isEnglish
+              ? 'Organize McGraw-Hill Wonders curriculum programs, set up online classes, and assign 1 Native Teacher per class.'
+              : 'Quản trị chương trình đào tạo McGraw-Hill Wonders ELA, khởi tạo lớp học và phân công 01 Giáo viên bản xứ phụ trách.'}
+          </Text>
+        </div>
+        <Button
+          icon={<IdcardOutlined />}
+          onClick={() => navigate('/students')}
+          style={{ borderRadius: 8 }}
+        >
+          {isEnglish ? 'Student Management' : 'Quản Lý Học Viên'}
+        </Button>
       </div>
 
       {/* 2. Thẻ Thống Kê Tổng Quan */}
@@ -161,7 +206,7 @@ export const CoursesPage = () => {
       >
         <Tabs
           activeKey={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
           items={[
             {
               key: 'classes',

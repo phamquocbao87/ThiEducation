@@ -2,12 +2,15 @@ import React, { useEffect } from 'react';
 import { Modal, Form, Input, Select, Space, Button, Alert, Typography } from 'antd';
 import { DAYS_OF_WEEK, PLATFORMS } from '../models/schedules.model';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { detectMeetingPlatform, MeetingPlatformBadge } from '../../../shared/utils/meetingPlatformUtils';
 
 const { Text } = Typography;
 
 export const ScheduleFormModal = ({ open, teachers = [], classes = [], onCancel, onSubmit }) => {
   const [form] = Form.useForm();
   const { isEnglish } = useLanguage();
+  const watchedMeetingLink = Form.useWatch('meetingLink', form);
+  const detectedPlatform = detectMeetingPlatform(watchedMeetingLink);
 
   useEffect(() => {
     if (open) {
@@ -22,7 +25,7 @@ export const ScheduleFormModal = ({ open, teachers = [], classes = [], onCancel,
         className: matched.name,
         subject: matched.subject || 'Wonders English ELA',
         teacherName: matched.teacherName,
-        meetingLink: matched.meetingLink || 'https://zoom.us/j/888999111',
+        meetingLink: matched.meetingLink || matched.zoomStudentLink || 'https://meet.google.com/xkt-tcqz-nid',
       });
     }
   };
@@ -34,7 +37,7 @@ export const ScheduleFormModal = ({ open, teachers = [], classes = [], onCancel,
 
   return (
     <Modal
-      title={isEnglish ? 'Schedule New Zoom Session' : 'Xếp Lịch Lớp Học Online Mới'}
+      title={isEnglish ? 'Schedule New Live Class Session' : 'Xếp Lịch Ca Dạy Trực Tuyến Mới'}
       open={open}
       onCancel={onCancel}
       footer={null}
@@ -138,10 +141,19 @@ export const ScheduleFormModal = ({ open, teachers = [], classes = [], onCancel,
 
         <Form.Item
           name="meetingLink"
-          label={<Text strong>{isEnglish ? 'Zoom Meeting URL' : 'Đường Link Phòng Học (Meeting URL)'}</Text>}
-          initialValue="https://zoom.us/j/888999111"
+          label={
+            <Space size={8}>
+              <Text strong>{isEnglish ? 'Classroom Meeting URL' : 'Đường Link Phòng Học (Meeting URL)'}</Text>
+              {watchedMeetingLink && <MeetingPlatformBadge url={watchedMeetingLink} />}
+            </Space>
+          }
+          initialValue="https://meet.google.com/xkt-tcqz-nid"
         >
-          <Input style={{ borderRadius: 8 }} />
+          <Input
+            prefix={detectedPlatform.iconSmall}
+            placeholder="https://meet.google.com/... hoặc https://zoom.us/..."
+            style={{ borderRadius: 8 }}
+          />
         </Form.Item>
 
         <Form.Item style={{ marginBottom: 0 }}>

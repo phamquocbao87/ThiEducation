@@ -1,188 +1,818 @@
-import React from 'react';
-import { Row, Col, Card, Statistic, Tag, List, Button, Space, Typography, Rate, Descriptions } from 'antd';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  UserOutlined,
+  Row,
+  Col,
+  Card,
+  Tag,
+  Button,
+  Space,
+  Typography,
+  Alert,
+  Avatar,
+  Divider,
+  Empty,
+  Segmented,
+} from 'antd';
+import {
+  VideoCameraOutlined,
+  ClockCircleOutlined,
   BookOutlined,
   CheckCircleOutlined,
-  DollarOutlined,
-  LinkOutlined,
-  FormOutlined,
+  MessageOutlined,
+  GlobalOutlined,
+  UserOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
-import { formatCurrency } from '../../../shared/utils/formatter';
+import { useAuth } from '../../../core/context/AuthContext';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { StudentDashboardService } from '../services/StudentDashboardService';
+import { StudentLearningCornerCard } from './StudentLearningCornerCard';
+import { StudentClassMaterialsCard } from './StudentClassMaterialsCard';
+import { StudentHomeworkTasksCard } from './StudentHomeworkTasksCard';
+import { StudentRecentEvaluationsCard } from './StudentRecentEvaluationsCard';
+import { useClassTimer } from '../hooks/useClassTimer';
+import { ClassSessionTimer } from './ClassSessionTimer';
+import { findClassSession, getSessionTimer } from '../../../shared/utils/classSessionUtils';
+import {
+  detectMeetingPlatform,
+  MeetingPlatformBadge,
+  GoogleMeetIcon,
+  ZoomIcon,
+} from '../../../shared/utils/meetingPlatformUtils';
 
-const { Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
-export const StudentPortalPanel = ({ portalData, setActiveTab }) => {
+const getPlatformDisplayName = (platform, isEn) => {
+  if (platform?.type === 'google_meet') return 'Google Meet';
+  if (platform?.type === 'zoom') return 'Zoom';
+  if (platform?.type === 'teams') return 'MS Teams';
+  return isEn ? 'Online Classroom' : 'Phòng Trực Tuyến';
+};
+
+export const StudentPortalPanel = ({ portalData = {} }) => {
+  const { currentUser } = useAuth();
   const { isEnglish, t } = useLanguage();
-  const { studentProfile, myTimetable, myHomeworks } = portalData;
+  const now = useClassTimer();
+
+  const {
+    myClasses = [],
+    activeBill = null,
+    isPaid = false,
+    nextClass = null,
+    enrolledClassesCount = 0,
+  } = portalData;
+
+  const [homeworks, setHomeworks] = useState([]);
+  const [evaluations, setEvaluations] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [loadingExtra, setLoadingExtra] = useState(true);
+
+  // Tải dữ liệu bổ trợ bài tập, đánh giá và tài liệu theo lớp
+  useEffect(() => {
+    let isMounted = true;
+    const loadStudentData = async () => {
+      try {
+        setLoadingExtra(true);
+        const [hwList, evalList, matList] = await Promise.all([
+          StudentDashboardService.getStudentHomeworkTasks(currentUser, myClasses),
+          StudentDashboardService.getStudentRecentEvaluations(currentUser, myClasses),
+          StudentDashboardService.getStudentClassMaterials(myClasses),
+        ]);
+        if (isMounted) {
+          setHomeworks(hwList || []);
+          setEvaluations(evalList || []);
+          setMaterials(matList || []);
+        }
+      } catch (err) {
+        console.warn('[StudentPortalPanel] Lỗi tải dữ liệu học viên:', err);
+      } finally {
+        if (isMounted) setLoadingExtra(false);
+      }
+    };
+
+    loadStudentData();
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser, myClasses]);
+
+  // Sắp xếp lớp học theo thời gian ca học diễn ra sớm nhất (Earliest Session Priority)
+  const sortedClasses = useMemo(() => {
+    if (!myClasses || myClasses.length === 0) return [];
+    return [...myClasses].sort((a, b) => {
+      const sA = findClassSession(a, now);
+      const sB = findClassSession(b, now);
+      const timeA = sA ? sA.start : Infinity;
+      const timeB = sB ? sB.start : Infinity;
+      return timeA - timeB;
+    });
+  }, [myClasses, now]);
+
+  // Lớp học trực tuyến tiếp theo (Ưu tiên ca học diễn ra sớm nhất)
+  const upcomingClass = useMemo(() => {
+    return sortedClasses[0] || nextClass || null;
+  }, [sortedClasses, nextClass]);
+
+  // Nhận diện nền tảng & trạng thái phòng học của ca học sắp tới
+  const upcomingMeetingUrl = upcomingClass?.zoomStudentLink || upcomingClass?.meetingLink || '';
+  const upcomingPlatform = useMemo(() => detectMeetingPlatform(upcomingMeetingUrl), [upcomingMeetingUrl]);
+  const upcomingSession = useMemo(() => (upcomingClass ? findClassSession(upcomingClass, now) : null), [upcomingClass, now]);
+  const upcomingTimer = useMemo(() => (upcomingSession ? getSessionTimer(upcomingSession, now) : null), [upcomingSession, now]);
+  const isUpcomingRoomOpen = Boolean(
+    upcomingTimer && (upcomingTimer.state === 'live' || (upcomingTimer.state === 'upcoming' && upcomingTimer.startsIn <= 900))
+  );
+
+  // Bộ chọn lớp học chủ động (Class Switcher / Tabs)
+  const [selectedClassId, setSelectedClassId] = useState(null);
+
+  const activeClassId = useMemo(() => {
+    if (selectedClassId && myClasses.some((c) => (c.id || c.code) === selectedClassId)) {
+      return selectedClassId;
+    }
+    return sortedClasses[0]?.id || sortedClasses[0]?.code || myClasses[0]?.id || myClasses[0]?.code || null;
+  }, [selectedClassId, myClasses, sortedClasses]);
+
+  const activePrepClass = useMemo(() => {
+    return (
+      myClasses.find((c) => (c.id || c.code) === activeClassId) ||
+      sortedClasses[0] ||
+      myClasses[0] ||
+      nextClass || { name: 'WP03 G5 Ms. Maj', courseLevel: 'Grade 5' }
+    );
+  }, [activeClassId, myClasses, sortedClasses, nextClass]);
+
+  // Hướng dẫn chuẩn bị bài học cho lớp học đang được chọn
+  const lessonPrep = useMemo(
+    () => StudentDashboardService.getLessonPreparationGuide(activePrepClass),
+    [activePrepClass]
+  );
 
   return (
-    <div>
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={8}>
-          <Card style={{ borderColor: '#1890ff', borderRadius: 8 }}>
-            <Statistic
-              title={t('dashboard.studentPortal.enrolledClass')}
-              value={studentProfile.className}
-              prefix={<BookOutlined style={{ color: '#1890ff' }} />}
-              styles={{ content: { color: '#1890ff', fontWeight: 'bold', fontSize: 16 } }}
-            />
-            <Tag color="blue" style={{ marginTop: 6 }}>
-              {t('dashboard.studentPortal.levelPrefix')}{studentProfile.level}
-            </Tag>
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card style={{ borderColor: '#52c41a', borderRadius: 8 }}>
-            <Statistic
-              title={t('dashboard.studentPortal.attendanceHomework')}
-              value={studentProfile.attendanceRate}
-              suffix={`% (${myHomeworks.length} ${isEnglish ? 'assignments' : 'bài tập'})`}
-              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-              styles={{ content: { color: '#52c41a', fontWeight: 'bold' } }}
-            />
-            <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setActiveTab('attendance')}>
-              {t('dashboard.studentPortal.btnViewSubmitHomework')}
-            </Button>
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card style={{ borderColor: '#722ed1', borderRadius: 8 }}>
-            <Statistic
-              title={t('dashboard.studentPortal.tuitionInfo')}
-              value={studentProfile.amountDue}
-              formatter={(val) => formatCurrency(val)}
-              prefix={<DollarOutlined style={{ color: '#722ed1' }} />}
-              styles={{ content: { color: '#722ed1', fontWeight: 'bold' } }}
-            />
-            <Tag color={studentProfile.tuitionStatus === 'PAID' ? 'green' : 'volcano'} style={{ marginTop: 6 }}>
-              {studentProfile.tuitionStatus === 'PAID'
-                ? t('dashboard.studentPortal.tuitionPaidTag')
-                : t('dashboard.studentPortal.tuitionDueTag')}
-            </Tag>
-          </Card>
-        </Col>
-      </Row>
+    <div data-testid="student-portal-dashboard-container">
+      {/* 1. Header Chào Mừng Học Viên & Tóm Tắt Trạng Thái */}
+      <Card
+        bordered={false}
+        style={{
+          borderRadius: 14,
+          marginBottom: 20,
+          background: 'linear-gradient(135deg, #001529 0%, #003a8c 100%)',
+          color: '#ffffff',
+          boxShadow: '0 4px 16px rgba(0,21,41,0.12)',
+        }}
+        styles={{ body: { padding: '20px 24px' } }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+          <Space size={14}>
+            <Avatar
+              size={56}
+              style={{
+                backgroundColor: '#1890ff',
+                fontSize: 22,
+                fontWeight: 700,
+                border: '2px solid rgba(255,255,255,0.4)',
+              }}
+              icon={<UserOutlined />}
+            >
+              {(currentUser?.name || 'S').charAt(0).toUpperCase()}
+            </Avatar>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <Title level={3} style={{ color: '#ffffff', margin: 0, fontSize: 20 }}>
+                  {currentUser?.name || 'Học Viên'}
+                </Title>
+                {currentUser?.englishName && (
+                  <Tag
+                    color="gold"
+                    style={{
+                      borderRadius: 6,
+                      fontWeight: 700,
+                      fontSize: 13,
+                      padding: '2px 8px',
+                      border: 'none',
+                    }}
+                  >
+                    🌟 {currentUser.englishName}
+                  </Tag>
+                )}
+                <Tag color="cyan" style={{ borderRadius: 4, margin: 0, fontSize: 11 }}>
+                  {currentUser?.code || currentUser?.id || 'STUDENT'}
+                </Tag>
+              </div>
+              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>
+                {isEnglish
+                  ? 'McGraw-Hill Wonders ELA International Program • Active Learner'
+                  : 'Chương trình Anh ngữ Học thuật Quốc tế McGraw-Hill Wonders ELA • Học viên chính thức'}
+              </Text>
+            </div>
+          </Space>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
-        <Col xs={24} lg={12}>
-          <Card
-            title={
-              <Space>
-                <UserOutlined style={{ color: '#1890ff' }} />
-                <Text strong>{t('dashboard.studentPortal.personalProfileTitle')}</Text>
+          {/* Huy hiệu tóm tắt nhanh */}
+          <Space size={10} style={{ flexWrap: 'wrap' }}>
+            <div style={{ padding: '6px 12px', borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{isEnglish ? 'Classes' : 'Lớp Đang Học'}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#38bdf8' }}>{enrolledClassesCount} {isEnglish ? 'class' : 'lớp'}</div>
+            </div>
+            <div style={{ padding: '6px 12px', borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{isEnglish ? 'Tuition' : 'Học Phí'}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: isPaid ? '#52c41a' : '#fa8c16' }}>
+                {isPaid ? (isEnglish ? 'Completed' : 'Đã Đóng') : (isEnglish ? 'Pending' : 'Chờ Đóng')}
+              </div>
+            </div>
+          </Space>
+        </div>
+      </Card>
+
+      {/* 2. Banner Ca Học Trực Tuyến Tiếp Theo (Tự Động Nhận Diện Nền Tảng & Khóa Thời Gian Phòng Học) */}
+      {upcomingClass && (
+        <Alert
+          type="success"
+          showIcon
+          icon={
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+              {upcomingPlatform.type === 'google_meet' ? (
+                <GoogleMeetIcon size={24} />
+              ) : upcomingPlatform.type === 'zoom' ? (
+                <ZoomIcon size={24} />
+              ) : (
+                <VideoCameraOutlined style={{ color: '#52c41a', fontSize: 24 }} />
+              )}
+            </span>
+          }
+          style={{
+            marginBottom: 20,
+            borderRadius: 14,
+            border: '1.5px solid #b7eb8f',
+            backgroundColor: '#f6ffed',
+            padding: '16px 20px',
+          }}
+          message={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <Text strong style={{ fontSize: 16, color: '#135200' }}>
+                    {isEnglish ? 'Upcoming Online Session:' : 'Lớp Học Trực Tuyến Sắp Tới:'}{' '}
+                    <span style={{ color: '#237804' }}>{upcomingClass.name}</span>
+                  </Text>
+                  {upcomingMeetingUrl && <MeetingPlatformBadge url={upcomingMeetingUrl} size="small" />}
+                </div>
+                <div style={{ marginTop: 4, color: '#4b5563', fontSize: 13 }}>
+                  <ClockCircleOutlined style={{ marginRight: 6, color: '#0284c7' }} />
+                  {isEnglish ? 'Schedule:' : 'Lịch học:'} <Text strong>{upcomingClass.schedule || 'Regular Class Schedule'}</Text>
+                  {' • '}
+                  <GlobalOutlined style={{ marginLeft: 8, marginRight: 4, color: '#7c3aed' }} />
+                  {isEnglish ? 'Foreign Teacher:' : 'Giáo viên bản xứ:'} <Text strong>{upcomingClass.teacherName || 'Teacher Maj'}</Text>
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <ClassSessionTimer cls={upcomingClass} now={now} style={{ marginBottom: 0, padding: '4px 10px', fontSize: 12 }} />
+                </div>
+              </div>
+
+              <Space size={10}>
+                {upcomingMeetingUrl ? (
+                  isUpcomingRoomOpen ? (
+                    <Button
+                      type="primary"
+                      size="large"
+                      icon={upcomingPlatform.iconSmall || upcomingPlatform.icon || <VideoCameraOutlined />}
+                      style={{
+                        backgroundColor: '#52c41a',
+                        borderColor: '#52c41a',
+                        borderRadius: 8,
+                        fontWeight: 700,
+                        boxShadow: '0 4px 12px rgba(82,196,26,0.3)',
+                      }}
+                      onClick={() => window.open(upcomingMeetingUrl, '_blank')}
+                      title={
+                        upcomingTimer?.state === 'live'
+                          ? (isEnglish
+                              ? `Class session is currently live! Click to join ${getPlatformDisplayName(upcomingPlatform, isEnglish)} now`
+                              : `Buổi học đang diễn ra! Bấm để vào lớp ${getPlatformDisplayName(upcomingPlatform, isEnglish)} ngay`)
+                          : (isEnglish
+                              ? `Online classroom is open! Click to join ${getPlatformDisplayName(upcomingPlatform, isEnglish)}`
+                              : `Phòng học đã mở! Bấm để vào lớp học ${getPlatformDisplayName(upcomingPlatform, isEnglish)} ngay`)
+                      }
+                      data-testid="btn-join-live-meeting"
+                    >
+                      {upcomingTimer?.state === 'live'
+                        ? (isEnglish ? `🔴 Join Live ${getPlatformDisplayName(upcomingPlatform, isEnglish)}` : `🔴 Vào Lớp ${getPlatformDisplayName(upcomingPlatform, isEnglish)} (Đang Diễn Ra)`)
+                        : (isEnglish ? `🎥 Join ${getPlatformDisplayName(upcomingPlatform, isEnglish)} Now` : `🎥 Vào Lớp Học ${getPlatformDisplayName(upcomingPlatform, isEnglish)} Ngay`)}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="large"
+                      disabled
+                      icon={upcomingPlatform.iconSmall || upcomingPlatform.icon || <VideoCameraOutlined />}
+                      style={{
+                        borderRadius: 8,
+                        fontWeight: 600,
+                        backgroundColor: '#f1f5f9',
+                        borderColor: '#cbd5e1',
+                        color: '#64748b',
+                        cursor: 'not-allowed',
+                      }}
+                      title={
+                        isEnglish
+                          ? `Online classroom on ${getPlatformDisplayName(upcomingPlatform, isEnglish)} will automatically open 15 minutes before class starts`
+                          : `Phòng học trực tuyến trên ${getPlatformDisplayName(upcomingPlatform, isEnglish)} sẽ tự động mở trước giờ học 15 phút để học viên tham gia`
+                      }
+                      data-testid="btn-join-live-meeting-locked"
+                    >
+                      {isEnglish
+                        ? `${getPlatformDisplayName(upcomingPlatform, isEnglish)} Opens 15m Before`
+                        : `Phòng ${getPlatformDisplayName(upcomingPlatform, isEnglish)} Mở Trước 15 Phút`}
+                    </Button>
+                  )
+                ) : (
+                  <Button
+                    size="large"
+                    disabled
+                    style={{ borderRadius: 8, fontWeight: 600 }}
+                    title={
+                      isEnglish
+                        ? 'The teacher or academic staff has not updated the meeting link yet'
+                        : 'Giáo viên hoặc giáo vụ chưa cập nhật đường dẫn phòng học trực tuyến'
+                    }
+                  >
+                    {isEnglish ? 'Meeting Link Not Available' : 'Chưa Có Link Phòng Học'}
+                  </Button>
+                )}
+
+                {upcomingClass.zaloGroupLink && (
+                  <Button
+                    size="large"
+                    icon={<MessageOutlined />}
+                    style={{ borderRadius: 8, borderColor: '#0068ff', color: '#0068ff', fontWeight: 600 }}
+                    onClick={() => window.open(upcomingClass.zaloGroupLink, '_blank')}
+                    title={isEnglish ? 'Join Class Zalo Group' : 'Tham gia nhóm Zalo trao đổi của lớp học'}
+                  >
+                    Zalo Lớp
+                  </Button>
+                )}
               </Space>
-            }
+            </div>
+          }
+        />
+      )}
+
+      {/* 3. BỐ CỤC LƯỚI BẤT ĐỐI XỨNG TỶ LỆ VÀNG (15 / 9) */}
+      <Row gutter={[20, 20]}>
+        {/* ========================================================= */}
+        {/* CỘT TRÁI / TRUNG TÂM (Col lg=15): LUỒNG HỌC TẬP CHÍNH */}
+        {/* ========================================================= */}
+        <Col xs={24} lg={15}>
+          {/* KHỐI 1: LỚP HỌC ĐANG HỌC & CHUẨN BỊ BÀI HỌC (PRE-CLASS LESSON PREP) */}
+          <Card
+            bordered={false}
+            style={{
+              borderRadius: 14,
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+              marginBottom: 20,
+              backgroundColor: '#ffffff',
+            }}
+            styles={{ body: { padding: '20px 22px' } }}
+            data-testid="student-classes-and-prep-card"
           >
-            <Descriptions column={1} size="small" bordered>
-              <Descriptions.Item label={t('dashboard.studentPortal.fullNameLabel')}>
-                {studentProfile.name} ({studentProfile.englishName})
-              </Descriptions.Item>
-              <Descriptions.Item label={t('dashboard.studentPortal.studentCodeLabel')}>
-                {studentProfile.id} — {t('dashboard.studentPortal.agePrefix')}{studentProfile.age}
-              </Descriptions.Item>
-              <Descriptions.Item label={t('dashboard.studentPortal.parentLabel')}>
-                {studentProfile.parentName} ({studentProfile.phone})
-              </Descriptions.Item>
-              <Descriptions.Item label={t('dashboard.studentPortal.latestFeedbackLabel')}>
-                <Text italic style={{ color: '#389e0d' }}>
-                  "{studentProfile.latestTeacherNote}"
-                </Text>
-              </Descriptions.Item>
-            </Descriptions>
-            <div style={{ marginTop: 12, padding: 10, background: '#fafafa', borderRadius: 6 }}>
-              <Row gutter={[8, 8]}>
-                <Col span={12}>
-                  {t('dashboard.studentPortal.pronunciationSkill')}:{' '}
-                  <Rate disabled defaultValue={studentProfile.pronunciationScore} style={{ fontSize: 12 }} />
-                </Col>
-                <Col span={12}>
-                  {t('dashboard.studentPortal.spellingSkill')}:{' '}
-                  <Rate disabled defaultValue={studentProfile.spellingScore} style={{ fontSize: 12 }} />
-                </Col>
-                <Col span={12}>
-                  {t('dashboard.studentPortal.seriousnessSkill')}:{' '}
-                  <Rate disabled defaultValue={studentProfile.seriousnessScore} style={{ fontSize: 12 }} />
-                </Col>
-                <Col span={12}>
-                  {t('dashboard.studentPortal.listeningSkill')}:{' '}
-                  <Rate disabled defaultValue={studentProfile.listeningScore} style={{ fontSize: 12 }} />
-                </Col>
-              </Row>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <Space size={8}>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    backgroundColor: '#eff6ff',
+                    color: '#2563eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 16,
+                  }}
+                >
+                  <BookOutlined />
+                </div>
+                <div>
+                  <Title level={4} style={{ margin: 0, fontSize: 16, color: '#0f172a' }}>
+                    {isEnglish ? 'Enrolled Classes & Lesson Preparation' : 'Lớp Học Đang Tham Gia & Chuẩn Bị Bài Học'}
+                  </Title>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {isEnglish
+                      ? 'Target curriculum, reading passages & key vocabulary before live Zoom'
+                      : 'Nội dung giáo trình McGraw-Hill, bài đọc & từ vựng cần chuẩn bị trước giờ học'}
+                  </Text>
+                </div>
+              </Space>
+            </div>
+
+            {/* Danh sách lớp học kèm bộ đếm thời gian thực (Timer) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+              {myClasses.map((cls) => (
+                <div
+                  key={cls.id}
+                  data-testid={`student-enrolled-class-${cls.id}`}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 10,
+                    border: '1px solid #e2e8f0',
+                    backgroundColor: '#f8fafc',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 10,
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <Text strong style={{ fontSize: 14, color: '#0284c7' }}>
+                          {cls.name}
+                        </Text>
+                        <Tag color="purple" style={{ margin: 0, fontSize: 11, borderRadius: 4 }}>
+                          {cls.courseLevel || 'Wonders ELA'}
+                        </Tag>
+                        {(cls.zoomStudentLink || cls.meetingLink) && (
+                          <MeetingPlatformBadge url={cls.zoomStudentLink || cls.meetingLink} size="small" />
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                        <span>📅 {cls.schedule || 'Chưa xếp lịch'}</span>
+                        <span style={{ marginLeft: 10 }}>👨‍🏫 {cls.teacherName || 'Teacher Maj'}</span>
+                      </div>
+                    </div>
+
+                    {(() => {
+                      const clsMeetingUrl = cls.zoomStudentLink || cls.meetingLink || '';
+                      if (!clsMeetingUrl) return null;
+                      const clsPlatform = detectMeetingPlatform(clsMeetingUrl);
+                      const clsPlatformName = getPlatformDisplayName(clsPlatform, isEnglish);
+                      const clsSession = findClassSession(cls, now);
+                      const clsTimer = getSessionTimer(clsSession, now);
+                      const isClsOpen = Boolean(
+                        clsTimer && (clsTimer.state === 'live' || (clsTimer.state === 'upcoming' && clsTimer.startsIn <= 900))
+                      );
+
+                      if (isClsOpen) {
+                        return (
+                          <Button
+                            type="primary"
+                            size="small"
+                            icon={clsPlatform.iconSmall || clsPlatform.icon || <VideoCameraOutlined />}
+                            style={{ backgroundColor: '#16a34a', borderColor: '#16a34a', borderRadius: 6, fontWeight: 600 }}
+                            onClick={() => window.open(clsMeetingUrl, '_blank')}
+                            title={
+                              clsTimer?.state === 'live'
+                                ? (isEnglish ? `Class is live! Click to join ${clsPlatformName}` : `Buổi học đang diễn ra! Bấm để vào ${clsPlatformName}`)
+                                : (isEnglish ? `Click to join ${clsPlatformName} now` : `Bấm để vào phòng học ${clsPlatformName} ngay`)
+                            }
+                          >
+                            {clsTimer?.state === 'live'
+                              ? (isEnglish ? `🔴 Join Live ${clsPlatformName}` : `🔴 Vào ${clsPlatformName} (Đang Học)`)
+                              : (isEnglish ? `Join ${clsPlatformName}` : `Vào ${clsPlatformName}`)}
+                          </Button>
+                        );
+                      }
+
+                      return (
+                        <Button
+                          size="small"
+                          disabled
+                          style={{ borderRadius: 6, fontSize: 11, color: '#64748b' }}
+                          title={
+                            isEnglish
+                              ? `Online classroom on ${clsPlatformName} will automatically open 15 minutes before class starts`
+                              : `Phòng học trực tuyến trên ${clsPlatformName} sẽ tự động mở trước giờ học 15 phút`
+                          }
+                        >
+                          {isEnglish ? 'Opens 15m Before' : 'Phòng Mở Trước 15 Phút'}
+                        </Button>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Bộ đếm thời gian thực buổi học (Class Session Timer) */}
+                  <ClassSessionTimer cls={cls} now={now} style={{ marginBottom: 0, padding: '6px 10px', fontSize: 12 }} />
+                </div>
+              ))}
+            </div>
+
+            <Divider style={{ margin: '14px 0' }} />
+
+            {/* Bộ Chọn Lớp Học (Class Switcher / Tabs) khi học viên học >= 2 lớp */}
+            {sortedClasses.length > 1 && (
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: '12px 14px',
+                  backgroundColor: '#f8fafc',
+                  borderRadius: 10,
+                  border: '1px solid #e2e8f0',
+                }}
+                data-testid="student-class-switcher-container"
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 8,
+                    flexWrap: 'wrap',
+                    gap: 6,
+                  }}
+                >
+                  <Text strong style={{ fontSize: 13, color: '#334155' }}>
+                    {isEnglish ? 'Select Class to View Teacher Lesson Plan:' : 'Chọn Lớp Học Để Xem Giáo Án Của Giáo Viên Đã Soạn:'}
+                  </Text>
+                  <Tag color="blue" style={{ margin: 0, fontSize: 11, borderRadius: 4, fontWeight: 600 }}>
+                    {sortedClasses.length} {isEnglish ? 'Classes Enrolled' : 'Lớp Đang Tham Gia'}
+                  </Tag>
+                </div>
+                <Segmented
+                  block
+                  data-testid="student-class-switcher"
+                  value={activeClassId}
+                  onChange={(val) => setSelectedClassId(val)}
+                  options={sortedClasses.map((cls, idx) => {
+                    const isEarliest = idx === 0;
+                    const isSelected = (cls.id || cls.code) === activeClassId;
+                    return {
+                      value: cls.id || cls.code,
+                      label: (
+                        <div style={{ padding: '6px 4px', textAlign: 'center', lineHeight: 1.3 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 700, fontSize: 13, color: isSelected ? '#1d4ed8' : '#1e293b' }}>
+                              [{cls.id || cls.code}] {cls.name?.split(' ')[0] || cls.name}
+                            </span>
+                            {isEarliest && (
+                              <Tag
+                                color="success"
+                                style={{
+                                  margin: 0,
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  padding: '0 5px',
+                                  borderRadius: 4,
+                                  lineHeight: '18px',
+                                }}
+                              >
+                                {isEnglish ? '⚡ Earliest' : '⚡ Sớm nhất'}
+                              </Tag>
+                            )}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: isSelected ? '#2563eb' : '#64748b',
+                              marginTop: 2,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {cls.schedule || 'Lịch học'}
+                          </div>
+                        </div>
+                      ),
+                    };
+                  })}
+                />
+              </div>
+            )}
+
+            {/* Khối Chuẩn Bị Bài Học (Pre-Class Preparation Guide) */}
+            <div
+              style={{
+                padding: '14px 16px',
+                borderRadius: 10,
+                backgroundColor: '#faf5ff',
+                border: '1.5px solid #e9d5ff',
+              }}
+              data-testid="pre-class-prep-guide"
+            >
+              {/* Huy Hiệu Nhận Diện Rõ Tên Lớp & Mã Lớp (Bắt buộc theo yêu cầu Sếp Bảo) */}
+              <div
+                data-testid="active-prep-class-badge"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 14px',
+                  backgroundColor: '#f3e8ff',
+                  borderRadius: 8,
+                  border: '1.5px solid #d8b4fe',
+                  marginBottom: 12,
+                  flexWrap: 'wrap',
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <Tag
+                    color="purple"
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      margin: 0,
+                      backgroundColor: '#7e22ce',
+                      color: '#ffffff',
+                      border: 'none',
+                    }}
+                  >
+                    🏫 {activePrepClass?.id || activePrepClass?.code || 'LỚP'}
+                  </Tag>
+                  <Text strong style={{ fontSize: 14, color: '#581c87' }}>
+                    {activePrepClass?.name}
+                  </Text>
+                  <Tag color="cyan" style={{ fontSize: 11, borderRadius: 4, margin: 0, fontWeight: 600 }}>
+                    {activePrepClass?.courseLevel || 'Wonders ELA'}
+                  </Tag>
+                </div>
+                <div style={{ fontSize: 12, color: '#6b21a8', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span>👨‍🏫 {activePrepClass?.teacherName || 'Teacher Maj'}</span>
+                  <span>•</span>
+                  <span>📅 {activePrepClass?.schedule || 'Lịch học'}</span>
+                </div>
+              </div>
+
+              {!lessonPrep ? (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={
+                    isEnglish
+                      ? `Teacher ${activePrepClass?.teacherName || ''} has not prepared the lesson plan for this session of ${activePrepClass?.name || ''} yet.`
+                      : `Giáo viên ${activePrepClass?.teacherName || ''} chưa soạn giáo án cho buổi học này của lớp ${activePrepClass?.name || ''}. Vui lòng quay lại trước giờ học.`
+                  }
+                  style={{ padding: '16px 0' }}
+                />
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+                    <Space size={6}>
+                      <BookOutlined style={{ color: '#9333ea', fontSize: 16 }} />
+                      <Text strong style={{ fontSize: 14, color: '#581c87' }}>
+                        {isEnglish ? 'Teacher Lesson Plan for this Session:' : 'Giáo Án Giáo Viên Đã Soạn Cho Bài Học:'}
+                      </Text>
+                    </Space>
+                    <Space size={6} wrap>
+                      {lessonPrep.isRealPlan && (
+                        <Tag color="success" style={{ borderRadius: 4, margin: 0, fontWeight: 700 }}>
+                          {isEnglish
+                            ? `Teacher: ${lessonPrep.authorName} (Session ${lessonPrep.sessionIndex})`
+                            : `Giáo viên soạn: ${lessonPrep.authorName} (Buổi ${lessonPrep.sessionIndex})`}
+                        </Tag>
+                      )}
+                      {lessonPrep.unitWeek && (
+                        <Tag color="purple" style={{ borderRadius: 4, margin: 0, fontWeight: 600 }}>
+                          {lessonPrep.unitWeek}
+                        </Tag>
+                      )}
+                      {lessonPrep.date && (
+                        <Tag color="default" style={{ borderRadius: 4, margin: 0 }}>
+                          📅 {lessonPrep.date}
+                        </Tag>
+                      )}
+                    </Space>
+                  </div>
+
+                  {/* Tiêu đề bài học giáo viên đã soạn */}
+                  {lessonPrep.lessonTitle && (
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#3b0764', marginBottom: 12 }}>
+                      📖 {lessonPrep.lessonTitle}
+                    </div>
+                  )}
+
+                  {/* 1. Mục tiêu bài học & nội dung giảng dạy do giáo viên đã soạn */}
+                  {Array.isArray(lessonPrep.objectives) && lessonPrep.objectives.length > 0 && (
+                    <div
+                      style={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e9d5ff',
+                        borderRadius: 8,
+                        padding: '12px 14px',
+                        marginBottom: 12,
+                      }}
+                      data-testid="lesson-plan-objectives"
+                    >
+                      <Text strong style={{ fontSize: 13, color: '#6b21a8', display: 'block', marginBottom: 8 }}>
+                        🎯 {isEnglish ? 'Lesson Objectives & Academic Content:' : 'Mục Tiêu Bài Học & Nội Dung Giảng Dạy:'}
+                      </Text>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {lessonPrep.objectives.map((obj, i) => (
+                          <div
+                            key={i}
+                            style={{
+                              fontSize: 13,
+                              color: '#1e293b',
+                              padding: '6px 10px',
+                              backgroundColor: '#faf5ff',
+                              borderRadius: 6,
+                              borderLeft: '3px solid #9333ea',
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            {obj}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. Nội dung học sinh cần đọc chuẩn bị trước giờ lên lớp */}
+                  {lessonPrep.studentPrep && (
+                    <div
+                      style={{
+                        backgroundColor: '#f0fdf4',
+                        border: '1px solid #bbf7d0',
+                        borderRadius: 8,
+                        padding: '12px 14px',
+                        marginBottom: 12,
+                      }}
+                      data-testid="lesson-plan-student-prep"
+                    >
+                      <Text strong style={{ fontSize: 13, color: '#15803d', display: 'block', marginBottom: 4 }}>
+                        📖 {isEnglish ? 'Student Pre-Class Reading & Preparation:' : 'Nội Dung Học Sinh Cần Chuẩn Bị Trước Khi Lên Lớp (Student Prep):'}
+                      </Text>
+                      <div style={{ fontSize: 13, color: '#166534', fontWeight: 600 }}>
+                        {lessonPrep.studentPrep}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. Bài tập về nhà do giáo viên giao */}
+                  {lessonPrep.homework && (
+                    <div
+                      style={{
+                        backgroundColor: '#fff7ed',
+                        border: '1px solid #fed7aa',
+                        borderRadius: 8,
+                        padding: '12px 14px',
+                        marginBottom: 12,
+                      }}
+                      data-testid="lesson-plan-homework"
+                    >
+                      <Text strong style={{ fontSize: 13, color: '#c2410c', display: 'block', marginBottom: 4 }}>
+                        📚 {isEnglish ? 'Assigned Homework:' : 'Bài Tập Giáo Viên Giao Về Nhà (Homework):'}
+                      </Text>
+                      <div style={{ fontSize: 13, color: '#9a3412', fontWeight: 600 }}>
+                        {lessonPrep.homework}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4. Slide bài giảng trực tuyến nếu có */}
+                  {lessonPrep.slideLink && (
+                    <div style={{ marginTop: 8 }}>
+                      <Button
+                        type="link"
+                        href={lessonPrep.slideLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        icon={<GlobalOutlined />}
+                        style={{ padding: 0, fontWeight: 600, color: '#2563eb' }}
+                      >
+                        {isEnglish ? '🔗 Open Interactive Presentation Slides' : '🔗 Mở Slide Bài Giảng Trực Tuyến'}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </Card>
+
+          {/* KHỐI 2: BÀI TẬP ĐƯỢC GIAO & CẦN LÀM (ASSIGNED HOMEWORK TASKS) */}
+          <StudentHomeworkTasksCard
+            homeworks={homeworks}
+            onHomeworkSubmitted={(id, values) => {
+              setHomeworks((prev) =>
+                prev.map((h) =>
+                  h.id === id ? { ...h, status: 'submitted', submittedDate: new Date().toLocaleDateString('vi-VN') } : h
+                )
+              );
+            }}
+          />
+
+          {/* KHỐI 3: CÁC ĐÁNH GIÁ GẦN NHẤT CỦA GIÁO VIÊN BẢN XỨ */}
+          <StudentRecentEvaluationsCard evaluations={evaluations} />
         </Col>
 
-        <Col xs={24} lg={12}>
-          <Card
-            title={
-              <Space>
-                <FormOutlined style={{ color: '#722ed1' }} />
-                <Text strong>{t('dashboard.studentPortal.homeworkListTitle')}</Text>
-              </Space>
-            }
-            extra={
-              <Button size="small" type="primary" onClick={() => setActiveTab('attendance')}>
-                {t('dashboard.studentPortal.btnSubmitNow')}
-              </Button>
-            }
-          >
-            <List
-              size="small"
-              header={<Text strong>{isEnglish ? 'Assigned Homework List:' : 'Danh sách Bài tập được giao:'}</Text>}
-              dataSource={myHomeworks}
-              renderItem={(hw) => (
-                <List.Item
-                  extra={
-                    <Tag color={hw.status === 'SUBMITTED' ? 'green' : 'orange'}>
-                      {hw.status === 'SUBMITTED'
-                        ? `${isEnglish ? 'Submitted' : 'Đã nộp'} (${hw.score})`
-                        : (isEnglish ? 'Pending' : 'Chưa nộp')}
-                    </Tag>
-                  }
-                >
-                  <List.Item.Meta
-                    title={<Text strong>{hw.title}</Text>}
-                    description={`${isEnglish ? 'Due Date' : 'Hạn nộp'}: ${hw.dueDate} | ${isEnglish ? 'Teacher Note' : 'Ghi chú GV'}: ${hw.teacherComment}`}
-                  />
-                </List.Item>
-              )}
-            />
+        {/* ========================================================= */}
+        {/* CỘT PHẢI (Col lg=9): TÀI NGUYÊN MỞ RỘNG & HỌC LIỆU BỔ TRỢ */}
+        {/* ========================================================= */}
+        <Col xs={24} lg={9}>
+          {/* KHỐI 4: "LEARNING CORNER" (4 NỀN TẢNG QUỐC TẾ UY TÍN) */}
+          <StudentLearningCornerCard />
 
-            <List
-              style={{ marginTop: 12 }}
-              size="small"
-              header={
-                <Text strong>
-                  {isEnglish
-                    ? `Live Zoom Schedule for Class ${studentProfile.classId}:`
-                    : `Lịch học Zoom của lớp ${studentProfile.classId}:`}
-                </Text>
-              }
-              dataSource={myTimetable}
-              renderItem={(slot) => (
-                <List.Item
-                  actions={[
-                    <Button
-                      key="join"
-                      type="primary"
-                      size="small"
-                      icon={<LinkOutlined />}
-                      onClick={() => window.open(slot.meetingLink, '_blank')}
-                    >
-                      {t('dashboard.studentPortal.btnJoinClass')}
-                    </Button>,
-                  ]}
-                >
-                  <List.Item.Meta
-                    title={`${slot.day} (${slot.timeSlot}) — ${slot.subject}`}
-                    description={`${isEnglish ? 'Teacher' : 'Giáo viên'}: ${slot.teacherName}`}
-                  />
-                </List.Item>
-              )}
-            />
-          </Card>
+          {/* KHỐI 5: TÀI LIỆU HỌC TẬP PHÂN THEO LỚP (DOWNLOAD & XEM TRỰC TIẾP) */}
+          <StudentClassMaterialsCard
+            materials={materials}
+            myClasses={myClasses}
+          />
         </Col>
       </Row>
     </div>

@@ -48,6 +48,7 @@ Dự án **ThiEducation** vận hành theo mô hình **6 Vai Trò (Roles)** tác
 - **Phạm vi truy cập (Cô lập dữ liệu cá nhân 100% - Personal Scoped Access):**
   - Xem **Profile cá nhân** của mình.
   - Xem **Các lớp đang tham gia** và lịch học cá nhân (vào phòng học trực tuyến, xem lại video bài giảng).
+  - Truy cập **Phòng học trực quan (`/classroom/:classId`)** của lớp mình theo học ở chế độ Read-only: Xem vị trí bàn ngồi của mình (`[Ghế của con]`), bài đọc chuẩn bị trước (`studentPrep`), bài tập về nhà (`homework`), kho học liệu khóa học và **Phiếu Nhận Xét Buổi Học Dành Cho Con** (Student Report Card). Tuyệt đối không thấy các ghi chú nội bộ (`teacherNotes`) hay các buổi học nháp (`DRAFT`).
   - Xem và nộp **Bài tập (Homework / Assignments)** của mình.
   - Xem **Đánh giá & Nhận xét của giáo viên** dành riêng cho mình.
   - Nhận **Thông tin đóng học phí** và lịch sử thanh toán của riêng mình (tuyệt đối không thấy học phí của học viên khác).
@@ -100,6 +101,25 @@ Dự án **ThiEducation** vận hành theo mô hình **6 Vai Trò (Roles)** tác
 
 ---
 
+## 🔑 5. Danh Bạ Tài Khoản & Mật Khẩu Kiểm Thử 6 Roles Trên Localhost / Dev DB
+
+> **Chi tiết đầy đủ:** Xem tại [`docs/LOCAL_DEV_ACCOUNTS.md`](file:///Volumes/DATA/projects/ThiEducation/docs/LOCAL_DEV_ACCOUNTS.md) và JSON [`docs/local_dev_accounts.json`](file:///Volumes/DATA/projects/ThiEducation/docs/local_dev_accounts.json).  
+> **Cơ chế chuyển đổi 1-Click SSO:** Truy cập `http://localhost:3000/?sso_uid=<MÃ_ID>` để chuyển ngữ cảnh tài khoản ngay lập tức.
+
+| Role | Mã ID | Tên Người Dùng | Đăng Nhập (Email / SĐT) | Mật Khẩu | Link SSO 1-Click | Quyền Hạn Kiểm Thử Chính |
+| :--- | :---: | :--- | :--- | :---: | :--- | :--- |
+| **`admin`** | `ADM001` | Phạm Quốc Bảo | `phamquocbao87@gmail.com`<br>*(SĐT: `0898794116`)* | `@Bcd123456` | [SSO ADM001](http://localhost:3000/?sso_uid=ADM001) | Full IT admin, cấu hình hạ tầng, audit logs, phân quyền. |
+| **`director`** | `DIR505` | Phạm Thị Hiếu Thi | `lakvietnam@lakeducation.com`<br>*(SĐT: `0961557696`)* | `271025` | [SSO DIR505](http://localhost:3000/?sso_uid=DIR505) | Giám đốc điều hành, ký duyệt bảng lương, xem tổng quan tài chính & đào tạo. |
+| **`academic`** | `ACA404` | Diễm Quỳnh | `quynhdao0210@gmail.com`<br>*(SĐT: `09878987`)* | `LakEducation@2026` | [SSO ACA404](http://localhost:3000/?sso_uid=ACA404) | Giáo vụ điều phối, tạo khóa/lớp học, xếp TKB, theo dõi phòng học live. |
+| **`academic`** | `ACA545` | Ngọc Nhi | `nngoc.nhi0302@gmail.com`<br>*(SĐT: `0904492894`)* | `LakEducation@2026` | [SSO ACA545](http://localhost:3000/?sso_uid=ACA545) | Điều phối viên giáo vụ đào tạo, chấm công giáo viên, nhắc học phí. |
+| **`teacher`** | `GV952` | Teacher Maj | `paguntalan.marjorie05@gmail.com`<br>*(SĐT: `090544134`)* | `@Bcd123456` | [SSO GV952](http://localhost:3000/?sso_uid=GV952) | Giáo viên bản xứ phụ trách `LH005`, `LH002`, `LH004`. Điểm danh trực tiếp tại `/classroom/LH005`. |
+| **`accountant`** | `ACC330` | Lê Thị Mỹ Dung | `lemydung49@gmail.com`<br>*(SĐT: `0983548212`)* | `LakEducation@2026` | [SSO ACC330](http://localhost:3000/?sso_uid=ACC330) | Kế toán tài chính, đối soát thu học phí, chi trả lương GV & Giáo vụ. |
+| **`student`** | `HV151` | Bui Truong Tuong Vi | `0786436333` *(SĐT phụ huynh)* | `LakEducation@2026` | [SSO HV151](http://localhost:3000/?sso_uid=HV151) | Học viên lớp `LH005`, xem bài tập, nộp bài, xem nhận xét và học phí cá nhân. |
+| **`student`** | `HV361` | Ta Dang Viet Hai | `0987866303` *(SĐT phụ huynh)* | `LakEducation@2026` | [SSO HV361](http://localhost:3000/?sso_uid=HV361) | Học viên lớp `LH005` & `LH002`. |
+
+
+---
+
 ## 🏛️ 5. Mô Hình Đào Tạo Nghiệp Vụ Chuẩn (Courses & Classes Hierarchy)
 
 1. **Cấu trúc Khóa học & Lớp học:**
@@ -143,6 +163,22 @@ Dự án **ThiEducation** vận hành theo mô hình **6 Vai Trò (Roles)** tác
 8. **Hệ Thống Thông Báo Realtime Theo Vai Trò & Cá Nhân (`NotificationService` + `targetKeys`):**
    - Mọi thông báo nghiệp vụ (đăng ký lớp, nhận dạy lớp, phê duyệt/từ chối) bắt buộc định danh chính xác `currentUser` đang đăng nhập (tuyệt đối cấm fallback `students[0]` / `teachers[0]`), gắn mảng `targetKeys` (`USER:<id>`, `ROLE:academic`, `ROLE:director`, `ROLE:admin`, `ALL`) và lắng nghe qua `onSnapshot` với `where('targetKeys', 'array-contains-any', queryKeys)` + `limit(20)`.
    - Riêng vai trò `admin` (`ADM001`) được hiển thị thanh kiểm toán (`Audit Trail`) trên từng thẻ thông báo trong `NotificationBellPopover`.
+
+---
+
+## 🎓 9. Quy Chuẩn Phân Quyền Xem Lịch Sử Đánh Giá Buổi Học & Khai Tử 100% Mock Data (`Class Evaluation History RBAC Matrix`)
+
+1. **Kết Nối 100% Cơ Sở Dữ Liệu Thực Tế Firestore (`session_evaluations`):**
+   - Toàn bộ dữ liệu hiển thị trong `EvaluationHistoryDrawer` bắt buộc đọc từ Cloud Firestore `session_evaluations` qua `ClassroomRealtimeService.getEvaluationHistory(classId)`.
+   - **TUYỆT ĐỐI CẤM** tạo hàm sinh dữ liệu mẫu (`buildHistoricalSessions`) giả lập Buổi 1, Buổi 2 để làm màu giao diện. Nếu lớp chưa có dữ liệu lịch sử, bắt buộc hiển thị `Empty State` chuẩn mực sư phạm.
+2. **Giáo Viên Bản Xứ (`teacher`) & Điều Phối Giáo Vụ (`academic`):**
+   - Được toàn quyền xem danh sách lịch sử tất cả các buổi học trước đó của lớp học (`EvaluationHistoryDrawer`).
+   - Được xem bảng tổng hợp tỷ lệ chuyên cần, mức sao đánh giá trung bình và toàn bộ nhận xét chi tiết của tất cả học viên trong lớp theo từng buổi học.
+3. **Học Viên & Phụ Huynh (`student`):**
+   - Được quyền xem dòng thời gian lịch sử đánh giá cá nhân qua các buổi học (`Personal Evaluation History`) để theo dõi sự tiến bộ.
+   - **NGHIÊM NGẶT BẢO MẬT QUYỀN RIÊNG TƯ (Zero Peer-Data Leakage):**
+     * Trong giao diện của Học viên, Drawer lịch sử **CHỈ ĐƯỢC PHÉP** hiển thị mức độ chuyên cần, số sao và lời nhận xét của Thầy/Cô dành riêng cho chính học viên đó (`record.studentId === currentStudentId`).
+     * Tuyệt đối ẩn toàn bộ danh sách, điểm số và nhận xét của các học viên khác trong cùng lớp học.
 
 
 

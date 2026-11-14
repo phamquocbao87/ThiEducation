@@ -33,7 +33,7 @@ export const ROLE_LABELS = {
     admin: 'IT Quản Trị Hệ Thống (System Admin)',
     director: 'Giám Đốc Điều Hành (Director)',
     academic: 'Giáo Vụ Đào Tạo (Academic)',
-    teacher: 'Giáo Viên Bản Xứ (Teacher)',
+    teacher: 'Giáo Viên (Teacher)',
     accountant: 'Kế Toán Tài Chính (Accountant)',
     student: 'Học Viên (Student)',
   },
@@ -41,7 +41,7 @@ export const ROLE_LABELS = {
     admin: 'IT System Administrator',
     director: 'Executive Director',
     academic: 'Academic Coordinator',
-    teacher: 'Native Foreign Teacher',
+    teacher: 'Teacher',
     accountant: 'Finance & Accountant',
     student: 'Student / Learner',
   },
@@ -155,6 +155,16 @@ export const TUITION_STATUS_CONFIG = {
   'Chưa hoàn thành': { color: 'red', labelEn: 'Unpaid / Overdue' },
   'Học bổng / Miễn giảm': { color: 'purple', labelEn: 'Scholarship / Waived' },
 };
+
+export const NATIONALITY_OPTIONS = [
+  { value: 'Việt Nam', labelVi: '🇻🇳 Việt Nam', labelEn: '🇻🇳 Vietnam', flag: '🇻🇳' },
+  { value: 'Philippines', labelVi: '🇵🇭 Philippines', labelEn: '🇵🇭 Philippines', flag: '🇵🇭' },
+  { value: 'Ấn Độ', labelVi: '🇮🇳 Ấn Độ', labelEn: '🇮🇳 India', flag: '🇮🇳' },
+  { value: 'Vương Quốc Anh', labelVi: '🇬🇧 Vương Quốc Anh', labelEn: '🇬🇧 United Kingdom', flag: '🇬🇧' },
+  { value: 'Hoa Kỳ', labelVi: '🇺🇸 Hoa Kỳ', labelEn: '🇺🇸 United States', flag: '🇺🇸' },
+  { value: 'Nhật Bản', labelVi: '🇯🇵 Nhật Bản', labelEn: '🇯🇵 Japan', flag: '🇯🇵' },
+];
+
 
 
 

@@ -5,11 +5,16 @@ import { LanguageProvider } from './core/context/LanguageContext';
 import { AppLayout } from './core/layout/AppLayout';
 import { MODULE_SLUGS, getModuleFromSlug, getSlugFromModule } from './shared/utils/slug';
 import { ProtectedRoute } from './core/router/ProtectedRoute';
+import { LocalDevelopmentBanner } from './core/layout/LocalDevelopmentBanner';
 
 // Independent Domain Modules
 import LandingModule from './modules/landing';
 import DashboardModule from './modules/dashboard';
+import ClassroomModule from './modules/classroom';
 import CoursesModule from './modules/courses';
+import StudentsModule from './modules/students';
+import MaterialsModule from './modules/materials';
+import ExercisesModule from './modules/exercises';
 import CurriculumModule from './modules/curriculum';
 import ContractsModule from './modules/contracts';
 import SchedulesModule from './modules/schedules';
@@ -47,6 +52,7 @@ function AppRoutes() {
     <ProtectedRoute>
       <AppLayout activeTab={activeTab} setActiveTab={handleTabChange}>
         <Routes>
+          <Route path="/classroom/:classId" element={<ProtectedRoute moduleKey="classroom"><ClassroomModule /></ProtectedRoute>} />
           <Route
             path={`/${MODULE_SLUGS.dashboard}`}
             element={
@@ -70,6 +76,26 @@ function AppRoutes() {
                 <CoursesModule />
               </ProtectedRoute>
             }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.students}`}
+            element={
+              <ProtectedRoute moduleKey="students">
+                <StudentsModule />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.materials}`}
+            element={
+              <ProtectedRoute moduleKey="materials">
+                <MaterialsModule />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.exercises}`}
+            element={<ProtectedRoute moduleKey="exercises"><ExercisesModule /></ProtectedRoute>}
           />
           <Route
             path={`/${MODULE_SLUGS.curriculum}`}
@@ -180,12 +206,15 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </AuthProvider>
-    </LanguageProvider>
+    <>
+      <LocalDevelopmentBanner />
+      <LanguageProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </AuthProvider>
+      </LanguageProvider>
+    </>
   );
 }

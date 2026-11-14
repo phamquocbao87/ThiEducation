@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tabs, Space, Typography } from 'antd';
+import { Tabs, Space, Typography, Spin } from 'antd';
 import { StarOutlined, FormOutlined } from '@ant-design/icons';
 import { useLanguage } from '../../core/context/LanguageContext';
 import { useAttendanceController } from './hooks/useAttendanceController';
@@ -15,6 +15,7 @@ export const AttendancePage = () => {
   const { t, translateLabel } = useLanguage();
   const {
     currentUser,
+    loading,
     scopedClasses,
     scopedAttendances,
     scopedHomeworks,
@@ -44,46 +45,48 @@ export const AttendancePage = () => {
         <Text type="secondary">{t('pages.attendanceSub')}</Text>
       </div>
 
-      <ActiveClassCards
-        classes={scopedClasses}
-        canCheckIn={permissions.canCheckIn}
-        canEvaluate={permissions.canEvaluate}
-        onCheckIn={handleCheckInClass}
-        onOpenEvaluate={handleOpenEvaluateModal}
-        onOpenStudentProfiles={handleOpenProfileDrawer}
-      />
+      <Spin spinning={loading} tip={t('common.loading', { defaultValue: 'Đang tải dữ liệu từ Cloud Firestore...' })}>
+        <ActiveClassCards
+          classes={scopedClasses}
+          canCheckIn={permissions.canCheckIn}
+          canEvaluate={permissions.canEvaluate}
+          onCheckIn={handleCheckInClass}
+          onOpenEvaluate={handleOpenEvaluateModal}
+          onOpenStudentProfiles={handleOpenProfileDrawer}
+        />
 
-      <Tabs
-        defaultActiveKey="evaluations"
-        items={[
-          {
-            key: 'evaluations',
-            label: (
-              <Space>
-                <StarOutlined />
-                <span>{`${t('pages.tabEvaluations')} (${scopedAttendances.length})`}</span>
-              </Space>
-            ),
-            children: <SessionEvaluationTable attendances={scopedAttendances} />,
-          },
-          {
-            key: 'homeworks',
-            label: (
-              <Space>
-                <FormOutlined />
-                <span>{`${t('pages.tabHomeworks')} (${scopedHomeworks.length})`}</span>
-              </Space>
-            ),
-            children: (
-              <HomeworkAssignmentPanel
-                homeworks={scopedHomeworks}
-                isStudent={permissions.isStudent}
-                onSubmitHomework={handleSubmitHomework}
-              />
-            ),
-          },
-        ]}
-      />
+        <Tabs
+          defaultActiveKey="evaluations"
+          items={[
+            {
+              key: 'evaluations',
+              label: (
+                <Space>
+                  <StarOutlined />
+                  <span>{`${t('pages.tabEvaluations')} (${scopedAttendances.length})`}</span>
+                </Space>
+              ),
+              children: <SessionEvaluationTable attendances={scopedAttendances} />,
+            },
+            {
+              key: 'homeworks',
+              label: (
+                <Space>
+                  <FormOutlined />
+                  <span>{`${t('pages.tabHomeworks')} (${scopedHomeworks.length})`}</span>
+                </Space>
+              ),
+              children: (
+                <HomeworkAssignmentPanel
+                  homeworks={scopedHomeworks}
+                  isStudent={permissions.isStudent}
+                  onSubmitHomework={handleSubmitHomework}
+                />
+              ),
+            },
+          ]}
+        />
+      </Spin>
 
       <SessionEvaluationModal
         open={isEvaluationModalOpen}

@@ -1,7 +1,7 @@
 {
   "name": "lakeducation",
   "private": true,
-  "version": "1.2.23",
+  "version": "1.2.106",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,9 +15,17 @@
     "preview:landing": "vite preview --outDir dist/landing --port 4174",
     "preview:erp": "vite preview --outDir dist/erp --port 4175",
     "emulate:hosting": "firebase emulators:start --only hosting",
+    "emulators": "JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH firebase emulators:start --project demo-lakeducation --only auth,firestore",
+    "dev:emulator": "npm run test:emulator:seed && VITE_USE_FIREBASE_EMULATOR=true vite --host 127.0.0.1",
+    "test:emulator:seed": "LAK_USE_FIREBASE_EMULATOR=true node scripts/seed_local_emulator.js",
+    "test:emulator:cleanup": "LAK_USE_FIREBASE_EMULATOR=true node scripts/cleanup_local_emulator.js",
+    "clone:doc": "node scripts/sync_target_doc.js",
     "deploy": "npm run build && firebase deploy --only hosting",
     "deploy:landing": "npm run build:landing && firebase deploy --only hosting:landing",
     "deploy:erp": "npm run build:erp && firebase deploy --only hosting:erp",
+    "deploy:dev": "npm run build && firebase deploy --project dev --only hosting",
+    "deploy:dev:landing": "npm run build:landing && firebase deploy --project dev --only hosting:landing",
+    "deploy:dev:erp": "npm run build:erp && firebase deploy --project dev --only hosting:erp",
     "lint": "oxlint"
   },
   "dependencies": {
@@ -45,9 +53,9 @@
     "vite": "^8.2.2"
   },
   "buildMeta": {
-    "date": "20261112",
-    "dailySeq": 2,
-    "buildId": "2026111202v",
-    "updatedAt": "2026-11-12T03:32:51.523Z"
+    "date": "20261114",
+    "dailySeq": 57,
+    "buildId": "2026111457v",
+    "updatedAt": "2026-11-14T14:12:35.631Z"
   }
 }

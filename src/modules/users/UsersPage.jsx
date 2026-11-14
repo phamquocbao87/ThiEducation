@@ -58,7 +58,7 @@ export const UsersPage = () => {
     setRoleFilter,
     statusFilter,
     setStatusFilter,
-    isFormModalOpen,
+    isFormModalOpen: _isFormModalOpen,
     setIsFormModalOpen,
     isEditModalOpen,
     selectedUserForEdit,

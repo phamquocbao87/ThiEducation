@@ -184,6 +184,85 @@ export const UserCardList = ({
                   </Tag>
                 )}
               </div>
+
+              {/* Thông tin Lớp học Học viên / Lớp phụ trách Giáo viên trên Mobile */}
+              {user.role === 'student' && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed #e2e8f0', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                    <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, minWidth: 54 }}>
+                      📚 {t('users.table.enrolledClasses') || (isEnglish ? 'Class:' : 'Lớp học:')}
+                    </Text>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
+                      {Array.isArray(user.enrolledClasses) && user.enrolledClasses.length > 0 ? (
+                        user.enrolledClasses.map((cls) => (
+                          <Tag
+                            key={cls.id}
+                            color="processing"
+                            style={{
+                              fontSize: 11,
+                              borderRadius: 4,
+                              margin: 0,
+                              border: '1px solid #91caff',
+                              background: '#e6f4ff',
+                              color: '#0958d9',
+                              fontWeight: 500,
+                              whiteSpace: 'normal',
+                              wordBreak: 'break-word',
+                              padding: '2px 6px',
+                            }}
+                          >
+                            <strong>{cls.id}:</strong> {cls.name}
+                          </Tag>
+                        ))
+                      ) : Array.isArray(user.enrolledClassIds) && user.enrolledClassIds.length > 0 ? (
+                        <Tag color="cyan" style={{ fontSize: 11, margin: 0, borderRadius: 4 }}>
+                          {user.enrolledClassIds.join(', ')}
+                        </Tag>
+                      ) : user.className ? (
+                        <Tag color="cyan" style={{ fontSize: 11, margin: 0, borderRadius: 4 }}>
+                          {user.className}
+                        </Tag>
+                      ) : (
+                        <Tag style={{ fontSize: 10, margin: 0, borderRadius: 4, color: '#64748b', background: '#f8fafc', border: '1px dashed #cbd5e1' }}>
+                          {t('users.table.notEnrolled') || (isEnglish ? 'Not Enrolled' : 'Chưa phân lớp')}
+                        </Tag>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Trạng thái học phí */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                    <Text type="secondary" style={{ fontSize: 11, minWidth: 54 }}>
+                      💰 {t('users.table.tuitionLabel') || (isEnglish ? 'Tuition:' : 'Học phí:')}
+                    </Text>
+                    <Tag
+                      color={user.tuitionStatus === 'Đã đóng đủ' ? 'green' : 'gold'}
+                      style={{ fontSize: 10, margin: 0, borderRadius: 4 }}
+                    >
+                      {user.tuitionStatus === 'Đã đóng đủ'
+                        ? (isEnglish ? 'Paid in Full' : 'Đã đóng đủ')
+                        : (isEnglish ? 'Pending' : (user.tuitionStatus || 'Chờ đối soát'))}
+                    </Tag>
+                  </div>
+                </div>
+              )}
+
+              {user.role === 'teacher' && Array.isArray(user.teachingClasses) && user.teachingClasses.length > 0 && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                    <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, minWidth: 54 }}>
+                      👨‍🏫 {t('users.table.teachingClasses') || (isEnglish ? 'Teaching:' : 'Phụ trách:')}
+                    </Text>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
+                      {user.teachingClasses.map((cls) => (
+                        <Tag key={cls.id} color="purple" style={{ fontSize: 11, borderRadius: 4, margin: 0, whiteSpace: 'normal', padding: '2px 6px' }}>
+                          <strong>{cls.id}:</strong> {cls.name}
+                        </Tag>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 3. Phần Chân Card: Quick Actions (Kích hoạt, Sửa, Xóa) */}
@@ -232,9 +311,7 @@ export const UserCardList = ({
                   icon={<EditOutlined />}
                   onClick={() => onEditUser(user)}
                   style={{ borderRadius: 6, fontSize: 12 }}
-                >
-                  {t('users.table.btnDetails')}
-                </Button>
+                />
 
                 {canDelete && (
                   <Button

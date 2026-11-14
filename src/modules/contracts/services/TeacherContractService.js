@@ -9,6 +9,7 @@ import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
  */
 export class TeacherContractService extends BaseModuleService {
   static COLLECTION_NAME = 'contracts';
+  static _allKnownContractIds = new Set();
 
   /**
    * Đọc danh sách hợp đồng trực tiếp từ Cloud Firestore
@@ -19,9 +20,11 @@ export class TeacherContractService extends BaseModuleService {
         const colRef = collection(db, this.COLLECTION_NAME);
         const snap = await getDocs(colRef);
         if (!snap.empty) {
-          const list = snap.docs
-            .map((d) => ({ ...d.data(), id: d.id }))
-            .filter((c) => !c.isDeleted && c.status !== 'Deleted');
+          const allDocs = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+          allDocs.forEach((c) => {
+            if (c.id) this._allKnownContractIds.add(String(c.id).toUpperCase());
+          });
+          const list = allDocs.filter((c) => !c.isDeleted && c.status !== 'Deleted');
           return list;
         }
       } catch (err) {
@@ -33,18 +36,54 @@ export class TeacherContractService extends BaseModuleService {
 
   /**
    * Lưu hoặc cập nhật hợp đồng vào Cloud Firestore
+   * Đảm bảo ghi rõ isDeleted: false & status: 'Active' để { merge: true } không giữ lại cờ xóa mềm cũ
    */
   static async saveContract(contractData) {
     if (IS_FIREBASE_ENABLED && db && contractData?.id) {
       try {
         const docRef = doc(db, this.COLLECTION_NAME, contractData.id);
-        await setDoc(docRef, contractData, { merge: true });
+        const sanitizedPayload = {
+          ...contractData,
+          isDeleted: Boolean(contractData.isDeleted),
+          status: contractData.isDeleted ? 'Deleted' : contractData.status || 'Active',
+          deletedAt: contractData.isDeleted ? contractData.deletedAt || new Date().toISOString() : null,
+        };
+        await setDoc(docRef, sanitizedPayload, { merge: true });
       } catch (err) {
         console.error('[TeacherContractService] Lỗi lưu hợp đồng vào Firestore:', err.message);
         throw err;
       }
     }
     return contractData;
+  }
+
+  /**
+   * Sinh mã Hợp đồng mới không bao giờ trùng với các hợp đồng hiện có hoặc đã xóa mềm
+   */
+  static generateNextContractId(contracts = []) {
+    const safeList = Array.isArray(contracts) ? contracts : [];
+    const existingIds = new Set([
+      ...Array.from(this._allKnownContractIds),
+      ...safeList.map((c) => String(c.id || '').toUpperCase()),
+    ]);
+    let maxNum = existingIds.size;
+    for (const idStr of existingIds) {
+      const match = String(idStr || '').match(/^HD-\d{4}-(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!Number.isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+    let candidateNum = maxNum + 1;
+    let candidateId = `HD-2026-${String(candidateNum).padStart(3, '0')}`;
+    while (existingIds.has(candidateId.toUpperCase())) {
+      candidateNum += 1;
+      candidateId = `HD-2026-${String(candidateNum).padStart(3, '0')}`;
+    }
+    this._allKnownContractIds.add(candidateId.toUpperCase());
+    return candidateId;
   }
 
   /**
@@ -78,8 +117,7 @@ export class TeacherContractService extends BaseModuleService {
   }
 
   static createContract(contracts, formValues, selectedTeacher = null) {
-    const nextCount = contracts.length + 1;
-    const newId = formValues.id?.trim() || `HD-2026-${String(nextCount).padStart(3, '0')}`;
+    const newId = formValues.id?.trim() || this.generateNextContractId(contracts);
     const newContract = {
       id: newId,
       teacherId: selectedTeacher?.id || selectedTeacher?.code || formValues.teacherId || '',
@@ -91,6 +129,8 @@ export class TeacherContractService extends BaseModuleService {
       startDate: formValues.startDate || '2026-09-01',
       endDate: formValues.endDate || '2027-08-31',
       status: formValues.status || 'Active',
+      isDeleted: false,
+      deletedAt: null,
       createdAt: new Date().toISOString(),
     };
     return [newContract, ...contracts];

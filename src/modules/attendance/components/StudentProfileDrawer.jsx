@@ -38,7 +38,7 @@ export const StudentProfileDrawer = ({
               title={
                 <Space>
                   <UserOutlined style={{ color: '#1890ff' }} />
-                  <Text strong>{st.name} ({st.englishName})</Text>
+                  <Text strong>{st.englishName && st.englishName !== st.name ? `${st.englishName} (${st.name})` : (st.englishName || st.name)}</Text>
                   <Tag color="blue">{st.id}</Tag>
                   <Tag color="purple">{st.level}</Tag>
                 </Space>

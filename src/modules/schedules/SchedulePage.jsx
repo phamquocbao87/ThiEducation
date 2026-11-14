@@ -35,12 +35,12 @@ export const SchedulePage = () => {
         <div>
           <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
             <VideoCameraOutlined style={{ marginRight: 8, color: '#722ed1' }} />
-            {isEnglish ? 'Live Online Zoom Schedules' : 'Thời Khóa Biểu & Phòng Zoom Trực Tuyến'}
+            {isEnglish ? 'Live Online Class Schedules' : 'Thời Khóa Biểu Lớp Học Trực Tuyến'}
           </Title>
           <Text type="secondary">
             {isEnglish
-              ? 'Real-time schedule of live classes, teacher check-in status, and 1-tap Zoom meeting access.'
-              : 'Theo dõi ca dạy trực tuyến thời gian thực, trạng thái check-in của giáo viên và truy cập phòng Zoom 1-chạm.'}
+              ? 'Real-time schedule of live classes, teacher check-in status, and 1-tap classroom access.'
+              : 'Theo dõi ca dạy trực tuyến thời gian thực, trạng thái check-in của giáo viên và truy cập phòng học 1-chạm.'}
           </Text>
         </div>
 

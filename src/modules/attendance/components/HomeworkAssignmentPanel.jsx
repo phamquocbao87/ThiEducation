@@ -1,5 +1,5 @@
 import React from 'react';
-import { Table, Tag, Button, Typography } from 'antd';
+import { Table, Tag, Button, Typography, Empty } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import { HOMEWORK_STATUS, HOMEWORK_STATUS_LABELS } from '../models/attendance.model';
 
@@ -48,6 +48,14 @@ export const HomeworkAssignmentPanel = ({ homeworks, isStudent, onSubmitHomework
       rowKey="id"
       scroll={{ x: 850 }}
       pagination={{ pageSize: 5 }}
+      locale={{
+        emptyText: (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="Chưa có bài tập nào được giao. Khi giáo viên giao bài, bài tập sẽ hiển thị tại đây."
+          />
+        ),
+      }}
     />
   );
 };

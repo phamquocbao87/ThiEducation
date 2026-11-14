@@ -1,9 +1,57 @@
 import { BaseModuleService } from '../../../shared/services/BaseModuleService';
+import { db, IS_FIREBASE_ENABLED } from '../../../core/services/firebase';
+import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 
 /**
  * Sub-Feature Class 3 (Attendance Module): Session Attendance & 4-Skill English Evaluation
+ * Backed 100% by Cloud Firestore (`session_evaluations` collection in `lakeducationdb`).
  */
 export class SessionEvaluationService extends BaseModuleService {
+  static COLLECTION_NAME = 'session_evaluations';
+
+  /**
+   * Đọc danh sách điểm danh và đánh giá từ Cloud Firestore
+   */
+  static async getAllEvaluations() {
+    if (IS_FIREBASE_ENABLED && db) {
+      try {
+        const colRef = collection(db, this.COLLECTION_NAME);
+        const snap = await getDocs(colRef);
+        if (!snap.empty) {
+          const list = snap.docs
+            .map((d) => ({ ...d.data(), id: d.id }))
+            .filter((a) => !a.isDeleted);
+          // Sắp xếp ngày mới nhất lên đầu
+          return list.sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
+        }
+      } catch (err) {
+        console.warn('[SessionEvaluationService] Lỗi đọc Firestore evaluations:', err.message);
+      }
+    }
+    return [];
+  }
+
+  /**
+   * Lưu bản ghi điểm danh và đánh giá vào Cloud Firestore
+   */
+  static async saveEvaluation(evaluationData) {
+    if (IS_FIREBASE_ENABLED && db && evaluationData?.id) {
+      try {
+        const docRef = doc(db, this.COLLECTION_NAME, evaluationData.id);
+        const cleanPayload = {
+          ...evaluationData,
+          updatedAt: new Date().toISOString(),
+        };
+        await setDoc(docRef, cleanPayload, { merge: true });
+        return cleanPayload;
+      } catch (err) {
+        console.error('[SessionEvaluationService] Lỗi lưu evaluation vào Firestore:', err.message);
+        throw err;
+      }
+    }
+    return evaluationData;
+  }
+
   static getScopedAttendances(attendances, currentUser) {
     return this.scopeByRole(attendances, currentUser, {
       teacherIdField: 'teacherId',
@@ -12,19 +60,21 @@ export class SessionEvaluationService extends BaseModuleService {
     });
   }
 
-  static createSessionEvaluation(attendances, selectedClass, studentRoster, formValues, currentUser) {
-    const presentCount = studentRoster.filter((s) => s.present).length;
-    const absentCount = studentRoster.length - presentCount;
+  static async createSessionEvaluation(attendances, selectedClass, studentRoster, formValues, currentUser) {
+    const presentCount = (studentRoster || []).filter((s) => s.present).length;
+    const absentCount = (studentRoster || []).length - presentCount;
+    const dateStr = formValues.date || new Date().toISOString().split('T')[0];
+    const generatedId = `AT-${Date.now().toString().slice(-6)}`;
 
     const newRecord = {
-      id: this.generateId('AT-0', attendances),
-      date: new Date().toISOString().split('T')[0],
+      id: generatedId,
+      date: dateStr,
       classId: selectedClass.id,
       className: selectedClass.name,
-      teacherId: currentUser.id,
+      teacherId: currentUser.id || currentUser.code,
       teacherName: currentUser.name,
-      totalStudents: selectedClass.totalStudents,
-      presentCount: presentCount + Math.max(0, selectedClass.totalStudents - studentRoster.length),
+      totalStudents: Array.isArray(selectedClass.studentIds) ? selectedClass.studentIds.length : (selectedClass.totalStudents || studentRoster.length),
+      presentCount,
       absentCount,
       pronunciationScore: formValues.pronunciationScore || 5,
       spellingScore: formValues.spellingScore || 5,
@@ -32,11 +82,17 @@ export class SessionEvaluationService extends BaseModuleService {
       listeningScore: formValues.listeningScore || 5,
       teacherFeedback:
         formValues.teacherFeedback ||
-        'Students participated actively in Zoom session and completed pronunciation drills.',
-      recordingUrl: formValues.recordingUrl || selectedClass.recordingUrl,
+        'Students actively participated in the online lesson and completed speaking exercises.',
+      recordingUrl: formValues.recordingUrl || selectedClass.recordingUrl || '',
+      roster: (studentRoster || []).map((s) => ({
+        id: s.id,
+        name: s.name,
+        present: Boolean(s.present),
+      })),
+      createdAt: new Date().toISOString(),
     };
 
+    await this.saveEvaluation(newRecord);
     return [newRecord, ...attendances];
   }
 }
-

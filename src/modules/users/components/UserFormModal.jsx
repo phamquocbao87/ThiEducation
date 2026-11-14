@@ -41,9 +41,10 @@ export const UserFormModal = ({
   const isGmail = isGmailAddress(emailValue);
 
   // Lọc danh sách Role được phép tạo dựa theo quyền của người đăng nhập (memoized)
+  const currentRole = currentUser?.role || '';
   const allowedRoles = useMemo(
-    () => PermissionService.getAllowedCreatableRoles(currentUser?.role || ''),
-    [currentUser?.role]
+    () => PermissionService.getAllowedCreatableRoles(currentRole),
+    [currentRole]
   );
 
   useEffect(() => {

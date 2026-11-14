@@ -18,6 +18,7 @@ import {
   InputNumber,
   Breadcrumb,
   DatePicker,
+  Upload,
 } from 'antd';
 import {
   UserOutlined,
@@ -40,18 +41,21 @@ import {
   ClockCircleOutlined,
   WarningOutlined,
   TrophyOutlined,
+  PaperClipOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../core/context/AuthContext';
 import { useLanguage } from '../../core/context/LanguageContext';
 import { PermissionService } from '../../core/services/PermissionService';
 import { UserService } from './services/UserService';
 import { ClassService } from '../courses/services/ClassService';
+import { DriveStorageService } from '../../core/services/DriveStorageService';
 import { findScheduleConflictsInClassList } from '../../shared/utils/scheduleUtils';
 import {
   USER_ROLES,
   USER_STATUS,
   ROLE_LABELS,
   ROLE_COLORS,
+  NATIONALITY_OPTIONS,
   isGmailAddress,
   resolveAuthProvidersByEmail,
   toEnglishName,
@@ -71,6 +75,18 @@ export const UserRegistrationPage = () => {
   const { isEnglish } = useLanguage();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const [certificateFile, setCertificateFile] = useState(null);
+
+  const handleCertificateFileSelect = (file) => {
+    setCertificateFile(file);
+    if (file) {
+      const curCert = form.getFieldValue('certificate');
+      if (!curCert || curCert === 'TESOL / CELTA') {
+        const baseName = file.name.replace(/\.[^/.]+$/, '');
+        form.setFieldsValue({ certificate: baseName });
+      }
+    }
+  };
 
   // Phân quyền tạo tài khoản (memoized để tránh tạo array mới mỗi lần render)
   const allowedRoles = useMemo(
@@ -140,6 +156,21 @@ export const UserRegistrationPage = () => {
       }
     }
   }, [watchedPhone, isTargetStudent, form]);
+
+  // Tự động chọn mặc định Quốc tịch Philippines khi chọn Giáo viên, hoặc Việt Nam cho Học viên
+  useEffect(() => {
+    if (watchedRole === USER_ROLES.TEACHER) {
+      const cur = form.getFieldValue('nationality');
+      if (!cur || cur === 'Việt Nam' || cur === 'Vietnam') {
+        form.setFieldsValue({ nationality: 'Philippines' });
+      }
+    } else if (watchedRole === USER_ROLES.STUDENT) {
+      const cur = form.getFieldValue('nationality');
+      if (!cur || cur === 'Philippines') {
+        form.setFieldsValue({ nationality: 'Việt Nam' });
+      }
+    }
+  }, [watchedRole, form]);
 
   // Tự động nhận diện Cụm gia đình (anh/chị/em ruột) qua SĐT chính & SĐT phụ
   const [detectedSiblings, setDetectedSiblings] = useState([]);
@@ -213,7 +244,7 @@ export const UserRegistrationPage = () => {
     gender: 'Nam',
     city: 'TP. Hồ Chí Minh',
     enrolledClassIds: [],
-    nationality: 'Việt Nam',
+    nationality: defaultRole === USER_ROLES.TEACHER ? 'Philippines' : 'Việt Nam',
     certificate: 'TESOL / CELTA',
     hourlyRate: 450000,
     department: 'Phòng Đào Tạo',
@@ -298,6 +329,21 @@ export const UserRegistrationPage = () => {
         ? (derivedLevels.join(', ') || 'Wonders ELA')
         : (values.level || 'G1');
 
+      let certificateUrl = '';
+      if (certificateFile) {
+        try {
+          message.loading({ content: isEnglish ? 'Uploading teaching certificate...' : 'Đang tải tệp chứng chỉ sư phạm...', key: 'uploadCert' });
+          const uploadRes = await DriveStorageService.uploadFile(certificateFile, {
+            folderPath: 'teacher_certificates',
+            userId: currentUser?.id || currentUser?.code,
+          });
+          certificateUrl = uploadRes?.url || uploadRes?.downloadUrl || uploadRes?.fileUrl || uploadRes?.cdnUrl || '';
+          message.success({ content: isEnglish ? 'Teaching certificate uploaded successfully' : 'Tải chứng chỉ sư phạm thành công', key: 'uploadCert' });
+        } catch (uploadErr) {
+          console.warn('Certificate upload failed, saving filename instead:', uploadErr);
+        }
+      }
+
       const payload = {
         name: values.name.trim(),
         englishName: cleanEnglish,
@@ -326,8 +372,10 @@ export const UserRegistrationPage = () => {
         parentPhone: values.parentPhone || cleanPhone,
         tuitionStatus: targetRole === USER_ROLES.STUDENT ? 'Chờ đối soát' : (values.tuitionStatus || 'Đã đóng đủ'),
         academicNotes: '',
-        nationality: values.nationality || 'Việt Nam',
-        certificate: values.certificate || 'TESOL / CELTA',
+        nationality: values.nationality || (targetRole === USER_ROLES.TEACHER ? 'Philippines' : 'Việt Nam'),
+        certificate: values.certificate || (certificateFile ? certificateFile.name : 'TESOL / CELTA'),
+        certificateUrl: certificateUrl,
+        certificateFileName: certificateFile ? certificateFile.name : '',
         hourlyRate: values.hourlyRate ? Number(values.hourlyRate) : 450000,
         assignedClasses: values.assignedClasses || '',
         bio: values.bio || '',
@@ -355,8 +403,8 @@ export const UserRegistrationPage = () => {
       <div style={{ marginBottom: 16 }}>
         <Breadcrumb
           items={[
-            { title: <a onClick={() => navigate('/user-management')}>Quản Trị Người Dùng</a> },
-            { title: 'Tạo & Đăng Ký Tài Khoản Mới' },
+            { title: <a onClick={() => navigate('/user-management')}>{isEnglish ? 'User Management' : 'Quản Trị Người Dùng'}</a> },
+            { title: isEnglish ? 'Register & Issue New Account' : 'Tạo & Đăng Ký Tài Khoản Mới' },
           ]}
           style={{ marginBottom: 12 }}
         />
@@ -376,15 +424,17 @@ export const UserRegistrationPage = () => {
               onClick={() => navigate('/user-management')}
               style={{ borderRadius: 8 }}
             >
-              Quay Lại Danh Sách
+              {isEnglish ? 'Back to Directory' : 'Quay Lại Danh Sách'}
             </Button>
             <div>
               <Title level={3} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <UserAddOutlined style={{ color: '#1890ff' }} />
-                <span>Tạo & Đăng Ký Tài Khoản Mới</span>
+                <span>{isEnglish ? 'Register & Issue New Account' : 'Tạo & Đăng Ký Tài Khoản Mới'}</span>
               </Title>
               <Text type="secondary" style={{ fontSize: 13 }}>
-                Đăng ký tài khoản và phân quyền truy cập hệ thống LAK EDUCATION theo 6 Role RBAC
+                {isEnglish
+                  ? 'Register accounts and configure system access permissions across 6 RBAC roles'
+                  : 'Đăng ký tài khoản và phân quyền truy cập hệ thống LAK EDUCATION theo 6 Role RBAC'}
               </Text>
             </div>
           </Space>
@@ -394,7 +444,7 @@ export const UserRegistrationPage = () => {
               onClick={() => navigate('/user-management')}
               style={{ borderRadius: 8 }}
             >
-              Hủy Bỏ
+              {isEnglish ? 'Cancel' : 'Hủy Bỏ'}
             </Button>
             <Button
               type="primary"
@@ -409,7 +459,7 @@ export const UserRegistrationPage = () => {
                 fontWeight: 600,
               }}
             >
-              Tạo & Kích Hoạt Tài Khoản
+              {isEnglish ? 'Create & Activate Account' : 'Tạo & Kích Hoạt Tài Khoản'}
             </Button>
           </Space>
         </div>
@@ -428,8 +478,12 @@ export const UserRegistrationPage = () => {
         }}
         message={
           currentUser?.role === 'admin'
-            ? 'Đặc quyền IT Admin: Bạn có toàn quyền cấp tài khoản cho mọi vị trí trong hệ thống (Giám đốc, Admin, Giáo vụ, Giáo viên, Kế toán, Học viên).'
-            : 'Đặc quyền Ban Điều Hành / Giáo Vụ: Bạn được phép cấp tài khoản cho Giáo vụ, Giáo viên và Học viên mới.'
+            ? (isEnglish
+                ? 'IT Administrator Privilege: You have full authority to issue accounts for all roles (Director, Admin, Academic, Teacher, Accountant, Student).'
+                : 'Đặc quyền IT Admin: Bạn có toàn quyền cấp tài khoản cho mọi vị trí trong hệ thống (Giám đốc, Admin, Giáo vụ, Giáo viên, Kế toán, Học viên).')
+            : (isEnglish
+                ? 'Academic Leadership Privilege: You are authorized to issue accounts for Academic staff, Teachers, and new Students.'
+                : 'Đặc quyền Ban Điều Hành / Giáo Vụ: Bạn được phép cấp tài khoản cho Giáo vụ, Giáo viên và Học viên mới.')
         }
       />
 
@@ -439,7 +493,9 @@ export const UserRegistrationPage = () => {
           title={
             <Space>
               <SafetyCertificateOutlined style={{ color: '#1890ff' }} />
-              <span style={{ fontWeight: 700 }}>1. Thông Tin Tài Khoản & Phân Quyền (Bắt Buộc)</span>
+              <span style={{ fontWeight: 700 }}>
+                {isEnglish ? '1. Account Credentials & Role Permissions (Required)' : '1. Thông Tin Tài Khoản & Phân Quyền (Bắt Buộc)'}
+              </span>
             </Space>
           }
           bordered={false}
@@ -454,12 +510,12 @@ export const UserRegistrationPage = () => {
             <Col xs={24} md={12}>
               <Form.Item
                 name="role"
-                label={<Text strong>Vai Trò Phân Quyền (Role RBAC)</Text>}
-                rules={[{ required: true, message: 'Vui lòng chọn vai trò phân quyền' }]}
+                label={<Text strong>{isEnglish ? 'Role-based Access Control (Role RBAC)' : 'Vai Trò Phân Quyền (Role RBAC)'}</Text>}
+                rules={[{ required: true, message: isEnglish ? 'Please select a system role' : 'Vui lòng chọn vai trò phân quyền' }]}
                 style={{ marginBottom: 14 }}
               >
                 <Select
-                  placeholder="Chọn vai trò"
+                  placeholder={isEnglish ? 'Select Role' : 'Chọn vai trò'}
                   style={{ width: '100%', height: 40, borderRadius: 8 }}
                   options={allowedRoles.map((role) => ({
                     value: role,
@@ -468,7 +524,7 @@ export const UserRegistrationPage = () => {
                         <Tag color={ROLE_COLORS[role]} style={{ margin: 0, fontSize: 11, fontWeight: 700 }}>
                           {role.toUpperCase()}
                         </Tag>
-                        <span>{ROLE_LABELS.vi[role] || role}</span>
+                        <span>{ROLE_LABELS[isEnglish ? 'en' : 'vi']?.[role] || role}</span>
                       </div>
                     ),
                   }))}
@@ -479,13 +535,13 @@ export const UserRegistrationPage = () => {
             <Col xs={24} md={12}>
               <Form.Item
                 name="name"
-                label={<Text strong>Họ và Tên Đầy Đủ</Text>}
-                rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}
+                label={<Text strong>{isEnglish ? 'Full Name' : 'Họ và Tên Đầy Đủ'}</Text>}
+                rules={[{ required: true, message: isEnglish ? 'Please enter full name' : 'Vui lòng nhập họ và tên' }]}
                 style={{ marginBottom: 14 }}
               >
                 <Input
                   prefix={<UserOutlined style={{ color: '#94a3b8' }} />}
-                  placeholder="VD: Nguyễn Văn An"
+                  placeholder={isEnglish ? 'e.g. John Doe, Nguyen Van An' : 'VD: Nguyễn Văn An'}
                   style={{ width: '100%', height: 40, borderRadius: 8 }}
                   onChange={(e) => {
                     const val = e.target.value;
@@ -504,13 +560,13 @@ export const UserRegistrationPage = () => {
             <Col xs={24} md={12}>
               <Form.Item
                 name="englishName"
-                label={<Text strong>Tên Tiếng Anh (English Name)</Text>}
-                rules={[{ required: true, message: 'Vui lòng nhập tên tiếng Anh' }]}
+                label={<Text strong>{isEnglish ? 'English Name (Auto-generated)' : 'Tên Tiếng Anh (English Name)'}</Text>}
+                rules={[{ required: true, message: isEnglish ? 'Please enter English name' : 'Vui lòng nhập tên tiếng Anh' }]}
                 style={{ marginBottom: 14 }}
               >
                 <Input
                   prefix={<GlobalOutlined style={{ color: '#0284c7' }} />}
-                  placeholder="VD: Bao Thu, Leo, Cowboy, Anna..."
+                  placeholder={isEnglish ? 'e.g. Liam, Leo, Cowboy, Anna...' : 'VD: Bao Thu, Leo, Cowboy, Anna...'}
                   style={{ width: '100%', height: 40, borderRadius: 8 }}
                 />
               </Form.Item>
@@ -519,10 +575,10 @@ export const UserRegistrationPage = () => {
             <Col xs={24} md={12}>
               <Form.Item
                 name="phoneNumber"
-                label={<Text strong>Số Điện Thoại 1 (Chính - Bắt Buộc)</Text>}
+                label={<Text strong>{isEnglish ? 'Primary Phone 1 (Required - Student Login)' : 'Số Điện Thoại 1 (Chính - Bắt Buộc)'}</Text>}
                 rules={[
-                  { required: true, message: 'Vui lòng nhập số điện thoại chính' },
-                  { pattern: /^[0-9+\s\-().]{8,15}$/, message: 'Số điện thoại không hợp lệ' },
+                  { required: true, message: isEnglish ? 'Please enter primary phone number' : 'Vui lòng nhập số điện thoại chính' },
+                  { pattern: /^[0-9+\s\-().]{8,15}$/, message: isEnglish ? 'Invalid phone number format' : 'Số điện thoại không hợp lệ' },
                 ]}
                 style={{ marginBottom: 14 }}
               >
@@ -540,13 +596,13 @@ export const UserRegistrationPage = () => {
             <Col xs={24} md={12}>
               <Form.Item
                 name="secondaryPhone"
-                label={<Text strong>Số Điện Thoại 2 (Phụ - Tùy Chọn, Không Dùng Đăng Nhập)</Text>}
+                label={<Text strong>{isEnglish ? 'Secondary Phone 2 (Optional - Backup)' : 'Số Điện Thoại 2 (Phụ - Tùy Chọn, Không Dùng Đăng Nhập)'}</Text>}
                 rules={[]}
                 style={{ marginBottom: 14 }}
               >
                 <Input
                   prefix={<PhoneOutlined style={{ color: '#16a34a' }} />}
-                  placeholder="VD: 0989 557 230 (SĐT Bố/Mẹ 2)"
+                  placeholder={isEnglish ? 'e.g. 0989 557 230 (Parent 2 / Backup)' : 'VD: 0989 557 230 (SĐT Bố/Mẹ 2)'}
                   style={{ width: '100%', height: 40, borderRadius: 8 }}
                 />
               </Form.Item>
@@ -558,17 +614,19 @@ export const UserRegistrationPage = () => {
                 dependencies={['role']}
                 label={
                   <Text strong>
-                    {isTargetStudent ? 'Địa Chỉ Email (Không bắt buộc)' : 'Địa Chỉ Email Đăng Nhập (Bắt Buộc)'}
+                    {isTargetStudent
+                      ? (isEnglish ? 'Email Address (Optional for Students)' : 'Địa Chỉ Email (Không bắt buộc)')
+                      : (isEnglish ? 'Login Email Address (Required)' : 'Địa Chỉ Email Đăng Nhập (Bắt Buộc)')}
                   </Text>
                 }
                 rules={[
-                  ...(isTargetStudent ? [] : [{ required: true, message: 'Vui lòng nhập địa chỉ email' }]),
+                  ...(isTargetStudent ? [] : [{ required: true, message: isEnglish ? 'Please enter email address' : 'Vui lòng nhập địa chỉ email' }]),
                   {
                     validator: (_, value) => {
                       if (!value || !value.trim()) return Promise.resolve();
                       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                       if (!emailRegex.test(value.trim())) {
-                        return Promise.reject(new Error('Email không hợp lệ'));
+                        return Promise.reject(new Error(isEnglish ? 'Invalid email address format' : 'Email không hợp lệ'));
                       }
                       return Promise.resolve();
                     },
@@ -578,28 +636,36 @@ export const UserRegistrationPage = () => {
                 extra={
                   isTargetStudent ? (
                     <span style={{ color: '#16a34a', fontSize: 12 }}>
-                      💡 Học viên có thể để trống Email nếu đã có Số điện thoại (dùng SĐT + Mật khẩu đăng nhập).
+                      {isEnglish
+                        ? '💡 Students can leave Email blank if phone number is provided (Login with Phone + Password).'
+                        : '💡 Học viên có thể để trống Email nếu đã có Số điện thoại (dùng SĐT + Mật khẩu đăng nhập).'}
                     </span>
                   ) : watchedEmail ? (
                     isGmail ? (
                       <span style={{ color: '#d97706', fontSize: 12 }}>
-                        ✨ <b>Gmail:</b> Đăng nhập Google hoặc Mật khẩu
+                        ✨ <b>Gmail:</b> {isEnglish ? 'Sign in with Google OAuth or Password' : 'Đăng nhập Google hoặc Mật khẩu'}
                       </span>
                     ) : (
                       <span style={{ color: '#475569', fontSize: 12 }}>
-                        🔒 <b>Email công vụ:</b> Đăng nhập bằng Mật khẩu
+                        🔒 <b>{isEnglish ? 'Work Email:' : 'Email công vụ:'}</b> {isEnglish ? 'Sign in with Password' : 'Đăng nhập bằng Mật khẩu'}
                       </span>
                     )
                   ) : (
                     <span style={{ color: '#94a3b8', fontSize: 12 }}>
-                      Gmail: Google hoặc Mật khẩu • Email khác: Mật khẩu
+                      {isEnglish
+                        ? 'Gmail: Google or Password • Work Email: Password only'
+                        : 'Gmail: Google hoặc Mật khẩu • Email khác: Mật khẩu'}
                     </span>
                   )
                 }
               >
                 <Input
                   prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
-                  placeholder={isTargetStudent ? 'hocvien@gmail.com (hoặc để trống)' : 'email@gmail.com hoặc staff@lakeducation.com'}
+                  placeholder={
+                    isTargetStudent
+                      ? (isEnglish ? 'student@gmail.com (or leave blank)' : 'hocvien@gmail.com (hoặc để trống)')
+                      : (isEnglish ? 'email@gmail.com or staff@lakeducation.com' : 'email@gmail.com hoặc staff@lakeducation.com')
+                  }
                   style={{ width: '100%', height: 40, borderRadius: 8 }}
                 />
               </Form.Item>
@@ -620,11 +686,12 @@ export const UserRegistrationPage = () => {
               message={
                 <div>
                   <Text strong style={{ color: '#cf1322', fontSize: 13 }}>
-                    ⛔ CẢNH BÁO BẢO MẬT (CHẶN ĐỨNG LEO THANG ĐẶC QUYỀN):
+                    {isEnglish ? '⛔ SECURITY ALERT (PRIVILEGE ESCALATION BLOCKED):' : '⛔ CẢNH BÁO BẢO MẬT (CHẶN ĐỨNG LEO THANG ĐẶC QUYỀN):'}
                   </Text>
                   <div style={{ marginTop: 4, color: '#434343', fontSize: 13, lineHeight: '1.5' }}>
-                    Số điện thoại này thuộc về Cán bộ/Lãnh đạo <b>{detectedStaffOwner.name}</b> ({detectedStaffOwner.roleLabel || detectedStaffOwner.role}).
-                    Giáo vụ không có quyền sử dụng số điện thoại của Cán bộ để tạo tài khoản mới. Vui lòng sử dụng số điện thoại chính thức của phụ huynh học viên.
+                    {isEnglish
+                      ? `This phone number belongs to staff/executive ${detectedStaffOwner.name} (${detectedStaffOwner.roleLabel || detectedStaffOwner.role}). Academic coordinators are not allowed to use staff phone numbers to register accounts.`
+                      : `Số điện thoại này thuộc về Cán bộ/Lãnh đạo ${detectedStaffOwner.name} (${detectedStaffOwner.roleLabel || detectedStaffOwner.role}). Giáo vụ không có quyền sử dụng số điện thoại của Cán bộ để tạo tài khoản mới.`}
                   </div>
                 </div>
               }
@@ -646,7 +713,7 @@ export const UserRegistrationPage = () => {
               message={
                 <div>
                   <Text strong style={{ color: '#16a34a' }}>
-                    Phát hiện Cụm Gia Đình có anh/chị/em:
+                    {isEnglish ? 'Detected Family Siblings Cluster:' : 'Phát hiện Cụm Gia Đình có anh/chị/em:'}
                   </Text>
                   <div style={{ marginTop: 4 }}>
                     {detectedSiblings.map((s) => (
@@ -655,7 +722,9 @@ export const UserRegistrationPage = () => {
                       </Tag>
                     ))}
                     <span style={{ fontSize: 12, color: '#475569', marginLeft: 6 }}>
-                      Tài khoản mới sẽ tự động được liên kết vào Cụm Gia Đình và dùng chung SĐT & Mật khẩu phụ huynh.
+                      {isEnglish
+                        ? 'New account will automatically be linked to this Family Cluster and share parent login credentials.'
+                        : 'Tài khoản mới sẽ tự động được liên kết vào Cụm Gia Đình và dùng chung SĐT & Mật khẩu phụ huynh.'}
                     </span>
                   </div>
                 </div>
@@ -670,21 +739,21 @@ export const UserRegistrationPage = () => {
                 name="password"
                 label={
                   <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                    <Text strong>Mật Khẩu Khởi Tạo</Text>
+                    <Text strong>{isEnglish ? 'Initial Password' : 'Mật Khẩu Khởi Tạo'}</Text>
                     <a
                       onClick={handleGeneratePassword}
                       style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
                     >
-                      <ReloadOutlined /> Sinh ngẫu nhiên
+                      <ReloadOutlined /> {isEnglish ? 'Generate random' : 'Sinh ngẫu nhiên'}
                     </a>
                   </div>
                 }
                 rules={[
-                  { required: true, message: 'Vui lòng nhập mật khẩu khởi tạo' },
-                  { min: 6, message: 'Mật khẩu tối thiểu 6 ký tự' },
+                  { required: true, message: isEnglish ? 'Please enter initial password' : 'Vui lòng nhập mật khẩu khởi tạo' },
+                  { min: 6, message: isEnglish ? 'Password must be at least 6 characters' : 'Mật khẩu tối thiểu 6 ký tự' },
                 ]}
                 style={{ marginBottom: 14 }}
-                extra={<span style={{ color: '#94a3b8', fontSize: 12 }}>Mặc định khuyến nghị: LakEducation@2026</span>}
+                extra={<span style={{ color: '#94a3b8', fontSize: 12 }}>{isEnglish ? 'Default recommendation: LakEducation@2026' : 'Mặc định khuyến nghị: LakEducation@2026'}</span>}
               >
                 <Input.Password
                   prefix={<LockOutlined style={{ color: '#94a3b8' }} />}
@@ -697,13 +766,15 @@ export const UserRegistrationPage = () => {
             <Col xs={24} md={12}>
               <Form.Item
                 name="status"
-                label={<Text strong>Trạng Thái Tài Khoản</Text>}
+                label={<Text strong>{isEnglish ? 'Account Status' : 'Trạng Thái Tài Khoản'}</Text>}
                 valuePropName="checked"
                 style={{ marginBottom: 14 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 4 }}>
                   <Switch defaultChecked />
-                  <Text type="secondary" style={{ fontSize: 13 }}>Kích hoạt ngay sau khi tạo</Text>
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    {isEnglish ? 'Activate immediately upon creation' : 'Kích hoạt ngay sau khi tạo'}
+                  </Text>
                 </div>
               </Form.Item>
             </Col>
@@ -715,7 +786,9 @@ export const UserRegistrationPage = () => {
           title={
             <Space>
               <IdcardOutlined style={{ color: '#52c41a' }} />
-              <span style={{ fontWeight: 700 }}>2. Thông Tin Cá Nhân & Liên Lạc</span>
+              <span style={{ fontWeight: 700 }}>
+                {isEnglish ? '2. Personal Profile & Contact Information' : '2. Thông Tin Cá Nhân & Liên Lạc'}
+              </span>
             </Space>
           }
           bordered={false}
@@ -727,11 +800,11 @@ export const UserRegistrationPage = () => {
         >
           <Row gutter={[16, 12]}>
             <Col xs={24} sm={8}>
-              <Form.Item name="gender" label={<Text strong>Giới Tính</Text>}>
-                <Select placeholder="Chọn giới tính" style={{ borderRadius: 8 }}>
-                  <Option value="Nam">Nam</Option>
-                  <Option value="Nữ">Nữ</Option>
-                  <Option value="Khác">Khác</Option>
+              <Form.Item name="gender" label={<Text strong>{isEnglish ? 'Gender' : 'Giới Tính'}</Text>}>
+                <Select placeholder={isEnglish ? 'Select gender' : 'Chọn giới tính'} style={{ borderRadius: 8 }}>
+                  <Option value="Nam">{isEnglish ? 'Male' : 'Nam'}</Option>
+                  <Option value="Nữ">{isEnglish ? 'Female' : 'Nữ'}</Option>
+                  <Option value="Khác">{isEnglish ? 'Other' : 'Khác'}</Option>
                 </Select>
               </Form.Item>
             </Col>
@@ -748,30 +821,60 @@ export const UserRegistrationPage = () => {
             </Col>
 
             <Col xs={24} sm={8}>
-              <Form.Item name="idCardNumber" label={<Text strong>Số CMND / CCCD / Mã Định Danh</Text>}>
-                <Input
-                  prefix={<IdcardOutlined style={{ color: '#94a3b8' }} />}
-                  placeholder="079201004567"
-                  style={{ borderRadius: 8 }}
-                />
+              <Form.Item
+                name="nationality"
+                label={<Text strong>{isEnglish ? 'Nationality' : 'Quốc Tịch'}</Text>}
+                rules={[{ required: true, message: isEnglish ? 'Please select nationality' : 'Vui lòng chọn quốc tịch' }]}
+              >
+                <Select
+                  placeholder={isEnglish ? 'Select nationality' : 'Chọn quốc tịch'}
+                  style={{ width: '100%', borderRadius: 8 }}
+                  optionLabelProp="label"
+                >
+                  {NATIONALITY_OPTIONS.map((item) => {
+                    const displayLabel = isEnglish ? item.labelEn : item.labelVi;
+                    return (
+                      <Select.Option
+                        key={item.value}
+                        value={item.value}
+                        label={displayLabel}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 16 }}>{item.flag}</span>
+                          <span>{displayLabel.replace(/^[^\s]+\s/, '')}</span>
+                        </div>
+                      </Select.Option>
+                    );
+                  })}
+                </Select>
               </Form.Item>
             </Col>
           </Row>
 
           <Row gutter={[16, 12]}>
-            <Col xs={24} sm={16}>
-              <Form.Item name="address" label={<Text strong>Địa Chỉ Thường Trú</Text>}>
+            <Col xs={24} sm={8}>
+              <Form.Item name="idCardNumber" label={<Text strong>{isEnglish ? 'National ID / Citizen ID' : 'Số CMND / CCCD / Mã Định Danh'}</Text>}>
                 <Input
-                  prefix={<HomeOutlined style={{ color: '#94a3b8' }} />}
-                  placeholder="VD: 123 Nguyễn Thị Minh Khai, Phường Bến Nghé, Quận 1"
+                  prefix={<IdcardOutlined style={{ color: '#94a3b8' }} />}
+                  placeholder={isEnglish ? 'e.g. 079201004567' : '079201004567'}
                   style={{ borderRadius: 8 }}
                 />
               </Form.Item>
             </Col>
 
             <Col xs={24} sm={8}>
-              <Form.Item name="city" label={<Text strong>Tỉnh / Thành Phố</Text>}>
-                <Input placeholder="TP. Hồ Chí Minh" style={{ borderRadius: 8 }} />
+              <Form.Item name="city" label={<Text strong>{isEnglish ? 'Province / City' : 'Tỉnh / Thành Phố'}</Text>}>
+                <Input placeholder={isEnglish ? 'Ho Chi Minh City' : 'TP. Hồ Chí Minh'} style={{ borderRadius: 8 }} />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={8}>
+              <Form.Item name="address" label={<Text strong>{isEnglish ? 'Permanent Residential Address' : 'Địa Chỉ Thường Trú'}</Text>}>
+                <Input
+                  prefix={<HomeOutlined style={{ color: '#94a3b8' }} />}
+                  placeholder={isEnglish ? 'e.g. 123 Nguyen Thi Minh Khai, Ben Nghe Ward, District 1' : 'VD: 123 Nguyễn Thị Minh Khai, Phường Bến Nghé, Quận 1'}
+                  style={{ borderRadius: 8 }}
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -783,7 +886,9 @@ export const UserRegistrationPage = () => {
             title={
               <Space>
                 <BookOutlined style={{ color: '#52c41a' }} />
-                <span style={{ fontWeight: 700 }}>3. Thông Tin Học Vụ & Lớp Học Trực Tuyến</span>
+                <span style={{ fontWeight: 700 }}>
+                  {isEnglish ? '3. Academic Information & Online Classes' : '3. Thông Tin Học Vụ & Lớp Học Trực Tuyến'}
+                </span>
               </Space>
             }
             bordered={false}
@@ -801,21 +906,23 @@ export const UserRegistrationPage = () => {
                   name="enrolledClassIds"
                   label={
                     <Space size={6}>
-                      <Text strong>Lớp Học Online Ghi Danh (Enrolled Classes)</Text>
-                      <Tag color="blue" style={{ fontSize: 11, fontWeight: 600 }}>Nhiều Lớp</Tag>
+                      <Text strong>{isEnglish ? 'Enrolled Online Classes' : 'Lớp Học Online Ghi Danh (Enrolled Classes)'}</Text>
+                      <Tag color="blue" style={{ fontSize: 11, fontWeight: 600 }}>{isEnglish ? 'Multiple Classes' : 'Nhiều Lớp'}</Tag>
                     </Space>
                   }
                   rules={[]}
                   style={{ marginBottom: 14 }}
                   extra={
                     <span style={{ fontSize: 12, color: '#64748b' }}>
-                      💡 Mỗi học viên có thể đăng ký nhiều lớp học online. Hệ thống sẽ tự động phát hiện và chặn trùng khung giờ học trực tuyến Zoom.
+                      {isEnglish
+                        ? '💡 Students can enroll in multiple online classes. The system automatically detects and prevents Zoom schedule conflicts.'
+                        : '💡 Mỗi học viên có thể đăng ký nhiều lớp học online. Hệ thống sẽ tự động phát hiện và chặn trùng khung giờ học trực tuyến Zoom.'}
                     </span>
                   }
                 >
                   <Select
                     mode="multiple"
-                    placeholder="Chọn 1 hoặc nhiều lớp học Zoom tham gia..."
+                    placeholder={isEnglish ? 'Select 1 or more online Zoom classes to enroll...' : 'Chọn 1 hoặc nhiều lớp học Zoom tham gia...'}
                     style={{ width: '100%', minHeight: 40, borderRadius: 8 }}
                     allowClear
                     optionLabelProp="label"
@@ -841,7 +948,7 @@ export const UserRegistrationPage = () => {
                               {cls.schedule}
                             </Tag>
                             <Tag color="purple" style={{ margin: 0 }}>
-                              {cls.teacherName || 'GV Bản Xứ'}
+                              {cls.teacherName || (isEnglish ? 'Teacher' : 'Giáo Viên')}
                             </Tag>
                           </Space>
                         </div>
@@ -867,7 +974,7 @@ export const UserRegistrationPage = () => {
                 message={
                   <div>
                     <Text strong style={{ color: '#cf1322', fontSize: 13 }}>
-                      ⛔ PHÁT HIỆN TRÙNG KHUNG GIỜ HỌC ONLINE:
+                      {isEnglish ? '⛔ ONLINE CLASS SCHEDULE CONFLICT DETECTED:' : '⛔ PHÁT HIỆN TRÙNG KHUNG GIỜ HỌC ONLINE:'}
                     </Text>
                     <ul style={{ margin: '6px 0 0 18px', padding: 0, color: '#434343', fontSize: 13 }}>
                       {scheduleConflictInfo.conflicts.map((c, idx) => (
@@ -875,7 +982,9 @@ export const UserRegistrationPage = () => {
                       ))}
                     </ul>
                     <div style={{ marginTop: 6, fontSize: 12, color: '#cf1322', fontWeight: 500 }}>
-                      Vui lòng bỏ chọn một trong hai lớp trùng giờ ở trên trước khi hoàn tất đăng ký tài khoản.
+                      {isEnglish
+                        ? 'Please deselect one of the conflicting classes above before completing registration.'
+                        : 'Vui lòng bỏ chọn một trong hai lớp trùng giờ ở trên trước khi hoàn tất đăng ký tài khoản.'}
                     </div>
                   </div>
                 }
@@ -886,9 +995,9 @@ export const UserRegistrationPage = () => {
             <Row gutter={[16, 12]}>
               <Col xs={24} sm={12}>
                 <Form.Item
-                  label={<Text strong>Cấp Độ Chương Trình (Tự Động Theo Lớp Học)</Text>}
+                  label={<Text strong>{isEnglish ? 'Curriculum Level (Auto-detected from Classes)' : 'Cấp Độ Chương Trình (Tự Động Theo Lớp Học)'}</Text>}
                   style={{ marginBottom: 14 }}
-                  extra={<span style={{ fontSize: 12, color: '#64748b' }}>Cấp độ đi liền với lớp học đã chọn, không cần chọn thủ công.</span>}
+                  extra={<span style={{ fontSize: 12, color: '#64748b' }}>{isEnglish ? 'Levels are linked to enrolled classes automatically.' : 'Cấp độ đi liền với lớp học đã chọn, không cần chọn thủ công.'}</span>}
                 >
                   <div
                     style={{
@@ -911,7 +1020,7 @@ export const UserRegistrationPage = () => {
                       ))
                     ) : (
                       <Text type="secondary" style={{ fontSize: 13 }}>
-                        Chưa chọn lớp (Hệ thống sẽ tự nhận diện theo lớp ghi danh)
+                        {isEnglish ? 'No classes selected (System will auto-detect from enrolled classes)' : 'Chưa chọn lớp (Hệ thống sẽ tự nhận diện theo lớp ghi danh)'}
                       </Text>
                     )}
                   </div>
@@ -920,9 +1029,9 @@ export const UserRegistrationPage = () => {
 
               <Col xs={24} sm={12}>
                 <Form.Item
-                  label={<Text strong>Tình Trạng Học Phí (Hệ Thống Kế Toán Tự Động Tính)</Text>}
+                  label={<Text strong>{isEnglish ? 'Tuition Status (Auto-calculated by Billing System)' : 'Tình Trạng Học Phí (Hệ Thống Kế Toán Tự Động Tính)'}</Text>}
                   style={{ marginBottom: 14 }}
-                  extra={<span style={{ fontSize: 12, color: '#64748b' }}>Trạng thái sẽ được đối soát tự động từ phân hệ Thu Học Phí.</span>}
+                  extra={<span style={{ fontSize: 12, color: '#64748b' }}>{isEnglish ? 'Status will be automatically verified from Tuition Module.' : 'Trạng thái sẽ được đối soát tự động từ phân hệ Thu Học Phí.'}</span>}
                 >
                   <div
                     style={{
@@ -937,10 +1046,10 @@ export const UserRegistrationPage = () => {
                     }}
                   >
                     <Tag color="gold" style={{ margin: 0, fontWeight: 600, padding: '2px 8px' }}>
-                      Chờ đối soát
+                      {isEnglish ? 'Pending Verification' : 'Chờ đối soát'}
                     </Tag>
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                      Khởi tạo mặc định
+                      {isEnglish ? 'Default Initialization' : 'Khởi tạo mặc định'}
                     </Text>
                   </div>
                 </Form.Item>
@@ -952,19 +1061,19 @@ export const UserRegistrationPage = () => {
               <Col xs={24} sm={12}>
                 <Form.Item
                   name="parentName"
-                  label={<Text strong>Họ Tên Phụ Huynh / Người Giám Hộ</Text>}
+                  label={<Text strong>{isEnglish ? 'Parent / Guardian Full Name' : 'Họ Tên Phụ Huynh / Người Giám Hộ'}</Text>}
                   style={{ marginBottom: 14 }}
                 >
-                  <Input placeholder="VD: Trần Thị Mai (Phụ huynh)" style={{ width: '100%', height: 40, borderRadius: 8 }} />
+                  <Input placeholder={isEnglish ? 'e.g. Mary Jane (Parent)' : 'VD: Trần Thị Mai (Phụ huynh)'} style={{ width: '100%', height: 40, borderRadius: 8 }} />
                 </Form.Item>
               </Col>
 
               <Col xs={24} sm={12}>
                 <Form.Item
                   name="parentPhone"
-                  label={<Text strong>Số Điện Thoại Phụ Huynh (Mặc Định Là SĐT 1)</Text>}
+                  label={<Text strong>{isEnglish ? 'Parent Phone Number (Default to Phone 1)' : 'Số Điện Thoại Phụ Huynh (Mặc Định Là SĐT 1)'}</Text>}
                   style={{ marginBottom: 14 }}
-                  extra={<span style={{ fontSize: 12, color: '#16a34a' }}>Tự động đồng bộ với Số Điện Thoại 1 chính.</span>}
+                  extra={<span style={{ fontSize: 12, color: '#16a34a' }}>{isEnglish ? 'Automatically synchronized with primary Phone 1.' : 'Tự động đồng bộ với Số Điện Thoại 1 chính.'}</span>}
                 >
                   <Input
                     prefix={<PhoneOutlined style={{ color: '#0284c7' }} />}
@@ -982,7 +1091,9 @@ export const UserRegistrationPage = () => {
             title={
               <Space>
                 <BookOutlined style={{ color: '#1890ff' }} />
-                <span style={{ fontWeight: 700 }}>3. Chuyên Môn Giảng Dạy & Hợp Đồng (Dành Cho Giáo Viên)</span>
+                <span style={{ fontWeight: 700 }}>
+                  {isEnglish ? '3. Teaching Credentials & Contract (For Teachers)' : '3. Chuyên Môn Giảng Dạy & Hợp Đồng (Dành Cho Giáo Viên)'}
+                </span>
               </Space>
             }
             bordered={false}
@@ -994,22 +1105,13 @@ export const UserRegistrationPage = () => {
             }}
           >
             <Row gutter={[16, 12]}>
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item name="nationality" label={<Text strong>Quốc Tịch</Text>}>
-                  <Input placeholder="VD: Mỹ (US), Việt Nam" style={{ borderRadius: 8 }} />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item name="certificate" label={<Text strong>Bằng Cấp / Chứng Chỉ</Text>}>
-                  <Input placeholder="VD: TESOL, CELTA, DELTA" style={{ borderRadius: 8 }} />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item name="hourlyRate" label={<Text strong>Đơn Giá Dạy / Giờ (VNĐ)</Text>}>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="hourlyRate"
+                  label={<Text strong>{isEnglish ? 'Hourly Teaching Rate (VND)' : 'Đơn Giá Dạy / Giờ (VNĐ)'}</Text>}
+                >
                   <InputNumber
-                    style={{ width: '100%', borderRadius: 8 }}
+                    style={{ width: '100%', height: 40, borderRadius: 8 }}
                     formatter={(val) => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                     parser={(val) => val.replace(/\$\s?|(,*)/g, '')}
                     placeholder="450,000"
@@ -1017,16 +1119,108 @@ export const UserRegistrationPage = () => {
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item name="assignedClasses" label={<Text strong>Các Lớp Phân Công</Text>}>
-                  <Input placeholder="VD: GK-A, G1-B" style={{ borderRadius: 8 }} />
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="assignedClasses"
+                  label={<Text strong>{isEnglish ? 'Assigned Classes' : 'Các Lớp Phân Công'}</Text>}
+                >
+                  <Input
+                    placeholder="VD: GK-A, G1-B"
+                    style={{ width: '100%', height: 40, borderRadius: 8 }}
+                  />
                 </Form.Item>
               </Col>
             </Row>
 
-            <Form.Item name="bio" label={<Text strong>Tóm Tắt Kinh Nghiệm Giảng Dạy (Bio)</Text>}>
-              <TextArea rows={2} placeholder="Kinh nghiệm giảng dạy, trường đại học đã tốt nghiệp..." style={{ borderRadius: 8 }} />
+            <Form.Item
+              name="bio"
+              label={<Text strong>{isEnglish ? 'Teaching Experience & Bio Summary' : 'Tóm Tắt Kinh Nghiệm Giảng Dạy (Bio)'}</Text>}
+              style={{ marginBottom: 16 }}
+            >
+              <TextArea
+                rows={2}
+                placeholder={isEnglish ? 'Teaching experience, graduated university, certifications...' : 'Kinh nghiệm giảng dạy, trường đại học đã tốt nghiệp...'}
+                style={{ borderRadius: 8 }}
+              />
             </Form.Item>
+
+            {/* Khung Riêng Biệt: Bằng Cấp & Chứng Chỉ Sư Phạm (Dedicated Upload Box) */}
+            <div
+              style={{
+                marginTop: 12,
+                padding: '16px 18px',
+                borderRadius: 10,
+                border: '1.5px dashed #1890ff',
+                backgroundColor: '#f0f7ff',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Space size={8}>
+                  <TrophyOutlined style={{ fontSize: 18, color: '#1890ff' }} />
+                  <Text strong style={{ fontSize: 14, color: '#0958d9' }}>
+                    {isEnglish ? 'Teaching Certificate & Pedagogical Qualifications' : 'Bằng Cấp & Chứng Chỉ Sư Phạm (Teaching Certificate)'}
+                  </Text>
+                </Space>
+                <Tag color="blue" style={{ margin: 0, fontWeight: 600 }}>
+                  {isEnglish ? 'Upload Scan / PDF' : 'Tải Lên Chứng Chỉ'}
+                </Tag>
+              </div>
+
+              <Row gutter={[16, 12]}>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    name="certificate"
+                    label={<Text strong>{isEnglish ? 'Certificate Title / Type' : 'Tên Bằng Cấp / Loại Chứng Chỉ'}</Text>}
+                    extra={<span style={{ fontSize: 12, color: '#64748b' }}>{isEnglish ? 'e.g. TESOL 120h, CELTA Cambridge, TEFL, B.Ed' : 'VD: TESOL 120h, CELTA Cambridge, TEFL, Cử Nhân Sư Phạm'}</span>}
+                    style={{ marginBottom: 8 }}
+                  >
+                    <Input
+                      prefix={<TrophyOutlined style={{ color: '#1890ff' }} />}
+                      placeholder="TESOL / CELTA / TEFL"
+                      style={{ width: '100%', height: 40, borderRadius: 8 }}
+                    />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    label={<Text strong>{isEnglish ? 'Attach Certificate File (PDF / Images)' : 'Đính Kèm Tệp Chứng Chỉ (PDF / Hình Ảnh)'}</Text>}
+                    style={{ marginBottom: 8 }}
+                  >
+                    <Upload.Dragger
+                      name="certificateFile"
+                      multiple={false}
+                      maxCount={1}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                      beforeUpload={(file) => {
+                        handleCertificateFileSelect(file);
+                        return false;
+                      }}
+                      onRemove={() => setCertificateFile(null)}
+                      fileList={certificateFile ? [certificateFile] : []}
+                      style={{
+                        padding: '12px 10px',
+                        background: '#ffffff',
+                        borderRadius: 8,
+                        borderColor: '#91caff',
+                      }}
+                    >
+                      <p className="ant-upload-drag-icon" style={{ margin: '0 0 6px' }}>
+                        <PaperClipOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+                      </p>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#1d39c4' }}>
+                        {certificateFile
+                          ? certificateFile.name
+                          : (isEnglish ? 'Click or drag certificate scan here to upload' : 'Nhấp hoặc kéo thả tệp chứng chỉ vào đây để tải lên')}
+                      </p>
+                      <p style={{ margin: '4px 0 0', fontSize: 11, color: '#8c8c8c' }}>
+                        {isEnglish ? 'Supports PDF, JPG, PNG, DOCX (Max 25MB)' : 'Hỗ trợ định dạng PDF, JPG, PNG, DOCX (Tối đa 25MB)'}
+                      </p>
+                    </Upload.Dragger>
+                  </Form.Item>
+                </Col>
+              </Row>
+            </div>
           </Card>
         )}
 
@@ -1038,7 +1232,9 @@ export const UserRegistrationPage = () => {
             title={
               <Space>
                 <BankOutlined style={{ color: '#722ed1' }} />
-                <span style={{ fontWeight: 700 }}>3. Vị Trí Công Tác & Tổ Chức (Cán Bộ / Nhân Sự)</span>
+                <span style={{ fontWeight: 700 }}>
+                  {isEnglish ? '3. Organizational Position & Division (Staff & Faculty)' : '3. Vị Trí Công Tác & Tổ Chức (Cán Bộ / Nhân Sự)'}
+                </span>
               </Space>
             }
             bordered={false}
@@ -1051,14 +1247,26 @@ export const UserRegistrationPage = () => {
           >
             <Row gutter={[16, 12]}>
               <Col xs={24} sm={12}>
-                <Form.Item name="position" label={<Text strong>Chức Danh / Vị Trí Công Tác</Text>}>
-                  <Input placeholder="VD: Điều phối viên học vụ, Kế toán trưởng..." style={{ borderRadius: 8 }} />
+                <Form.Item
+                  name="position"
+                  label={<Text strong>{isEnglish ? 'Job Title / Position' : 'Chức Danh / Vị Trí Công Tác'}</Text>}
+                >
+                  <Input
+                    placeholder={isEnglish ? 'e.g. Academic Coordinator, Chief Accountant...' : 'VD: Điều phối viên học vụ, Kế toán trưởng...'}
+                    style={{ width: '100%', height: 40, borderRadius: 8 }}
+                  />
                 </Form.Item>
               </Col>
 
               <Col xs={24} sm={12}>
-                <Form.Item name="department" label={<Text strong>Phòng Ban Trực Thuộc</Text>}>
-                  <Input placeholder="VD: Phòng Đào Tạo, Ban Giám Đốc, Phòng Kế Toán..." style={{ borderRadius: 8 }} />
+                <Form.Item
+                  name="department"
+                  label={<Text strong>{isEnglish ? 'Department / Division' : 'Phòng Ban Trực Thuộc'}</Text>}
+                >
+                  <Input
+                    placeholder={isEnglish ? 'e.g. Academic Affairs, Executive Board, Accounting...' : 'VD: Phòng Đào Tạo, Ban Giám Đốc, Phòng Kế Toán...'}
+                    style={{ width: '100%', height: 40, borderRadius: 8 }}
+                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -1070,7 +1278,9 @@ export const UserRegistrationPage = () => {
           title={
             <Space>
               <UserOutlined style={{ color: '#fa8c16' }} />
-              <span style={{ fontWeight: 700 }}>4. Ghi Chú Nghiệp Vụ Chung</span>
+              <span style={{ fontWeight: 700 }}>
+                {isEnglish ? '4. General Operational Notes' : '4. Ghi Chú Nghiệp Vụ Chung'}
+              </span>
             </Space>
           }
           bordered={false}
@@ -1082,11 +1292,11 @@ export const UserRegistrationPage = () => {
         >
           <Form.Item
             name="extraInfo"
-            label={<Text strong>Ghi Chú Nội Bộ / KPI / Điều Kiện Đặc Biệt</Text>}
+            label={<Text strong>{isEnglish ? 'Internal Notes / Special Conditions' : 'Ghi Chú Nội Bộ / KPI / Điều Kiện Đặc Biệt'}</Text>}
           >
             <TextArea
               rows={3}
-              placeholder="Nhập các lưu ý đặc biệt về học phí, cam kết phụ huynh hoặc ghi chú nhân sự..."
+              placeholder={isEnglish ? 'Enter special notes regarding tuition commitment, parent preferences, or staff notes...' : 'Nhập các lưu ý đặc biệt về học phí, cam kết phụ huynh hoặc ghi chú nhân sự...'}
               style={{ borderRadius: 8 }}
             />
           </Form.Item>
@@ -1107,7 +1317,7 @@ export const UserRegistrationPage = () => {
             onClick={() => navigate('/user-management')}
             style={{ borderRadius: 8, flex: '1 1 110px', maxWidth: 160 }}
           >
-            Hủy Bỏ
+            {isEnglish ? 'Cancel' : 'Hủy Bỏ'}
           </Button>
           <Button
             type="primary"
@@ -1124,7 +1334,7 @@ export const UserRegistrationPage = () => {
               fontWeight: 700,
             }}
           >
-            Tạo & Kích Hoạt Tài Khoản
+            {isEnglish ? 'Create & Activate Account' : 'Tạo & Kích Hoạt Tài Khoản'}
           </Button>
         </div>
       </Form>

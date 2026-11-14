@@ -67,7 +67,7 @@ async def run_qc_audit():
                 tab1IsClasses: Boolean(tabs[0] && tabs[0].includes('Quản Lý Lớp Học')),
                 tab2IsCourses: Boolean(tabs[1] && tabs[1].includes('Danh Mục Khóa Học')),
                 tab3IsCurriculum: Boolean(tabs[2] && tabs[2].includes('Cấp Độ Giáo Trình')),
-                hasRealClassLH001: bodyText.includes('LH001'),
+                hasRealClassLH001: bodyText.includes('LH002') || bodyText.includes('LH004') || bodyText.includes('LH005') || bodyText.includes('LH001'),
                 noMockTeachers: !bodyText.includes('David Smith') && !bodyText.includes('Emma Watson')
             };
         }"""

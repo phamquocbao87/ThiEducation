@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   Tag,
@@ -32,6 +33,7 @@ import {
   UserAddOutlined,
   BellOutlined,
   WarningOutlined,
+  DesktopOutlined,
 } from '@ant-design/icons';
 import { CLASS_STATUS_COLORS } from '../models/courses.model';
 import { useLanguage } from '../../../core/context/LanguageContext';
@@ -41,6 +43,9 @@ import {
   findStudentScheduleConflicts,
   formatScheduleForViewer,
 } from '../../../shared/utils/scheduleUtils';
+import { MeetingPlatformBadge, detectMeetingPlatform } from '../../../shared/utils/meetingPlatformUtils';
+import { TeacherMeetingRoomModal } from './TeacherMeetingRoomModal';
+import { resolveEffectiveClassStatus } from '../../dashboard/utils/classTimeUtils';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -84,8 +89,10 @@ export const ClassManagementTab = ({
   isMobile = false,
 }) => {
   const { isEnglish, t } = useLanguage();
+  const navigate = useNavigate();
   const isTeacherRole = currentUser?.role === 'teacher';
   const isStudentRole = currentUser?.role === 'student';
+  const [meetingModalClass, setMeetingModalClass] = React.useState(null);
 
   return (
     <div>
@@ -193,7 +200,8 @@ export const ClassManagementTab = ({
               !record.teacherId || record.teacherName === 'Chưa phân công';
             const studentCount = record.totalStudents || record.studentIds?.length || 0;
             const isClassFull = studentCount >= maxClassSize;
-            const statusColor = CLASS_STATUS_COLORS[record.operationStatus] || 'green';
+            const effectiveStatus = resolveEffectiveClassStatus(record);
+            const statusColor = CLASS_STATUS_COLORS[effectiveStatus] || (effectiveStatus === 'Chuẩn bị khai giảng' ? 'blue' : 'green');
 
             const pendingTReqs = Array.isArray(record.pendingTeacherRequests)
               ? record.pendingTeacherRequests
@@ -245,8 +253,11 @@ export const ClassManagementTab = ({
               <Col xs={24} sm={12} md={12} lg={12} xl={8} key={record.id}>
                 <Card
                   hoverable
+                  onClick={() => navigate(`/classroom/${encodeURIComponent(record.id)}`)}
+                  data-testid={`class-card-${record.id}`}
                   style={{
                     borderRadius: 12,
+                    cursor: 'pointer',
                     border:
                       totalPending > 0 && canManage
                         ? '1.5px solid #faad14'
@@ -255,6 +266,7 @@ export const ClassManagementTab = ({
                     display: 'flex',
                     flexDirection: 'column',
                     height: '100%',
+                    transition: 'all 0.25s ease',
                   }}
                   styles={{
                     body: { padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 },
@@ -275,32 +287,34 @@ export const ClassManagementTab = ({
 
                     <Space size={6}>
                       <Tag color={statusColor} style={{ margin: 0 }}>
-                        {record.operationStatus || (isEnglish ? 'Active' : 'Đang học ổn định')}
+                        {effectiveStatus}
                       </Tag>
                       {canManage && onDeleteClass && (
-                        <Popconfirm
-                          title={t('courses.classes.deleteConfirmTitle')}
-                          description={t('courses.classes.deleteConfirmDesc')}
-                          onConfirm={() => onDeleteClass(record.id)}
-                          okText={t('common.delete')}
-                          cancelText={t('common.cancel')}
-                          okButtonProps={{ danger: true }}
-                        >
-                          <Button
-                            type="text"
-                            danger
-                            size="small"
-                            icon={<DeleteOutlined style={{ fontSize: 15 }} />}
-                            style={{
-                              width: 32,
-                              height: 32,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              borderRadius: 6,
-                            }}
-                          />
-                        </Popconfirm>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Popconfirm
+                            title={t('courses.classes.deleteConfirmTitle')}
+                            description={t('courses.classes.deleteConfirmDesc')}
+                            onConfirm={() => onDeleteClass(record.id)}
+                            okText={t('common.delete')}
+                            cancelText={t('common.cancel')}
+                            okButtonProps={{ danger: true }}
+                          >
+                            <Button
+                              type="text"
+                              danger
+                              size="small"
+                              icon={<DeleteOutlined style={{ fontSize: 15 }} />}
+                              style={{
+                                width: 32,
+                                height: 32,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: 6,
+                              }}
+                            />
+                          </Popconfirm>
+                        </div>
                       )}
                     </Space>
                   </div>
@@ -334,7 +348,10 @@ export const ClassManagementTab = ({
                   {/* Banner Chờ Giáo Vụ Duyệt (Nếu có GV hoặc HV đăng ký) */}
                   {totalPending > 0 && (
                     <div
-                      onClick={() => onViewRoster(record)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewRoster(record);
+                      }}
                       style={{
                         background: '#fffbe6',
                         border: '1px solid #ffe58f',
@@ -525,7 +542,7 @@ export const ClassManagementTab = ({
                       );
                     })()}
 
-                    {/* Phòng Zoom & Nhóm Zalo (Học viên chỉ được mở khóa khi đã được Giáo vụ duyệt vào lớp) */}
+                    {/* Phòng Học & Nhóm Zalo (Học viên chỉ được mở khóa khi đã được Giáo vụ duyệt vào lớp) */}
                     <div
                       style={{
                         display: 'flex',
@@ -535,23 +552,44 @@ export const ClassManagementTab = ({
                       }}
                     >
                       <Space size={6}>
-                        <VideoCameraOutlined style={{ color: '#722ed1' }} />
-                        <Text type="secondary">{isEnglish ? 'Zoom Room:' : 'Phòng Zoom:'}</Text>
+                        {detectMeetingPlatform(zoomUrlToOpen).icon}
+                        <Text type="secondary">{isEnglish ? 'Meeting Room:' : 'Phòng Học:'}</Text>
                       </Space>
                       {canViewClassRoomLinks ? (
-                        <Tag
-                          color="purple"
-                          onClick={() => zoomUrlToOpen && window.open(zoomUrlToOpen, '_blank')}
-                          style={{
-                            margin: 0,
-                            cursor: 'pointer',
-                            fontWeight: 600,
-                            borderRadius: 6,
-                          }}
-                        >
-                          <LinkOutlined style={{ marginRight: 4 }} />
-                          {record.meetingId || '888 999 111'}
-                        </Tag>
+                        <Space size={4}>
+                          <Tag
+                            color="purple"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              zoomUrlToOpen && window.open(zoomUrlToOpen, '_blank');
+                            }}
+                            style={{
+                              margin: 0,
+                              cursor: 'pointer',
+                              fontWeight: 600,
+                              borderRadius: 6,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            <LinkOutlined />
+                            {record.meetingId || (isEnglish ? 'Join Link' : 'Link Tham Gia')}
+                          </Tag>
+                          {isTeacherRole && (record.teacherId === currentUser?.id || record.teacherId === currentUser?.code) && (
+                            <Tooltip title={isEnglish ? 'Edit meeting links' : 'Sửa link phòng học'}>
+                              <Button
+                                size="small"
+                                type="text"
+                                icon={<EditOutlined style={{ color: '#1890ff' }} />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setMeetingModalClass(record);
+                                }}
+                              />
+                            </Tooltip>
+                          )}
+                        </Space>
                       ) : (
                         <Tag
                           color="default"
@@ -583,7 +621,10 @@ export const ClassManagementTab = ({
                         {canViewClassRoomLinks ? (
                           <Tag
                             color="blue"
-                            onClick={() => window.open(record.zaloGroupLink, '_blank')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(record.zaloGroupLink, '_blank');
+                            }}
                             style={{
                               margin: 0,
                               cursor: 'pointer',
@@ -662,7 +703,10 @@ export const ClassManagementTab = ({
                           type="dashed"
                           block
                           icon={<UserAddOutlined />}
-                          onClick={() => onRequestTeachClass(record.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRequestTeachClass(record.id);
+                          }}
                           style={{
                             height: 36,
                             borderRadius: 8,
@@ -704,7 +748,10 @@ export const ClassManagementTab = ({
                             type="primary"
                             block
                             icon={<VideoCameraOutlined />}
-                            onClick={() => zoomUrlToOpen && window.open(zoomUrlToOpen, '_blank')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              zoomUrlToOpen && window.open(zoomUrlToOpen, '_blank');
+                            }}
                             style={{
                               height: 36,
                               borderRadius: 8,
@@ -792,7 +839,10 @@ export const ClassManagementTab = ({
                           type="dashed"
                           block
                           icon={<UserAddOutlined />}
-                          onClick={() => onRequestEnrollClass(record.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRequestEnrollClass(record.id);
+                          }}
                           style={{
                             height: 36,
                             borderRadius: 8,
@@ -812,7 +862,7 @@ export const ClassManagementTab = ({
                   {/* Nhật Ký Kiểm Toán IT (Chỉ hiển thị cho View Admin) */}
                   <AdminAuditInfo record={record} currentUser={currentUser} mode="card" style={{ marginBottom: 12 }} />
 
-                  {/* 4. Thanh Nút Hành Động Chân Card (50% / 50% đồng bộ Course Card) */}
+                  {/* 4. Thanh Nút Hành Động Chân Card (Vào Chi Tiết Lớp + Học Viên + Sửa) */}
                   <div
                     style={{
                       display: 'flex',
@@ -822,9 +872,34 @@ export const ClassManagementTab = ({
                       width: '100%',
                     }}
                   >
+                    {/* Nút 1: Vào Chi Tiết Lớp Học (Giống Dashboard) */}
                     <Button
-                      icon={<EyeOutlined />}
-                      onClick={() => onViewRoster(record)}
+                      type="primary"
+                      icon={<DesktopOutlined />}
+                      data-testid={`btn-classroom-${record.id}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/classroom/${encodeURIComponent(record.id)}`);
+                      }}
+                      style={{
+                        flex: 1,
+                        height: 38,
+                        borderRadius: 8,
+                        fontWeight: 600,
+                        backgroundColor: '#1677ff',
+                      }}
+                    >
+                      {isEnglish ? 'Classroom' : 'Chi Tiết Lớp'}
+                    </Button>
+
+                    {/* Nút 2: Danh Sách Học Viên */}
+                    <Button
+                      icon={<TeamOutlined />}
+                      data-testid={`btn-roster-${record.id}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewRoster(record);
+                      }}
                       style={{
                         flex: 1,
                         height: 38,
@@ -832,25 +907,32 @@ export const ClassManagementTab = ({
                         fontWeight: 500,
                       }}
                     >
-                      {t('common.details')} ({studentCount})
+                      {isEnglish ? 'Roster' : 'Học Viên'} ({studentCount})
                       {canManage && totalPending > 0 ? ` • 🔔${totalPending}` : ''}
                     </Button>
 
+                    {/* Nút 3: Chỉnh Sửa Lớp (Dành cho Quản trị viên/Giáo vụ) */}
                     {canManage && onEditClass && (
-                      <Button
-                        type="primary"
-                        ghost
-                        icon={<EditOutlined />}
-                        onClick={() => onEditClass(record)}
-                        style={{
-                          flex: 1,
-                          height: 38,
-                          borderRadius: 8,
-                          fontWeight: 500,
-                        }}
-                      >
-                        {t('common.edit')}
-                      </Button>
+                      <Tooltip title={t('common.edit') || (isEnglish ? 'Edit Class' : 'Sửa Thông Tin Lớp')}>
+                        <Button
+                          type="default"
+                          icon={<EditOutlined />}
+                          data-testid={`btn-edit-class-${record.id}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditClass(record);
+                          }}
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        />
+                      </Tooltip>
                     )}
                   </div>
                 </Card>
@@ -858,6 +940,18 @@ export const ClassManagementTab = ({
             );
           })}
         </Row>
+      )}
+
+      {/* Modal Cập Nhật Link Phòng Học Dành Cho Giáo Viên */}
+      {meetingModalClass && (
+        <TeacherMeetingRoomModal
+          open={Boolean(meetingModalClass)}
+          classData={meetingModalClass}
+          onClose={() => setMeetingModalClass(null)}
+          onSuccess={() => {
+            setMeetingModalClass(null);
+          }}
+        />
       )}
     </div>
   );

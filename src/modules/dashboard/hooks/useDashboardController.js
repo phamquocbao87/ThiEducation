@@ -3,33 +3,43 @@ import { message } from 'antd';
 import { useAuth } from '../../../core/context/AuthContext';
 import { ROLE_BANNERS } from '../models/dashboard.model';
 import { SystemHealthService } from '../services/SystemHealthService';
-import { ExecutiveAnalyticsService } from '../services/ExecutiveAnalyticsService';
-import { PersonalPortalService } from '../services/PersonalPortalService';
+import { DashboardDataService } from '../services/DashboardDataService';
 import { CourseService } from '../../courses/services/CourseService';
 import { ClassService } from '../../courses/services/ClassService';
-
+import { TuitionBillingService } from '../../tuition/services/TuitionBillingService';
+import { TeacherPayrollService } from '../../contracts/services/TeacherPayrollService';
+import { useDashboardClassroom } from './useDashboardClassroom';
+import { PermissionService } from '../../../core/services/PermissionService';
 export const useDashboardController = () => {
   const { currentUser, allSystemUsers } = useAuth();
-  const role = currentUser.role;
-
+  const role = currentUser?.role || 'student';
   const [courses, setCourses] = useState([]);
-  const [classes, setClasses] = useState([]);
-
-  // Tải dữ liệu thực tế từ Cloud Firestore: Khóa học & Lớp học
+  const { classes, setClasses, classroomError } = useDashboardClassroom(currentUser);
+  const [tuitions, setTuitions] = useState([]);
+  const [payrolls, setPayrolls] = useState([]);
+  const [loading, setLoading] = useState(true);
+  // Tải 100% dữ liệu thực tế từ Cloud Firestore
   useEffect(() => {
     let isMounted = true;
     const fetchRealDbData = async () => {
+      setLoading(true);
       try {
-        const [cList, clsList] = await Promise.all([
+        const [cList, clsList, tList, pList] = await Promise.all([
           CourseService.getAllCourses(),
-          ClassService.getAllClasses(),
+          PermissionService.canAccessModule(role, 'classroom') ? Promise.resolve(null) : ClassService.getAllClasses(),
+          TuitionBillingService.getAllTuitionBills(),
+          TeacherPayrollService.getAllPayrolls(),
         ]);
         if (isMounted) {
-          setCourses(cList);
-          setClasses(clsList);
+          setCourses(cList || []);
+          if (clsList) setClasses(clsList);
+          setTuitions(tList || []);
+          setPayrolls(pList || []);
         }
       } catch (err) {
         console.error('Error fetching dashboard real DB data:', err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     };
     fetchRealDbData();
@@ -37,7 +47,6 @@ export const useDashboardController = () => {
       isMounted = false;
     };
   }, []);
-
   const [healthData, setHealthData] = useState(() =>
     SystemHealthService.getSystemHealthOverview()
   );
@@ -45,28 +54,69 @@ export const useDashboardController = () => {
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isCuttingOff, setIsCuttingOff] = useState(false);
   const [recentDriveArchives, setRecentDriveArchives] = useState([]);
-
   const bannerInfo = ROLE_BANNERS[role] || ROLE_BANNERS.director;
-
-  // Tính toán số liệu thống kê Dashboard 100% từ dữ liệu thực tế Firestore
-  const executiveSummary = useMemo(
+  // 1. Dữ liệu chuyên biệt cho Giám đốc (Director)
+  const directorData = useMemo(
     () =>
-      ExecutiveAnalyticsService.getExecutiveSummary({
+      DashboardDataService.getDirectorAnalytics({
         users: allSystemUsers,
+        classes,
         courses,
+        tuitions,
+        payrolls,
+      }),
+    [allSystemUsers, classes, courses, tuitions, payrolls]
+  );
+  // 2. Dữ liệu chuyên biệt cho Giáo vụ (Academic)
+  const academicData = useMemo(
+    () =>
+      DashboardDataService.getAcademicOperationsData({
+        classes,
+        users: allSystemUsers,
+      }),
+    [classes, allSystemUsers]
+  );
+  // 3. Dữ liệu chuyên biệt cho Kế toán (Accountant)
+  const accountantData = useMemo(
+    () =>
+      DashboardDataService.getAccountantTreasuryData({
+        tuitions,
+        payrolls,
+        users: allSystemUsers,
         classes,
       }),
-    [allSystemUsers, courses, classes]
+    [tuitions, payrolls, allSystemUsers, classes]
   );
-
+  // 4. Dữ liệu chuyên biệt cho Giáo viên bản xứ (Teacher)
   const teacherWorkspaceData = useMemo(
-    () => PersonalPortalService.getTeacherWorkspaceData(currentUser),
-    [currentUser]
+    () =>
+      DashboardDataService.getTeacherWorkspaceRealData({
+        currentUser,
+        classes,
+        users: allSystemUsers,
+        payrolls,
+      }),
+    [currentUser, classes, allSystemUsers, payrolls]
   );
 
+  // 5. Dữ liệu chuyên biệt cho Học viên (Student)
   const studentPortalData = useMemo(
-    () => PersonalPortalService.getStudentPortalData(currentUser),
-    [currentUser]
+    () =>
+      DashboardDataService.getStudentPortalRealData({
+        currentUser,
+        classes,
+        tuitions,
+      }),
+    [currentUser, classes, tuitions]
+  );
+
+  // 6. Dữ liệu nhân khẩu học 6 Roles cho IT Admin (Admin)
+  const adminDemographics = useMemo(
+    () =>
+      DashboardDataService.getAdminDemographics({
+        users: allSystemUsers,
+      }),
+    [allSystemUsers]
   );
 
   const handleRunDiagnostic = () => {
@@ -106,11 +156,16 @@ export const useDashboardController = () => {
   };
 
   return {
+    classroomError,
     currentUser,
     role,
+    loading,
     bannerInfo,
     healthData,
-    executiveSummary,
+    adminDemographics,
+    directorData,
+    academicData,
+    accountantData,
     teacherWorkspaceData,
     studentPortalData,
     selectedCutoffYear,
@@ -123,5 +178,3 @@ export const useDashboardController = () => {
     handleCutoffYearToDrive,
   };
 };
-
-export default useDashboardController;
