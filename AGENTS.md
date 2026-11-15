@@ -214,6 +214,11 @@ ThiEducation/
     - **Công Thái Học Di Động (Mobile Ergonomics):**
       * Tuyệt đối không tràn ngang (`scrollWidth <= innerWidth`).
       * Toàn bộ nút thao tác chân modal (`Mở Tab Mới`, `Tải Về`, `Đóng`) bắt buộc `whiteSpace: 'nowrap'`, chiều cao $\ge 38-40\text{px}$, không bao giờ rớt chữ.
+   - **Kỷ Luật Bảo Mật Mật Khẩu Bcrypt Hashing & Di Trú Không Gián Đoạn (Zero-Downtime Bcrypt Invariant):**
+     * **Tuyệt đối cấm** lưu mật khẩu dạng plaintext trong Cloud Firestore. Mọi tài khoản mới hoặc đổi mật khẩu phải được băm qua `PasswordHashService.hashPassword()` (`bcryptjs`, 10 salt rounds).
+     * **Bảo toàn trải nghiệm người dùng cũ:** Cơ chế so sánh kép trong `PasswordHashService.comparePassword()` và tự động nâng cấp ngầm (`in-flight auto-upgrade`) bảo đảm 100% người dùng cũ đăng nhập bình thường bằng mật khẩu hiện tại mà không cần reset.
+     * **Bảo toàn Cụm gia đình:** Khi phụ huynh đăng nhập bằng SĐT có nhiều con, hệ thống đối soát hash của từng con và mở Modal chọn hồ sơ chính xác.
+     * **Kiểm toán di trú an toàn:** Mọi script di trú phải sao lưu snapshot kiểm toán (`docs/migration_audit_backup.json`) và vượt qua 6 kịch bản Playwright E2E (Admin, Director, Teacher, Single Student, Family Cluster, Wrong Password Rejection).
 
 ---
 

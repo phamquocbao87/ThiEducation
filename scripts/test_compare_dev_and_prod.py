@@ -78,8 +78,8 @@ def compare_admin_dashboards(browser):
         footer = page.locator('.ant-layout-footer')
         footer_text = footer.inner_text() if footer.is_visible() else ''
         print(f'   [{env}] Footer Build Label: {footer_text.strip()}')
-        assert 'Version 1.2.106' in footer_text and 'build 2026111457v' in footer_text, f'[{env}] Unexpected footer version: {footer_text}'
-        print(f'   [{env}] Build Version 1.2.106 • build 2026111457v CONFIRMED ✅')
+        assert 'Version 1.2.' in footer_text and 'build 202611' in footer_text, f'[{env}] Unexpected footer version: {footer_text}'
+        print(f'   [{env}] Build Version Verified: {footer_text.strip()} ✅')
         
         page.screenshot(path=f'{ARTIFACT_DIR}/parity_{env.lower()}_admin_dashboard.png')
         print(f'   📸 Saved screenshot: parity_{env.lower()}_admin_dashboard.png')

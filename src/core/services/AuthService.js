@@ -16,6 +16,7 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { auth, db, IS_FIREBASE_ENABLED } from './firebase';
+import { PasswordHashService } from './PasswordHashService';
 import { UserAuditService } from '../../modules/users/services/UserAuditService';
 import {
   USER_ROLES,
@@ -487,11 +488,11 @@ export class AuthService {
     }
 
     // 2. [NGUYÊN TẮC BẢO MẬT BẤT KHẢ XÂM PHẠM — ROLE-STRICT CREDENTIAL ISOLATION]:
-    // CHỈ LỌC RA NHỮNG HỒ SƠ CÓ MẬT KHẨU KHỚP 100% VỚI MẬT KHẨU NGƯỜI DÙNG VỪA NHẬP!
+    // CHỈ LỌC RA NHỮNG HỒ SƠ CÓ MẬT KHẨU KHỚP 100% VỚI MẬT KHẨU NGƯỜI DÙNG VỪA NHẬP (BCRYPT / DUAL-CHECK)!
     // Tuyệt đối không dùng some(): Mật khẩu của tài khoản Học viên KHÔNG BAO GIỜ được mở tài khoản Cán bộ/Giám đốc!
     const verifiedProfiles = matchedProfiles.filter((p) => {
-      const expected = p.password || 'LakEducation@2026';
-      return cleanPassword === expected;
+      const stored = p.password || 'LakEducation@2026';
+      return PasswordHashService.comparePassword(cleanPassword, stored);
     });
 
     if (verifiedProfiles.length === 0) {
@@ -552,7 +553,7 @@ export class AuthService {
 
     // 5. XÁC THỰC CHÉO MẬT KHẨU CỦA TÀI KHOẢN ĐÍCH
     const expectedPassword = registeredUser.password || 'LakEducation@2026';
-    if (cleanPassword !== expectedPassword) {
+    if (!PasswordHashService.comparePassword(cleanPassword, expectedPassword)) {
       await UserAuditService.logAction({
         actor: {
           id: registeredUser.id || registeredUser.code || 'UNAUTHENTICATED',
@@ -565,6 +566,19 @@ export class AuthService {
         description: `TỪ CHỐI ĐĂNG NHẬP: Sai mật khẩu cho tài khoản ${registeredUser.name} (${rawInput})`,
       });
       throw new Error('Tài khoản hoặc mật khẩu không đúng.');
+    }
+
+    // [TỰ ĐỘNG NÂNG CẤP BẢO MẬT - SELF-HEALING MIGRATION]:
+    // Nếu tài khoản này vẫn đang lưu mật khẩu Plaintext cũ -> Tự động băm Bcrypt và lưu đè lên Firestore ngay
+    if (!PasswordHashService.isBcryptHash(registeredUser.password) && IS_FIREBASE_ENABLED && db) {
+      try {
+        const newHash = PasswordHashService.hashPassword(cleanPassword);
+        const targetDocId = registeredUser.firestoreDocId || registeredUser.id || registeredUser.code;
+        setDoc(doc(db, this.USERS_COLLECTION, targetDocId), { password: newHash }, { merge: true }).catch(() => {});
+        registeredUser.password = newHash;
+      } catch (err) {
+        console.warn('[AuthService] Không thể tự động nâng cấp Bcrypt hash:', err.message);
+      }
     }
 
     registeredUser.linkedProfiles = verifiedProfiles;

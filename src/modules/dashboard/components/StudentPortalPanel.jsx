@@ -25,6 +25,7 @@ import {
 } from '@ant-design/icons';
 import { useAuth } from '../../../core/context/AuthContext';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { useIsMobile } from '../../../shared/hooks/useIsMobile';
 import { StudentDashboardService } from '../services/StudentDashboardService';
 import { StudentLearningCornerCard } from './StudentLearningCornerCard';
 import { StudentClassMaterialsCard } from './StudentClassMaterialsCard';
@@ -52,6 +53,7 @@ const getPlatformDisplayName = (platform, isEn) => {
 export const StudentPortalPanel = ({ portalData = {} }) => {
   const { currentUser } = useAuth();
   const { isEnglish, t } = useLanguage();
+  const isMobile = useIsMobile();
   const now = useClassTimer();
 
   const {
@@ -154,30 +156,31 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
         bordered={false}
         style={{
           borderRadius: 14,
-          marginBottom: 20,
+          marginBottom: isMobile ? 12 : 20,
           background: 'linear-gradient(135deg, #001529 0%, #003a8c 100%)',
           color: '#ffffff',
           boxShadow: '0 4px 16px rgba(0,21,41,0.12)',
         }}
-        styles={{ body: { padding: '20px 24px' } }}
+        styles={{ body: { padding: isMobile ? '12px 14px' : '20px 24px' } }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-          <Space size={14}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 12 }}>
+          <Space size={isMobile ? 10 : 14} align="start">
             <Avatar
-              size={56}
+              size={isMobile ? 42 : 56}
               style={{
                 backgroundColor: '#1890ff',
-                fontSize: 22,
+                fontSize: isMobile ? 18 : 22,
                 fontWeight: 700,
                 border: '2px solid rgba(255,255,255,0.4)',
+                flexShrink: 0,
               }}
               icon={<UserOutlined />}
             >
               {(currentUser?.name || 'S').charAt(0).toUpperCase()}
             </Avatar>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <Title level={3} style={{ color: '#ffffff', margin: 0, fontSize: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <Title level={3} style={{ color: '#ffffff', margin: 0, fontSize: isMobile ? 16 : 20, lineHeight: 1.2 }}>
                   {currentUser?.name || 'Học Viên'}
                 </Title>
                 {currentUser?.englishName && (
@@ -186,43 +189,60 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                     style={{
                       borderRadius: 6,
                       fontWeight: 700,
-                      fontSize: 13,
-                      padding: '2px 8px',
+                      fontSize: isMobile ? 11 : 13,
+                      padding: '1px 6px',
                       border: 'none',
+                      margin: 0,
+                      whiteSpace: 'nowrap',
                     }}
                   >
                     🌟 {currentUser.englishName}
                   </Tag>
                 )}
-                <Tag color="cyan" style={{ borderRadius: 4, margin: 0, fontSize: 11 }}>
+                <Tag color="cyan" style={{ borderRadius: 4, margin: 0, fontSize: 10, whiteSpace: 'nowrap' }}>
                   {currentUser?.code || currentUser?.id || 'STUDENT'}
                 </Tag>
               </div>
-              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: isMobile ? 11 : 13, display: 'block', marginTop: 2 }}>
                 {isEnglish
-                  ? 'McGraw-Hill Wonders ELA International Program • Active Learner'
-                  : 'Chương trình Anh ngữ Học thuật Quốc tế McGraw-Hill Wonders ELA • Học viên chính thức'}
+                  ? 'McGraw-Hill Wonders ELA • Active Learner'
+                  : 'McGraw-Hill Wonders ELA • Học viên chính thức'}
               </Text>
             </div>
           </Space>
 
           {/* Huy hiệu tóm tắt nhanh */}
-          <Space size={10} style={{ flexWrap: 'wrap' }}>
-            <div style={{ padding: '6px 12px', borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{isEnglish ? 'Classes' : 'Lớp Đang Học'}</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#38bdf8' }}>{enrolledClassesCount} {isEnglish ? 'class' : 'lớp'}</div>
-            </div>
-            <div style={{ padding: '6px 12px', borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{isEnglish ? 'Tuition' : 'Học Phí'}</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: isPaid ? '#52c41a' : '#fa8c16' }}>
-                {isPaid ? (isEnglish ? 'Completed' : 'Đã Đóng') : (isEnglish ? 'Pending' : 'Chờ Đóng')}
+          {isMobile ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, width: '100%', marginTop: 2 }}>
+              <div style={{ padding: '6px 8px', borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)', textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>{isEnglish ? 'Classes' : 'Lớp Đang Học'}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#38bdf8' }}>{enrolledClassesCount} {isEnglish ? 'cls' : 'lớp'}</div>
+              </div>
+              <div style={{ padding: '6px 8px', borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)', textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>{isEnglish ? 'Tuition' : 'Học Phí'}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: isPaid ? '#52c41a' : '#fa8c16' }}>
+                  {isPaid ? (isEnglish ? 'Paid' : 'Đã Đóng') : (isEnglish ? 'Pending' : 'Chờ Đóng')}
+                </div>
               </div>
             </div>
-          </Space>
+          ) : (
+            <Space size={10} style={{ flexWrap: 'wrap' }}>
+              <div style={{ padding: '6px 12px', borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)', textAlign: 'center' }}>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{isEnglish ? 'Classes' : 'Lớp Đang Học'}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#38bdf8' }}>{enrolledClassesCount} {isEnglish ? 'class' : 'lớp'}</div>
+              </div>
+              <div style={{ padding: '6px 12px', borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)', textAlign: 'center' }}>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{isEnglish ? 'Tuition' : 'Học Phí'}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: isPaid ? '#52c41a' : '#fa8c16' }}>
+                  {isPaid ? (isEnglish ? 'Completed' : 'Đã Đóng') : (isEnglish ? 'Pending' : 'Chờ Đóng')}
+                </div>
+              </div>
+            </Space>
+          )}
         </div>
       </Card>
 
-      {/* 2. Banner Ca Học Trực Tuyến Tiếp Theo (Tự Động Nhận Diện Nền Tảng & Khóa Thời Gian Phòng Học) */}
+      {/* 2. Banner Ca Học Trực Tuyến Tiếp Theo */}
       {upcomingClass && (
         <Alert
           type="success"
@@ -230,49 +250,50 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
           icon={
             <span style={{ display: 'inline-flex', alignItems: 'center' }}>
               {upcomingPlatform.type === 'google_meet' ? (
-                <GoogleMeetIcon size={24} />
+                <GoogleMeetIcon size={isMobile ? 18 : 24} />
               ) : upcomingPlatform.type === 'zoom' ? (
-                <ZoomIcon size={24} />
+                <ZoomIcon size={isMobile ? 18 : 24} />
               ) : (
-                <VideoCameraOutlined style={{ color: '#52c41a', fontSize: 24 }} />
+                <VideoCameraOutlined style={{ color: '#52c41a', fontSize: isMobile ? 18 : 24 }} />
               )}
             </span>
           }
           style={{
-            marginBottom: 20,
+            marginBottom: isMobile ? 12 : 20,
             borderRadius: 14,
             border: '1.5px solid #b7eb8f',
             backgroundColor: '#f6ffed',
-            padding: '16px 20px',
+            padding: isMobile ? '10px 12px' : '16px 20px',
           }}
           message={
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 10 }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <Text strong style={{ fontSize: 16, color: '#135200' }}>
-                    {isEnglish ? 'Upcoming Online Session:' : 'Lớp Học Trực Tuyến Sắp Tới:'}{' '}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <Text strong style={{ fontSize: isMobile ? 14 : 16, color: '#135200' }}>
+                    {isEnglish ? 'Upcoming Session:' : 'Lớp Sắp Tới:'}{' '}
                     <span style={{ color: '#237804' }}>{upcomingClass.name}</span>
                   </Text>
                   {upcomingMeetingUrl && <MeetingPlatformBadge url={upcomingMeetingUrl} size="small" />}
                 </div>
-                <div style={{ marginTop: 4, color: '#4b5563', fontSize: 13 }}>
-                  <ClockCircleOutlined style={{ marginRight: 6, color: '#0284c7' }} />
-                  {isEnglish ? 'Schedule:' : 'Lịch học:'} <Text strong>{upcomingClass.schedule || 'Regular Class Schedule'}</Text>
+                <div style={{ marginTop: 4, color: '#4b5563', fontSize: isMobile ? 12 : 13 }}>
+                  <ClockCircleOutlined style={{ marginRight: 4, color: '#0284c7' }} />
+                  {isEnglish ? 'Schedule:' : 'Lịch:'} <Text strong>{upcomingClass.schedule || 'Regular Schedule'}</Text>
                   {' • '}
-                  <GlobalOutlined style={{ marginLeft: 8, marginRight: 4, color: '#7c3aed' }} />
-                  {isEnglish ? 'Foreign Teacher:' : 'Giáo viên bản xứ:'} <Text strong>{upcomingClass.teacherName || 'Teacher Maj'}</Text>
+                  <GlobalOutlined style={{ marginLeft: 6, marginRight: 4, color: '#7c3aed' }} />
+                  <Text strong>{upcomingClass.teacherName || 'Teacher Maj'}</Text>
                 </div>
-                <div style={{ marginTop: 8 }}>
-                  <ClassSessionTimer cls={upcomingClass} now={now} style={{ marginBottom: 0, padding: '4px 10px', fontSize: 12 }} />
+                <div style={{ marginTop: 6 }}>
+                  <ClassSessionTimer cls={upcomingClass} now={now} style={{ marginBottom: 0, padding: '3px 8px', fontSize: 11 }} />
                 </div>
               </div>
 
-              <Space size={10}>
+              <div style={{ width: isMobile ? '100%' : 'auto', marginTop: isMobile ? 4 : 0 }}>
                 {upcomingMeetingUrl ? (
                   isUpcomingRoomOpen ? (
                     <Button
                       type="primary"
-                      size="large"
+                      size={isMobile ? 'middle' : 'large'}
+                      block={isMobile}
                       icon={upcomingPlatform.iconSmall || upcomingPlatform.icon || <VideoCameraOutlined />}
                       style={{
                         backgroundColor: '#52c41a',
@@ -280,26 +301,19 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                         borderRadius: 8,
                         fontWeight: 700,
                         boxShadow: '0 4px 12px rgba(82,196,26,0.3)',
+                        width: isMobile ? '100%' : 'auto',
                       }}
                       onClick={() => window.open(upcomingMeetingUrl, '_blank')}
-                      title={
-                        upcomingTimer?.state === 'live'
-                          ? (isEnglish
-                              ? `Class session is currently live! Click to join ${getPlatformDisplayName(upcomingPlatform, isEnglish)} now`
-                              : `Buổi học đang diễn ra! Bấm để vào lớp ${getPlatformDisplayName(upcomingPlatform, isEnglish)} ngay`)
-                          : (isEnglish
-                              ? `Online classroom is open! Click to join ${getPlatformDisplayName(upcomingPlatform, isEnglish)}`
-                              : `Phòng học đã mở! Bấm để vào lớp học ${getPlatformDisplayName(upcomingPlatform, isEnglish)} ngay`)
-                      }
                       data-testid="btn-join-live-meeting"
                     >
                       {upcomingTimer?.state === 'live'
-                        ? (isEnglish ? `🔴 Join Live ${getPlatformDisplayName(upcomingPlatform, isEnglish)}` : `🔴 Vào Lớp ${getPlatformDisplayName(upcomingPlatform, isEnglish)} (Đang Diễn Ra)`)
-                        : (isEnglish ? `🎥 Join ${getPlatformDisplayName(upcomingPlatform, isEnglish)} Now` : `🎥 Vào Lớp Học ${getPlatformDisplayName(upcomingPlatform, isEnglish)} Ngay`)}
+                        ? (isEnglish ? `🔴 Join Live` : `🔴 Vào Lớp (Đang Diễn Ra)`)
+                        : (isEnglish ? `🎥 Join Now` : `🎥 Vào Lớp Học Ngay`)}
                     </Button>
                   ) : (
                     <Button
-                      size="large"
+                      size={isMobile ? 'middle' : 'large'}
+                      block={isMobile}
                       disabled
                       icon={upcomingPlatform.iconSmall || upcomingPlatform.icon || <VideoCameraOutlined />}
                       style={{
@@ -309,12 +323,8 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                         borderColor: '#cbd5e1',
                         color: '#64748b',
                         cursor: 'not-allowed',
+                        width: isMobile ? '100%' : 'auto',
                       }}
-                      title={
-                        isEnglish
-                          ? `Online classroom on ${getPlatformDisplayName(upcomingPlatform, isEnglish)} will automatically open 15 minutes before class starts`
-                          : `Phòng học trực tuyến trên ${getPlatformDisplayName(upcomingPlatform, isEnglish)} sẽ tự động mở trước giờ học 15 phút để học viên tham gia`
-                      }
                       data-testid="btn-join-live-meeting-locked"
                     >
                       {isEnglish
@@ -348,7 +358,7 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                     Zalo Lớp
                   </Button>
                 )}
-              </Space>
+              </div>
             </div>
           }
         />

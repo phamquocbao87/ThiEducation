@@ -370,5 +370,33 @@
 4. **Kỷ Luật Phòng Vệ Null-Safety Trong Utility Functions:**
    - Mọi hàm phân tích lớp học như `findClassSession(cls, now)` bắt buộc kiểm tra `if (!cls) return null;` ở dòng đầu tiên để tránh lỗi sập DOM runtime.
 
+---
+
+## 14. Kỷ Luật Bảo Mật Mật Khẩu Bcrypt Hashing & Di Trú Không Gián Đoạn (Zero-Downtime Bcrypt Password Hashing & Dual-Verification Standard)
+
+1. **Chuẩn Thuật Toán Băm Mật Khẩu Bắt Buộc:**
+   - **TUYỆT ĐỐI CẤM** lưu trữ hoặc ghi đè mật khẩu ở dạng văn bản thuần (plaintext) vào bất kỳ collection/document nào trên Cloud Firestore.
+   - Bắt buộc 100% sử dụng thư viện `bcryptjs` với số vòng băm muối tiêu chuẩn: `SALT_ROUNDS = 10` (tiền tố băm chuẩn `$2b$10$` hoặc `$2a$10$`).
+   - Mọi thao tác tạo người dùng mới (`createUser`), đổi mật khẩu (`updateUserProfile`, `changePassword`) trong `UserService.js` hoặc các service liên quan **BẮT BUỘC PHẢI BĂM BCRYPT** qua `PasswordHashService.hashPassword()` trước khi gửi payload lên Firestore `setDoc` / `updateDoc`.
+
+2. **Cơ Chế Xác Thực Kép & Tự Động Nâng Cấp Ngầm (Dual-Verification & In-Flight Auto-Upgrade):**
+   - Trong `PasswordHashService.comparePassword(plain, stored)`:
+     * Nếu `stored` đã là hash Bcrypt (bắt đầu bằng `$2a$` hoặc `$2b$`): Dùng `bcrypt.compareSync(plain, stored)`.
+     * Nếu `stored` là chuỗi cũ chưa mã hóa: So sánh trực tiếp `plain === stored` để đảm bảo người dùng cũ không bao giờ bị khóa tài khoản hoặc lỗi đăng nhập.
+   - **Tự Động Nâng Cấp Ngầm (Self-Healing Auto-Upgrade):** Khi một tài khoản mang mật khẩu cũ đăng nhập thành công qua nhánh fallback, `AuthService` phải kích hoạt tác vụ ngầm băm mật khẩu bằng Bcrypt và cập nhật Firestore ngay lập tức mà không làm chậm phiên đăng nhập.
+
+3. **Bảo Toàn Cơ Chế Đăng Nhập SĐT Phụ Huynh & Cụm Gia Đình (Family Cluster Preserving):**
+   - Khi phụ huynh đăng nhập bằng Số điện thoại (1 SĐT có thể liên kết nhiều con học cùng trường):
+     * Hàm tìm kiếm tài khoản `findRegisteredUsers` trả về danh sách hồ sơ học viên khớp SĐT.
+     * Sử dụng `PasswordHashService.comparePassword(password, user.password)` để lọc các hồ sơ khớp mật khẩu.
+     * Nếu có nhiều hồ sơ khớp, trả về `requireProfileSelection: true` để mở Modal chọn học viên, bảo đảm tính độc lập của từng hồ sơ.
+
+4. **Kỷ Luật Di Trú Dữ Liệu An Toàn Tuyệt Đối (Safe Batch Migration Protocol):**
+   - Trước khi thực hiện bất kỳ script di trú hàng loạt mật khẩu nào:
+     * **Bước 1:** Bắt buộc xuất bản sao lưu kiểm toán snapshot lưu tại `docs/migration_audit_backup.json` (chứa ID, role, trạng thái mã hóa trước di trú).
+     * **Bước 2:** Chạy kiểm toán idempotency (chỉ băm các document chưa có tiền tố `$2b$` hoặc `$2a$`).
+     * **Bước 3:** Chạy bộ kiểm thử Playwright Headless Browser trên 6 kịch bản thực tế (Admin, Director, Teacher, Single Student, Family Cluster, Wrong Password Rejection) và xác nhận 100% PASS trước khi bàn giao.
+
+
 
 

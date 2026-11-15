@@ -63,8 +63,8 @@ export const ClassLiveCard = ({ cls, role = 'academic', onClick }) => {
     >
       <div>
         {/* Hàng 1: Mã lớp & Tag trạng thái Real-time */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
-          <Tag color="blue" style={{ fontWeight: 700, fontSize: 12, margin: 0, maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 6 }}>
+          <Tag color="blue" style={{ fontWeight: 700, fontSize: 12, margin: 0, whiteSpace: 'nowrap' }}>
             {cls.id}
           </Tag>
           <Tag
@@ -75,8 +75,7 @@ export const ClassLiveCard = ({ cls, role = 'academic', onClick }) => {
               fontWeight: 700,
               padding: '2px 8px',
               borderRadius: 6,
-              maxWidth: '100%',
-              whiteSpace: 'normal',
+              whiteSpace: 'nowrap',
             }}
           >
             {isEnglish ? liveStatus.statusLabelEn : liveStatus.statusLabelVi}

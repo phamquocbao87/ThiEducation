@@ -23,6 +23,7 @@ import {
 } from '../models/user.model';
 import { buildAllSystemUsersDirectory } from '../../../core/context/AuthContext';
 import { DriveStorageService } from '../../../core/services/DriveStorageService';
+import { PasswordHashService } from '../../../core/services/PasswordHashService';
 
 /**
  * Loại bỏ triệt để các trường có giá trị undefined trước khi ghi vào Firestore (hỗ trợ đệ quy)
@@ -425,6 +426,7 @@ export class UserService extends BaseModuleService {
 
     const newUser = {
       ...userData,
+      password: PasswordHashService.hashPassword(userData.password || 'LakEducation@2026'),
       id: userId,
       code: userCode,
       name: userData.name?.trim(),
@@ -705,11 +707,11 @@ export class UserService extends BaseModuleService {
       }
     }
 
-    // Đồng bộ mật khẩu mới nếu có cập nhật
+    // Đồng bộ mật khẩu mới nếu có cập nhật (tự động băm Bcrypt)
     if (updateData.password && String(updateData.password).trim()) {
-      updatedUser.password = String(updateData.password).trim();
+      updatedUser.password = PasswordHashService.hashPassword(String(updateData.password).trim());
     } else if (updateData.newPassword && String(updateData.newPassword).trim()) {
-      updatedUser.password = String(updateData.newPassword).trim();
+      updatedUser.password = PasswordHashService.hashPassword(String(updateData.newPassword).trim());
     }
     delete updatedUser.newPassword;
 

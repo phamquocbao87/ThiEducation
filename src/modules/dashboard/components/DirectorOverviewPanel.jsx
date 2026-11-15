@@ -12,12 +12,14 @@ import {
 } from '@ant-design/icons';
 import { formatCurrency } from '../../../shared/utils/formatter';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { useIsMobile } from '../../../shared/hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
 
 export const DirectorOverviewPanel = ({ directorData = {} }) => {
   const { isEnglish, t } = useLanguage();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
 
   const {
@@ -40,12 +42,14 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
         title: isEnglish ? 'Course ID' : 'Mã Khóa Học',
         dataIndex: 'id',
         key: 'id',
-        render: (v) => <Text strong>{v}</Text>,
+        width: 90,
+        render: (v) => <Text strong style={{ whiteSpace: 'nowrap' }}>{v}</Text>,
       },
       {
         title: isEnglish ? 'Program / Curriculum' : 'Chương Trình Đào Tạo',
         dataIndex: 'name',
         key: 'name',
+        minWidth: 160,
         render: (v) => (
           <Text strong style={{ color: '#1890ff' }}>
             {v}
@@ -56,20 +60,23 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
         title: isEnglish ? 'Level' : 'Cấp Độ',
         dataIndex: 'level',
         key: 'level',
-        render: (v) => <Tag color="blue">{v}</Tag>,
+        width: 130,
+        render: (v) => <Tag color="blue" style={{ margin: 0, whiteSpace: 'nowrap' }}>{v}</Tag>,
       },
       {
         title: isEnglish ? 'Active Classes' : 'Số Lớp Đang Mở',
         dataIndex: 'activeClassesCount',
         key: 'activeClassesCount',
-        render: (v) => `${v} ${isEnglish ? 'classes' : 'lớp'}`,
+        width: 110,
+        render: (v) => <span style={{ whiteSpace: 'nowrap' }}>{`${v} ${isEnglish ? 'classes' : 'lớp'}`}</span>,
       },
       {
         title: isEnglish ? 'Enrolled Students' : 'Học Viên Đang Học',
         dataIndex: 'studentCount',
         key: 'studentCount',
+        width: 130,
         render: (v) => (
-          <Tag color="purple">
+          <Tag color="purple" style={{ margin: 0, whiteSpace: 'nowrap' }}>
             {v} {isEnglish ? 'students' : 'học viên'}
           </Tag>
         ),
@@ -78,8 +85,9 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
         title: isEnglish ? 'Realized Revenue' : 'Doanh Thu Thực Thu',
         dataIndex: 'courseTuition',
         key: 'courseTuition',
+        width: 140,
         render: (v) => (
-          <Text strong style={{ color: '#16a34a' }}>
+          <Text strong style={{ color: '#16a34a', whiteSpace: 'nowrap' }}>
             {formatCurrency(v)}
           </Text>
         ),
@@ -91,92 +99,100 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
   return (
     <div>
       {/* 1. Hàng Thống Kê 4 Thẻ KPI Chiến Lược */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-        <Col xs={24} sm={12} lg={6}>
+      <Row gutter={[isMobile ? 8 : 16, isMobile ? 8 : 16]} style={{ marginBottom: isMobile ? 12 : 20 }}>
+        <Col xs={12} sm={12} lg={6}>
           <Card
             bordered={false}
             style={{
               borderRadius: 12,
               boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
               borderTop: '3px solid #16a34a',
+              height: '100%',
             }}
+            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 20px' } }}
           >
             <Statistic
-              title={<Text strong>{isEnglish ? 'Monthly Realized Revenue' : 'Doanh Thu Học Phí Thực Thu'}</Text>}
+              title={<Text strong style={{ fontSize: isMobile ? 11 : 13, display: 'block', lineHeight: 1.3 }}>{isEnglish ? 'Monthly Revenue' : 'Doanh Thu Thực Thu'}</Text>}
               value={paidTuitionTotal}
               formatter={(v) => formatCurrency(v)}
-              prefix={<DollarOutlined style={{ color: '#16a34a' }} />}
-              styles={{ content: { color: '#16a34a', fontWeight: 700 } }}
+              prefix={<DollarOutlined style={{ color: '#16a34a', fontSize: isMobile ? 14 : 18 }} />}
+              styles={{ content: { color: '#16a34a', fontWeight: 700, fontSize: isMobile ? 16 : 22, whiteSpace: 'nowrap' } }}
             />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
-              {isEnglish ? 'Pending collection:' : 'Đang chờ đối soát:'}{' '}
+            <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 12, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {isEnglish ? 'Pending:' : 'Chờ đối soát:'}{' '}
               <Text strong>{formatCurrency(pendingTuitionTotal)}</Text>
             </div>
           </Card>
         </Col>
 
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={12} sm={12} lg={6}>
           <Card
             bordered={false}
             style={{
               borderRadius: 12,
               boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
               borderTop: '3px solid #722ed1',
+              height: '100%',
             }}
+            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 20px' } }}
           >
             <Statistic
-              title={<Text strong>{isEnglish ? 'Total Committed Payroll' : 'Tổng Quỹ Lương Nhân Sự'}</Text>}
+              title={<Text strong style={{ fontSize: isMobile ? 11 : 13, display: 'block', lineHeight: 1.3 }}>{isEnglish ? 'Committed Payroll' : 'Quỹ Lương Nhân Sự'}</Text>}
               value={totalPayrollCommitted}
               formatter={(v) => formatCurrency(v)}
-              prefix={<DollarOutlined style={{ color: '#722ed1' }} />}
-              styles={{ content: { color: '#722ed1', fontWeight: 700 } }}
+              prefix={<DollarOutlined style={{ color: '#722ed1', fontSize: isMobile ? 14 : 18 }} />}
+              styles={{ content: { color: '#722ed1', fontWeight: 700, fontSize: isMobile ? 16 : 22, whiteSpace: 'nowrap' } }}
             />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
-              {isEnglish ? 'Faculty & Staff:' : 'Giáo viên & Giáo vụ:'}{' '}
-              <Text strong>{totalTeachers + totalAcademicStaff} {isEnglish ? 'members' : 'nhân sự'}</Text>
+            <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 12, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {isEnglish ? 'Staff:' : 'Nhân sự:'}{' '}
+              <Text strong>{totalTeachers + totalAcademicStaff} {isEnglish ? 'members' : 'người'}</Text>
             </div>
           </Card>
         </Col>
 
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={12} sm={12} lg={6}>
           <Card
             bordered={false}
             style={{
               borderRadius: 12,
               boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
               borderTop: '3px solid #1890ff',
+              height: '100%',
             }}
+            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 20px' } }}
           >
             <Statistic
-              title={<Text strong>{isEnglish ? 'Estimated Gross Margin' : 'Lợi Nhuận Gộp Đào Tạo'}</Text>}
+              title={<Text strong style={{ fontSize: isMobile ? 11 : 13, display: 'block', lineHeight: 1.3 }}>{isEnglish ? 'Estimated Margin' : 'Lợi Nhuận Gộp'}</Text>}
               value={grossProfit}
               formatter={(v) => formatCurrency(v)}
-              prefix={<RiseOutlined style={{ color: grossProfit >= 0 ? '#1890ff' : '#cf1322' }} />}
-              styles={{ content: { color: grossProfit >= 0 ? '#1890ff' : '#cf1322', fontWeight: 700 } }}
+              prefix={<RiseOutlined style={{ color: grossProfit >= 0 ? '#1890ff' : '#cf1322', fontSize: isMobile ? 14 : 18 }} />}
+              styles={{ content: { color: grossProfit >= 0 ? '#1890ff' : '#cf1322', fontWeight: 700, fontSize: isMobile ? 16 : 22, whiteSpace: 'nowrap' } }}
             />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
-              {isEnglish ? 'Revenue minus payroll costs' : 'Doanh thu trừ chi phí giảng dạy'}
+            <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 12, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {isEnglish ? 'Gross profit' : 'Sau trừ chi phí'}
             </div>
           </Card>
         </Col>
 
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={12} sm={12} lg={6}>
           <Card
             bordered={false}
             style={{
               borderRadius: 12,
               boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
               borderTop: '3px solid #fa8c16',
+              height: '100%',
             }}
+            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 20px' } }}
           >
             <Statistic
-              title={<Text strong>{isEnglish ? 'Average Class Fill Rate' : 'Tỷ Lệ Lấp Đầy Lớp Học'}</Text>}
+              title={<Text strong style={{ fontSize: isMobile ? 11 : 13, display: 'block', lineHeight: 1.3 }}>{isEnglish ? 'Average Fill Rate' : 'Tỷ Lệ Lấp Đầy'}</Text>}
               value={fillRate}
-              suffix="%"
-              prefix={<TeamOutlined style={{ color: '#fa8c16' }} />}
-              styles={{ content: { color: '#fa8c16', fontWeight: 700 } }}
+              suffix={<span style={{ fontSize: isMobile ? 12 : 14 }}>%</span>}
+              prefix={<TeamOutlined style={{ color: '#fa8c16', fontSize: isMobile ? 14 : 18 }} />}
+              styles={{ content: { color: '#fa8c16', fontWeight: 700, fontSize: isMobile ? 18 : 22 } }}
             />
-            <Progress percent={fillRate} strokeColor="#fa8c16" showInfo={false} size="small" style={{ marginTop: 8 }} />
+            <Progress percent={fillRate} strokeColor="#fa8c16" showInfo={false} size="small" style={{ marginTop: 4 }} />
           </Card>
         </Col>
       </Row>
@@ -188,26 +204,29 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
             title={
               <Space>
                 <BookOutlined style={{ color: '#1890ff' }} />
-                <span style={{ fontWeight: 700 }}>
-                  {isEnglish ? 'Curriculum Scale & Revenue Breakdown' : 'Quy Mô Khóa Học & Phân Bổ Doanh Thu Thực Tế'}
+                <span style={{ fontWeight: 700, fontSize: isMobile ? 14 : 16 }}>
+                  {isEnglish
+                    ? (isMobile ? 'Curriculum Scale' : 'Curriculum Scale & Revenue Breakdown')
+                    : (isMobile ? 'Quy Mô Khóa Học' : 'Quy Mô Khóa Học & Phân Bổ Doanh Thu Thực Tế')}
                 </span>
               </Space>
             }
             extra={
-              <Button type="link" onClick={() => navigate('/courses-classes')}>
-                {isEnglish ? 'View All Courses' : 'Xem Tất Cả Khóa Học'} <ArrowRightOutlined />
+              <Button type="link" size="small" style={{ padding: 0 }} onClick={() => navigate('/courses-classes')}>
+                {isEnglish ? (isMobile ? 'All →' : 'View All Courses →') : (isMobile ? 'Tất cả →' : 'Xem Tất Cả Khóa Học →')}
               </Button>
             }
             bordered={false}
             style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+            styles={{ body: { padding: isMobile ? '12px 12px' : '20px 24px' } }}
           >
             <Table
               dataSource={courseStats}
               columns={courseColumns}
               rowKey="id"
               pagination={false}
-              size="middle"
-              scroll={{ x: 600 }}
+              size="small"
+              scroll={{ x: 760 }}
             />
           </Card>
         </Col>
@@ -217,51 +236,54 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
             title={
               <Space>
                 <TrophyOutlined style={{ color: '#fa8c16' }} />
-                <span style={{ fontWeight: 700 }}>
-                  {isEnglish ? 'System Capacity & Executive Shortcuts' : 'Tổng Thể Quy Mô & Điều Hành'}
+                <span style={{ fontWeight: 700, fontSize: isMobile ? 14 : 16 }}>
+                  {isEnglish
+                    ? (isMobile ? 'System Capacity' : 'System Capacity & Executive Shortcuts')
+                    : (isMobile ? 'Quy Mô Hệ Thống' : 'Tổng Thể Quy Mô & Điều Hành')}
                 </span>
               </Space>
             }
             bordered={false}
             style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+            styles={{ body: { padding: isMobile ? '12px 12px' : '20px 24px' } }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#f8fafc', borderRadius: 8 }}>
-                <Space>
-                  <TeamOutlined style={{ color: '#1890ff', fontSize: 18 }} />
-                  <Text>{isEnglish ? 'Active Students:' : 'Học viên đang học:'}</Text>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 8 : 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#f8fafc', borderRadius: 8 }}>
+                <Space size={6}>
+                  <TeamOutlined style={{ color: '#1890ff', fontSize: 16 }} />
+                  <Text style={{ fontSize: isMobile ? 12 : 14 }}>{isEnglish ? 'Active Students:' : 'Học viên đang học:'}</Text>
                 </Space>
-                <Tag color="blue" style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>
+                <Tag color="blue" style={{ fontSize: 12, fontWeight: 700, margin: 0, whiteSpace: 'nowrap' }}>
                   {totalStudents} {isEnglish ? 'Students' : 'Học viên'}
                 </Tag>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#f8fafc', borderRadius: 8 }}>
-                <Space>
-                  <GlobalOutlined style={{ color: '#52c41a', fontSize: 18 }} />
-                  <Text>{isEnglish ? 'Foreign Teachers:' : 'Giáo viên bản xứ:'}</Text>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#f8fafc', borderRadius: 8 }}>
+                <Space size={6}>
+                  <GlobalOutlined style={{ color: '#52c41a', fontSize: 16 }} />
+                  <Text style={{ fontSize: isMobile ? 12 : 14 }}>{isEnglish ? 'Foreign Teachers:' : 'Giáo viên bản xứ:'}</Text>
                 </Space>
-                <Tag color="green" style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>
+                <Tag color="green" style={{ fontSize: 12, fontWeight: 700, margin: 0, whiteSpace: 'nowrap' }}>
                   {totalTeachers} {isEnglish ? 'Teachers' : 'Giáo viên'}
                 </Tag>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#f8fafc', borderRadius: 8 }}>
-                <Space>
-                  <CheckCircleOutlined style={{ color: '#722ed1', fontSize: 18 }} />
-                  <Text>{isEnglish ? 'Academic Coordinators:' : 'Cán bộ giáo vụ:'}</Text>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#f8fafc', borderRadius: 8 }}>
+                <Space size={6}>
+                  <CheckCircleOutlined style={{ color: '#722ed1', fontSize: 16 }} />
+                  <Text style={{ fontSize: isMobile ? 12 : 14 }}>{isEnglish ? 'Coordinators:' : 'Cán bộ giáo vụ:'}</Text>
                 </Space>
-                <Tag color="purple" style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>
+                <Tag color="purple" style={{ fontSize: 12, fontWeight: 700, margin: 0, whiteSpace: 'nowrap' }}>
                   {totalAcademicStaff} {isEnglish ? 'Staff' : 'Nhân sự'}
                 </Tag>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#f8fafc', borderRadius: 8 }}>
-                <Space>
-                  <BookOutlined style={{ color: '#fa8c16', fontSize: 18 }} />
-                  <Text>{isEnglish ? 'Active Classes:' : 'Lớp học đang vận hành:'}</Text>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#f8fafc', borderRadius: 8 }}>
+                <Space size={6}>
+                  <BookOutlined style={{ color: '#fa8c16', fontSize: 16 }} />
+                  <Text style={{ fontSize: isMobile ? 12 : 14 }}>{isEnglish ? 'Active Classes:' : 'Lớp đang vận hành:'}</Text>
                 </Space>
-                <Tag color="orange" style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>
+                <Tag color="orange" style={{ fontSize: 12, fontWeight: 700, margin: 0, whiteSpace: 'nowrap' }}>
                   {totalClasses} {isEnglish ? 'Classes' : 'Lớp học'}
                 </Tag>
               </div>
@@ -269,8 +291,8 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
               <Button
                 type="primary"
                 block
-                size="large"
-                style={{ marginTop: 8, borderRadius: 8, height: 42, fontWeight: 600 }}
+                size={isMobile ? 'middle' : 'large'}
+                style={{ marginTop: 4, borderRadius: 8, height: 40, fontWeight: 600 }}
                 onClick={() => navigate('/user-management')}
               >
                 {isEnglish ? 'Manage All Users & Directory' : 'Quản Trị Người Dùng & Nhân Sự'}

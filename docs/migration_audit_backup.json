@@ -1,0 +1,442 @@
+[
+  {
+    "docId": "ACA001",
+    "userId": "ACA001",
+    "name": "Trần Thu Hà",
+    "role": "academic",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "ACA002",
+    "userId": "ACA002",
+    "name": "Nguyễn Phương Thảo",
+    "role": "academic",
+    "hasPassword": false,
+    "rawPasswordPreview": null
+  },
+  {
+    "docId": "ACA003",
+    "userId": "ACA003",
+    "name": "Võ Hoàng Nam",
+    "role": "academic",
+    "hasPassword": false,
+    "rawPasswordPreview": null
+  },
+  {
+    "docId": "ACA404",
+    "userId": "ACA404",
+    "name": "Diễm Quỳnh",
+    "role": "academic",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "ACA545",
+    "userId": "ACA545",
+    "name": "Ngọc Nhi",
+    "role": "academic",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "ACC001",
+    "userId": "ACC001",
+    "name": "Lê Hoàng Mai",
+    "role": "accountant",
+    "hasPassword": false,
+    "rawPasswordPreview": null
+  },
+  {
+    "docId": "ACC330",
+    "userId": "ACC330",
+    "name": "Lê Thị Mỹ Dung",
+    "role": "accountant",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "ADM001",
+    "userId": "ADM001",
+    "name": "Phạm Quốc Bảo",
+    "role": "admin",
+    "hasPassword": true,
+    "rawPasswordPreview": "@B***"
+  },
+  {
+    "docId": "DIR001",
+    "userId": "DIR001",
+    "name": "Nguyễn Minh Tuấn",
+    "role": "director",
+    "hasPassword": false,
+    "rawPasswordPreview": null
+  },
+  {
+    "docId": "DIR505",
+    "userId": "DIR505",
+    "name": "Phạm Thị Hiếu Thi",
+    "role": "director",
+    "hasPassword": true,
+    "rawPasswordPreview": "27***"
+  },
+  {
+    "docId": "GV001",
+    "userId": "GV001",
+    "name": "Mr. David Smith",
+    "role": "teacher",
+    "hasPassword": false,
+    "rawPasswordPreview": null
+  },
+  {
+    "docId": "GV002",
+    "userId": "GV002",
+    "name": "Ms. Emma Watson",
+    "role": "teacher",
+    "hasPassword": false,
+    "rawPasswordPreview": null
+  },
+  {
+    "docId": "GV003",
+    "userId": "GV003",
+    "name": "Mr. Michael Jordan",
+    "role": "teacher",
+    "hasPassword": false,
+    "rawPasswordPreview": null
+  },
+  {
+    "docId": "GV004",
+    "userId": "GV004",
+    "name": "Ms. Sarah Jenkins",
+    "role": "teacher",
+    "hasPassword": false,
+    "rawPasswordPreview": null
+  },
+  {
+    "docId": "GV007",
+    "userId": "GV007",
+    "name": "Mr. Alex Ferguson",
+    "role": "teacher",
+    "hasPassword": false,
+    "rawPasswordPreview": null
+  },
+  {
+    "docId": "GV291",
+    "userId": "GV291",
+    "name": "Sarah Lee",
+    "role": "teacher",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "GV791",
+    "userId": "GV791",
+    "name": "Hellen",
+    "role": "teacher",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "GV952",
+    "userId": "GV952",
+    "name": "Teacher Maj",
+    "role": "teacher",
+    "hasPassword": true,
+    "rawPasswordPreview": "@B***"
+  },
+  {
+    "docId": "HV001",
+    "userId": "HV001",
+    "name": "Lê Anh Khoa",
+    "role": "student",
+    "hasPassword": false,
+    "rawPasswordPreview": null
+  },
+  {
+    "docId": "HV002",
+    "userId": "HV002",
+    "name": "Nguyễn Thị Ngọc Ánh",
+    "role": "student",
+    "hasPassword": false,
+    "rawPasswordPreview": null
+  },
+  {
+    "docId": "HV003",
+    "userId": "HV003",
+    "name": "Trần Minh Quân",
+    "role": "student",
+    "hasPassword": false,
+    "rawPasswordPreview": null
+  },
+  {
+    "docId": "HV004",
+    "userId": "HV004",
+    "name": "Phạm Hoàng Yến",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "@B***"
+  },
+  {
+    "docId": "HV005",
+    "userId": "HV005",
+    "name": "Đặng Bảo Lâm",
+    "role": "student",
+    "hasPassword": false,
+    "rawPasswordPreview": null
+  },
+  {
+    "docId": "HV115",
+    "userId": "HV115",
+    "name": "BP",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV151",
+    "userId": "HV151",
+    "name": "Bui Truong Tuong Vi",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV176",
+    "userId": "HV176",
+    "name": "An",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV179",
+    "userId": "HV179",
+    "name": "Phạm Bảo Lâm",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV214",
+    "userId": "HV214",
+    "name": "Phạm Bảo Lâm",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV235",
+    "userId": "HV235",
+    "name": "Nguyen Le Khanh Trang",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV253",
+    "userId": "HV253",
+    "name": "Nguyen Dang Thanh Nha",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV254",
+    "userId": "HV254",
+    "name": "GV01",
+    "role": "academic",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV257",
+    "userId": "HV257",
+    "name": "Nguyen Thao An",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV263",
+    "userId": "HV263",
+    "name": "Bảo Thư",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV264",
+    "userId": "HV264",
+    "name": "Bảo Long",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV267",
+    "userId": "HV267",
+    "name": "Nguyen Ngoc Thien An",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV332",
+    "userId": "HV332",
+    "name": "Phạm Bảo Lâm",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV344",
+    "userId": "HV344",
+    "name": "Le Phat",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV361",
+    "userId": "HV361",
+    "name": "Ta Dang Viet Hai",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV451",
+    "userId": "HV451",
+    "name": "Pham Bao Thu",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV463",
+    "userId": "HV463",
+    "name": "Trinh Binh Minh",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV479",
+    "userId": "HV479",
+    "name": "Do Ngoc Thinh",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV482",
+    "userId": "HV482",
+    "name": "Ha Thinh Gia Bao",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV612",
+    "userId": "HV612",
+    "name": "Phạm Bảo Lâm",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV698",
+    "userId": "HV698",
+    "name": "Trần Gia Huy",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV706",
+    "userId": "HV706",
+    "name": "Phạm Bảo Lâm",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV726",
+    "userId": "HV726",
+    "name": "Phạm Bảo Lâm",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV739",
+    "userId": "HV739",
+    "name": "Nguyen Đinh Vu",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV742",
+    "userId": "HV742",
+    "name": "Phạm Bảo Thư",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV768",
+    "userId": "HV768",
+    "name": "Nguyen Phu Quy",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV801",
+    "userId": "HV801",
+    "name": "Nguyen Minh Thu",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV828",
+    "userId": "HV828",
+    "name": "Phạm Bảo Lâm",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV902",
+    "userId": "HV902",
+    "name": "Phạm Bảo Lâm",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV905",
+    "userId": "HV905",
+    "name": "Pham Nguyen Phuc Thanh",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV959",
+    "userId": "HV959",
+    "name": "Phạm Bảo Lâm",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  },
+  {
+    "docId": "HV971",
+    "userId": "HV971",
+    "name": "Tra Phan Hanh Nhi",
+    "role": "student",
+    "hasPassword": true,
+    "rawPasswordPreview": "La***"
+  }
+]
