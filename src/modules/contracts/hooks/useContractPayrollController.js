@@ -15,6 +15,7 @@ export const useContractPayrollController = () => {
 
   const [contracts, setContracts] = useState([]);
   const [payrolls, setPayrolls] = useState([]);
+  const [staffPayrolls, setStaffPayrolls] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
@@ -40,20 +41,22 @@ export const useContractPayrollController = () => {
       }));
   }, [allSystemUsers]);
 
-  // Tải dữ liệu thực tế từ Cloud Firestore
+  // Tải dữ liệu thực tế từ Cloud Firestore (100% Real Data, Zero Dummy)
   useEffect(() => {
     let isMounted = true;
     const fetchContractsData = async () => {
       setLoading(true);
       try {
-        const [contractsList, payrollsList, classesList] = await Promise.all([
+        const [contractsList, payrollsList, staffPayrollsList, classesList] = await Promise.all([
           TeacherContractService.getAllContracts(),
           TeacherPayrollService.getAllPayrolls(),
+          StaffPayrollService.getAllStaffPayrolls(),
           ClassService.getAllClasses(),
         ]);
         if (isMounted) {
           setContracts(contractsList);
           setPayrolls(payrollsList);
+          setStaffPayrolls(staffPayrollsList);
           setClasses(classesList);
         }
       } catch (err) {
@@ -68,11 +71,6 @@ export const useContractPayrollController = () => {
       isMounted = false;
     };
   }, []);
-
-  // Danh sách Bảng lương Cán bộ Giáo vụ sinh động từ dữ liệu Firestore thực tế
-  const staffPayrolls = useMemo(() => {
-    return StaffPayrollService.buildStaffPayrollsFromRealUsers(allSystemUsers, classes);
-  }, [allSystemUsers, classes]);
 
   // Chỉ hiển thị hợp đồng của Giáo viên đang hoạt động thực tế
   const scopedContracts = useMemo(() => {
@@ -142,7 +140,9 @@ export const useContractPayrollController = () => {
     );
   };
 
-  const handleApproveStaffPayroll = (id) => {
+  const handleApproveStaffPayroll = async (id) => {
+    const updated = await StaffPayrollService.approveStaffPayroll(staffPayrolls, id);
+    setStaffPayrolls(updated);
     message.success(
       isEnglish
         ? 'Approved academic staff payroll!'
@@ -150,7 +150,9 @@ export const useContractPayrollController = () => {
     );
   };
 
-  const handleDisburseStaffPayroll = (id) => {
+  const handleDisburseStaffPayroll = async (id) => {
+    const updated = await StaffPayrollService.disburseStaffPayroll(staffPayrolls, id);
+    setStaffPayrolls(updated);
     message.success(
       isEnglish
         ? 'Academic staff payroll disbursement confirmed!'

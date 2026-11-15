@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-14T02:25:00.000Z",
+  "updatedAt": "2026-11-15T03:25:18.563Z",
   "database": "lakeducation-dev/lakeducationdb",
   "baseUrl": "http://localhost:3000",
   "accounts": [
@@ -12,7 +12,7 @@
       "roleLabel": "IT Quản Trị Hệ Thống (System Admin)",
       "email": "phamquocbao87@gmail.com",
       "phoneNumber": "0898794116",
-      "password": "@Bcd123456",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=ADM001"
     },
@@ -25,7 +25,7 @@
       "roleLabel": "Giám Đốc Điều Hành (Director)",
       "email": "lakvietnam@lakeducation.com",
       "phoneNumber": "0961557696",
-      "password": "271025",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=DIR505"
     },
@@ -38,7 +38,7 @@
       "roleLabel": "Giáo Vụ Đào Tạo (Academic)",
       "email": "quynhdao0210@gmail.com",
       "phoneNumber": "09878987",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=ACA404"
     },
@@ -51,7 +51,7 @@
       "roleLabel": "Giáo Vụ Đào Tạo (Academic)",
       "email": "nngoc.nhi0302@gmail.com",
       "phoneNumber": "0904492894",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=ACA545"
     },
@@ -64,7 +64,7 @@
       "roleLabel": "Giáo Vụ Đào Tạo (Academic)",
       "email": "baolamstudio@gmail.com",
       "phoneNumber": "098978971",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV254"
     },
@@ -77,7 +77,7 @@
       "roleLabel": "Giáo Viên Bản Xứ (Teacher)",
       "email": "paguntalan.marjorie05@gmail.com",
       "phoneNumber": "090544134",
-      "password": "@Bcd123456",
+      "password": "@Bcd1234",
       "assignedClasses": "WP01 G5, WP02 G5, LH005",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=GV952"
@@ -91,7 +91,7 @@
       "roleLabel": "Kế Toán Tài Chính (Accountant)",
       "email": "lemydung49@gmail.com",
       "phoneNumber": "0983548212",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=ACC330"
     },
@@ -104,7 +104,7 @@
       "roleLabel": "Học Viên (Student)",
       "email": "",
       "phoneNumber": "0786436333",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV151"
     },
@@ -117,7 +117,7 @@
       "roleLabel": "Học Viên (Student)",
       "email": "",
       "phoneNumber": "0835556263",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV235"
     },
@@ -130,7 +130,7 @@
       "roleLabel": "Học Viên (Student)",
       "email": "",
       "phoneNumber": "0909005750",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV253"
     },
@@ -143,7 +143,7 @@
       "roleLabel": "Học Viên (Student)",
       "email": "",
       "phoneNumber": "0904899867",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV257"
     },
@@ -156,7 +156,7 @@
       "roleLabel": "Học Viên (Student)",
       "email": "",
       "phoneNumber": "0969839259",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV267"
     },
@@ -169,7 +169,7 @@
       "roleLabel": "Học Viên (Student)",
       "email": "",
       "phoneNumber": "0976857040",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV344"
     },
@@ -182,7 +182,7 @@
       "roleLabel": "Học Viên (Student)",
       "email": "",
       "phoneNumber": "0987866303",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV361"
     },
@@ -195,7 +195,7 @@
       "roleLabel": "Học Viên (Student)",
       "email": "",
       "phoneNumber": "0916856689",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV463"
     },
@@ -208,7 +208,7 @@
       "roleLabel": "Học Viên (Student)",
       "email": "",
       "phoneNumber": "0983107221",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV479"
     },
@@ -221,7 +221,7 @@
       "roleLabel": "Học Viên (Student)",
       "email": "",
       "phoneNumber": "0355500736",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV482"
     },
@@ -234,7 +234,7 @@
       "roleLabel": "Học Viên (Student)",
       "email": "",
       "phoneNumber": "0983424411",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV739"
     },
@@ -247,7 +247,7 @@
       "roleLabel": "Học Viên (Student)",
       "email": "",
       "phoneNumber": "0979264110",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV768"
     },
@@ -260,7 +260,7 @@
       "roleLabel": "Học Viên (Student)",
       "email": "",
       "phoneNumber": "0975566722",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV801"
     },
@@ -273,7 +273,7 @@
       "roleLabel": "Học Viên (Student)",
       "email": "",
       "phoneNumber": "0374997977",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV905"
     },
@@ -286,10 +286,10 @@
       "roleLabel": "Học Viên (Student)",
       "email": "",
       "phoneNumber": "0945699966",
-      "password": "LakEducation@2026",
+      "password": "@Bcd1234",
       "status": "active",
       "ssoUrl": "http://localhost:3000/?sso_uid=HV971"
     }
-  ]
+  ],
+  "defaultPassword": "@Bcd1234"
 }
-

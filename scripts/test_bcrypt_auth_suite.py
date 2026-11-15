@@ -14,28 +14,28 @@ TEST_CASES = [
     {
         'name': '1. IT Admin (ADM001)',
         'identifier': 'phamquocbao87@gmail.com',
-        'password': '@Bcd123456',
+        'password': '@Bcd1234',
         'expected_role': 'admin',
         'expected_name': 'Phạm Quốc Bảo'
     },
     {
         'name': '2. Giám Đốc (DIR505)',
         'identifier': 'lakvietnam@lakeducation.com',
-        'password': '271025',
+        'password': '@Bcd1234',
         'expected_role': 'director',
         'expected_name': 'Phạm Thị Hiếu Thi'
     },
     {
         'name': '3. Giáo Viên (GV952)',
         'identifier': 'paguntalan.marjorie05@gmail.com',
-        'password': '@Bcd123456',
+        'password': '@Bcd1234',
         'expected_role': 'teacher',
         'expected_name': 'Teacher Maj'
     },
     {
         'name': '4. Học Viên Đơn Lẻ (HV151)',
         'identifier': '0786436333',
-        'password': 'LakEducation@2026',
+        'password': '@Bcd1234',
         'expected_role': 'student',
         'expected_name': 'Bui Truong Tuong Vi'
     }
@@ -71,7 +71,7 @@ def test_family_cluster(page):
     page.wait_for_selector('#identifier', state='visible', timeout=10000)
 
     page.fill('#identifier', '0909005750')
-    page.fill('#password', 'LakEducation@2026')
+    page.fill('#password', '@Bcd1234')
     page.click('button[type="submit"]')
 
     page.wait_for_timeout(2500)

@@ -1,67 +1,101 @@
 import { BaseModuleService } from '../../../shared/services/BaseModuleService';
+import { db, IS_FIREBASE_ENABLED } from '../../../core/services/firebase';
+import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import { PAYROLL_STATUS } from '../models/contracts.model';
 
 /**
  * Sub-Feature Class 3 (Contracts Module): Academic Staff (Giáo Vụ) Payroll & KPI Verification
- * Backed 100% by real Cloud Firestore users (role: 'academic') — ZERO mock data.
+ * Backed 100% by real Cloud Firestore `payrolls` (recipientType === 'STAFF') — ZERO dummy data.
  * Used by Director and Accountant to audit and disburse Academic Staff salaries.
  */
 export class StaffPayrollService extends BaseModuleService {
+  static COLLECTION_NAME = 'payrolls';
+
   /**
-   * Trích xuất danh sách Cán bộ Giáo vụ thực tế từ danh bạ Firestore users
+   * Đọc danh sách phiếu lương giáo vụ thực tế từ Cloud Firestore
    */
-  static buildStaffPayrollsFromRealUsers(users = [], classes = [], currentMonth = '11/2026') {
-    const activeStaff = (users || []).filter(
-      (u) =>
-        (u.role || '').toLowerCase() === 'academic' &&
-        !u.isDeleted &&
-        u.status !== 'deleted'
-    );
-
-    return activeStaff.map((staff) => {
-      const managed = (classes || []).filter(
-        (c) => c.academicStaffId === staff.id || c.managerId === staff.id
-      );
-      const totalStudents = managed.reduce(
-        (acc, c) =>
-          acc + (Array.isArray(c.studentIds) ? c.studentIds.length : Number(c.totalStudents) || 0),
-        0
-      );
-
-      const baseSalary = Number(staff.baseSalary || staff.salary || 11000000);
-      const kpiBonus = Number(staff.kpiBonus || 3000000);
-
-      return {
-        id: staff.code || staff.id,
-        name: staff.name,
-        gender: staff.gender || 'Nữ',
-        phoneNumber: staff.phoneNumber || staff.phone || '',
-        position: staff.position || staff.roleLabel || 'Điều phối viên giáo vụ & Đào tạo',
-        managedClasses: managed.length,
-        managedStudents: totalStudents,
-        completedTasks: 100,
-        baseSalary,
-        kpiBonus,
-        totalSalary: baseSalary + kpiBonus,
-        payrollStatus: staff.payrollStatus || PAYROLL_STATUS.APPROVED,
-        month: currentMonth,
-      };
-    });
+  static async getAllStaffPayrolls() {
+    if (IS_FIREBASE_ENABLED && db) {
+      try {
+        const colRef = collection(db, this.COLLECTION_NAME);
+        const snap = await getDocs(colRef);
+        if (!snap.empty) {
+          const list = snap.docs
+            .map((d) => ({ ...d.data(), id: d.id }))
+            .filter(
+              (p) =>
+                !p.isDeleted &&
+                p.status !== 'Deleted' &&
+                p.recipientType === 'STAFF'
+            );
+          return list;
+        }
+      } catch (err) {
+        console.warn('[StaffPayrollService] Lỗi đọc Firestore staff payrolls:', err.message);
+      }
+    }
+    return [];
   }
 
-  static approveStaffPayroll(staffList, staffId) {
-    return staffList.map((st) =>
-      st.id === staffId ? { ...st, payrollStatus: PAYROLL_STATUS.APPROVED } : st
-    );
+  /**
+   * Lưu hoặc cập nhật phiếu lương giáo vụ vào Cloud Firestore
+   */
+  static async saveStaffPayroll(payrollData) {
+    if (IS_FIREBASE_ENABLED && db && payrollData?.id) {
+      try {
+        const docRef = doc(db, this.COLLECTION_NAME, payrollData.id);
+        const payload = {
+          ...payrollData,
+          recipientType: 'STAFF',
+          updatedAt: new Date().toISOString(),
+        };
+        await setDoc(docRef, payload, { merge: true });
+      } catch (err) {
+        console.error('[StaffPayrollService] Lỗi lưu staff payroll vào Firestore:', err.message);
+        throw err;
+      }
+    }
+    return payrollData;
   }
 
-  static disburseStaffPayroll(staffList, staffId) {
-    return staffList.map((st) =>
-      st.id === staffId ? { ...st, payrollStatus: PAYROLL_STATUS.PAID } : st
+  /**
+   * Duyệt phiếu lương giáo vụ
+   */
+  static async approveStaffPayroll(staffList, staffId) {
+    const updated = staffList.map((st) =>
+      st.id === staffId
+        ? { ...st, payrollStatus: PAYROLL_STATUS.APPROVED, approvedAt: new Date().toISOString() }
+        : st
     );
+    const target = updated.find((st) => st.id === staffId);
+    if (target) {
+      await this.saveStaffPayroll(target);
+    }
+    return updated;
   }
 
-  static calculateStaffPayrollTotal(staffList) {
-    return (staffList || []).reduce((acc, curr) => acc + (curr.totalSalary || 0), 0);
+  /**
+   * Xác nhận chi lương giáo vụ
+   */
+  static async disburseStaffPayroll(staffList, staffId) {
+    const updated = staffList.map((st) =>
+      st.id === staffId
+        ? { ...st, payrollStatus: PAYROLL_STATUS.PAID, disbursedAt: new Date().toISOString() }
+        : st
+    );
+    const target = updated.find((st) => st.id === staffId);
+    if (target) {
+      await this.saveStaffPayroll(target);
+    }
+    return updated;
+  }
+
+  /**
+   * Tính tổng ngân sách chi lương giáo vụ thực tế (chỉ tính từ các bản ghi thật)
+   */
+  static calculateStaffPayrollTotal(staffList = []) {
+    return (staffList || []).reduce((acc, curr) => acc + (Number(curr.totalSalary) || 0), 0);
   }
 }
+
+export default StaffPayrollService;
