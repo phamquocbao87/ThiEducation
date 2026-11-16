@@ -124,9 +124,15 @@ export const TARGET_TYPES = {
  * Chuẩn hóa đối tượng chia sẻ của một tài liệu học tập
  */
 export const normalizeMaterialShares = (material = {}) => {
+  const isClassTargeted =
+    Boolean(material.isSessionRecording) ||
+    material.targetType === 'class' ||
+    (Array.isArray(material.sharedClassIds) && material.sharedClassIds.length > 0) ||
+    Boolean(material.classId);
+
   const sharedCourseIds = Array.isArray(material.sharedCourseIds)
     ? material.sharedCourseIds.filter(Boolean)
-    : material.courseId && material.courseId !== 'ALL'
+    : !isClassTargeted && material.courseId && material.courseId !== 'ALL'
     ? [material.courseId]
     : [];
 

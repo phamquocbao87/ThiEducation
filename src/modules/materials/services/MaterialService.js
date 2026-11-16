@@ -490,8 +490,12 @@ export class MaterialService extends BaseModuleService {
         }
         // Xem tài liệu gán cho lớp mình dạy
         if (item.sharedClassIds && item.sharedClassIds.some((cid) => myTeachingClassIds.has(cid))) return true;
-        // Xem tài liệu gán cho khóa mình dạy
-        if (item.sharedCourseIds && item.sharedCourseIds.some((cid) => myCourseIds.has(cid))) return true;
+        // Xem tài liệu gán cho khóa mình dạy (chỉ áp dụng nếu không bị giới hạn riêng theo lớp)
+        const isClassRestrictedTeacher =
+          Boolean(item.isSessionRecording) ||
+          item.targetType === 'class' ||
+          (Array.isArray(item.sharedClassIds) && item.sharedClassIds.length > 0);
+        if (!isClassRestrictedTeacher && item.sharedCourseIds && item.sharedCourseIds.some((cid) => myCourseIds.has(cid))) return true;
         // Xem tài liệu do chính mình tải lên
         if (item.lastUpdatedBy === userId) return true;
         return false;
@@ -529,8 +533,12 @@ export class MaterialService extends BaseModuleService {
         if (item.sharedClassIds && item.sharedClassIds.some((cid) => studentEnrolledClassIds.has(cid))) {
           return true;
         }
-        // 3. Tài liệu chia sẻ cho khóa học viên đang học
-        if (item.sharedCourseIds && item.sharedCourseIds.some((cid) => studentCourseIds.has(cid))) {
+        // 3. Tài liệu chia sẻ cho khóa học viên đang học (CHỈ áp dụng cho tài liệu cấp khóa học, KHÔNG áp dụng cho tài liệu đã giới hạn theo lớp hoặc video buổi học)
+        const isClassRestrictedStudent =
+          Boolean(item.isSessionRecording) ||
+          item.targetType === 'class' ||
+          (Array.isArray(item.sharedClassIds) && item.sharedClassIds.length > 0);
+        if (!isClassRestrictedStudent && item.sharedCourseIds && item.sharedCourseIds.some((cid) => studentCourseIds.has(cid))) {
           return true;
         }
         // 4. Tài liệu công khai toàn trường không giới hạn lớp/học viên

@@ -157,6 +157,13 @@ export const ClassRosterDrawer = ({
   );
   const canJoinRoom = canManage || (isStudentRole ? (isAlreadyEnrolled && isRoomTimeOpen) : true);
 
+  // Phân quyền bảo mật PII Phụ Huynh & Học Phí (Student & Teacher Privacy Protection):
+  // - Học phí (Tuition Status): CHỈ hiển thị cho Cán bộ quản lý & Kế toán; ẨN 100% với Học viên & Giáo viên
+  // - SĐT Phụ Huynh (Parent Contact): CHỈ hiển thị cho Cán bộ quản lý; ẨN 100% với Học viên & Giáo viên
+  const userRole = (currentUser?.role || '').toLowerCase();
+  const canViewFinancials = canManage || ['admin', 'director', 'academic', 'accountant'].includes(userRole);
+  const canViewParentContacts = canManage || ['admin', 'director', 'academic', 'accountant'].includes(userRole);
+
   const columns = [
     {
       title: isEnglish ? 'Student Name' : 'Họ & Tên Học Viên',
@@ -190,44 +197,52 @@ export const ClassRosterDrawer = ({
         <Tag color={rate >= 90 ? 'green' : 'orange'}>{rate || 95}%</Tag>
       ),
     },
-    {
-      title: isEnglish ? 'Tuition Status' : 'Tình Trạng Học Phí',
-      dataIndex: 'tuitionStatus',
-      key: 'tuitionStatus',
-      render: (status) => {
-        const color = status === 'PAID' ? 'green' : status === 'OVERDUE' ? 'red' : 'orange';
-        const label =
-          status === 'PAID'
-            ? isEnglish
-              ? 'Paid in Full'
-              : 'Đã đóng đủ'
-            : status === 'OVERDUE'
-            ? isEnglish
-              ? 'Overdue'
-              : 'Quá hạn'
-            : isEnglish
-            ? 'Pending'
-            : 'Chưa đóng';
-        return <Tag color={color}>{label}</Tag>;
-      },
-    },
-    {
-      title: isEnglish ? 'Parent Contact' : 'Phụ Huynh & SĐT',
-      key: 'parent',
-      render: (_, record) => (
-        <div>
-          <div>
-            <Text style={{ fontSize: 12 }}>{record.parentName || 'Chưa cập nhật'}</Text>
-          </div>
-          {record.phone && (
-            <div style={{ fontSize: 11, color: '#64748b' }}>
-              <PhoneOutlined style={{ marginRight: 4 }} />
-              {record.phone}
-            </div>
-          )}
-        </div>
-      ),
-    },
+    ...(canViewFinancials
+      ? [
+          {
+            title: isEnglish ? 'Tuition Status' : 'Tình Trạng Học Phí',
+            dataIndex: 'tuitionStatus',
+            key: 'tuitionStatus',
+            render: (status) => {
+              const color = status === 'PAID' ? 'green' : status === 'OVERDUE' ? 'red' : 'orange';
+              const label =
+                status === 'PAID'
+                  ? isEnglish
+                    ? 'Paid in Full'
+                    : 'Đã đóng đủ'
+                  : status === 'OVERDUE'
+                  ? isEnglish
+                    ? 'Overdue'
+                    : 'Quá hạn'
+                  : isEnglish
+                  ? 'Pending'
+                  : 'Chưa đóng';
+              return <Tag color={color}>{label}</Tag>;
+            },
+          },
+        ]
+      : []),
+    ...(canViewParentContacts
+      ? [
+          {
+            title: isEnglish ? 'Parent Contact' : 'Phụ Huynh & SĐT',
+            key: 'parent',
+            render: (_, record) => (
+              <div>
+                <div>
+                  <Text style={{ fontSize: 12 }}>{record.parentName || 'Chưa cập nhật'}</Text>
+                </div>
+                {record.phone && (
+                  <div style={{ fontSize: 11, color: '#64748b' }}>
+                    <PhoneOutlined style={{ marginRight: 4 }} />
+                    {record.phone}
+                  </div>
+                )}
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -1035,15 +1050,19 @@ export const ClassRosterDrawer = ({
                   </Tag>
                 ),
               },
-              {
-                title: isEnglish ? 'Parent Phone' : 'SĐT Phụ Huynh',
-                key: 'phone',
-                render: (_, r) => {
-                  const p = r.parentPhone || r.phone || '';
-                  if (!p) return <Text type="secondary">—</Text>;
-                  return isTeacherRole ? `***${p.replace(/\D/g, '').slice(-3)}` : p;
-                },
-              },
+              ...(canViewParentContacts
+                ? [
+                    {
+                      title: isEnglish ? 'Parent Phone' : 'SĐT Phụ Huynh',
+                      key: 'phone',
+                      render: (_, r) => {
+                        const p = r.parentPhone || r.phone || '';
+                        if (!p) return <Text type="secondary">—</Text>;
+                        return p;
+                      },
+                    },
+                  ]
+                : []),
               {
                 title: isEnglish ? 'Trial Date' : 'Ngày Học Thử',
                 dataIndex: 'trialDate',

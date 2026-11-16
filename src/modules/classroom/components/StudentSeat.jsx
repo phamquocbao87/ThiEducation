@@ -24,7 +24,9 @@ export const StudentSeat = React.memo(({
 }) => {
   const { t } = useLanguage();
   const { currentUser } = useAuth();
-  const isTeacherRole = (currentUser?.role || '').toLowerCase() === 'teacher';
+  const userRole = (currentUser?.role || '').toLowerCase();
+  const isTeacherRole = userRole === 'teacher';
+  const canContactParent = ['admin', 'director', 'academic'].includes(userRole);
   const isDistracted = status === PRESENCE.ONLINE && attention === ATTENTION_STATUS.DISTRACTED;
   const borderColor = isCurrentStudent ? '#52c41a' : isDistracted ? '#fa8c16' : colors[status];
   const deskColor = isDistracted ? '#fa8c16' : colors[status];
@@ -178,7 +180,7 @@ export const StudentSeat = React.memo(({
           </Button>
         )}
 
-        {!canEdit && isDistracted && cleanPhone && !isTeacherRole && (
+        {canContactParent && isDistracted && cleanPhone && !isTeacherRole && (
           <Button
             size="small"
             data-testid={`zalo-${student.id}`}
