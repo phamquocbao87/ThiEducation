@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Row, Col, Card, Statistic, Tag, Table, Progress, Button, Space, Typography } from 'antd';
 import {
   DollarOutlined,
@@ -9,11 +9,14 @@ import {
   TrophyOutlined,
   CheckCircleOutlined,
   RiseOutlined,
+  UserDeleteOutlined,
 } from '@ant-design/icons';
 import { formatCurrency } from '../../../shared/utils/formatter';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { useIsMobile } from '../../../shared/hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
+import { AbsentStudentsService } from '../services/AbsentStudentsService';
+import { AbsentStudentsAuditDrawer } from './AbsentStudentsAuditDrawer';
 
 const { Title, Text } = Typography;
 
@@ -35,6 +38,21 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
     fillRate = 0,
     courseStats = [],
   } = directorData;
+
+  const [absentData, setAbsentData] = useState({ absentRecords: [], todayAbsentCount: 0 });
+  const [isAbsentDrawerOpen, setIsAbsentDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    AbsentStudentsService.getAbsentStudentsData()
+      .then((res) => {
+        if (mounted) setAbsentData(res || { absentRecords: [], todayAbsentCount: 0 });
+      })
+      .catch((err) => console.warn('Lỗi quét absent students:', err));
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const courseColumns = useMemo(
     () => [
@@ -195,6 +213,40 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
             <Progress percent={fillRate} strokeColor="#fa8c16" showInfo={false} size="small" style={{ marginTop: 4 }} />
           </Card>
         </Col>
+
+        {/* Thẻ KPI Học Viên Vắng Học Hôm Nay */}
+        <Col xs={12} sm={12} lg={6}>
+          <Card
+            hoverable
+            onClick={() => setIsAbsentDrawerOpen(true)}
+            bordered={false}
+            style={{
+              borderRadius: 12,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              borderTop: '3px solid #ff4d4f',
+              backgroundColor: absentData.todayAbsentCount > 0 ? '#fff1f0' : '#ffffff',
+              height: '100%',
+              cursor: 'pointer',
+            }}
+            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 20px' } }}
+            data-testid="kpi-today-absent-students-director"
+          >
+            <Statistic
+              title={
+                <Text strong style={{ fontSize: isMobile ? 11 : 13, display: 'block', lineHeight: 1.3, color: '#cf1322' }}>
+                  {isEnglish ? "Today's Absent Students" : 'Học Viên Vắng Hôm Nay'}
+                </Text>
+              }
+              value={absentData.todayAbsentCount}
+              prefix={<UserDeleteOutlined style={{ color: '#ff4d4f', fontSize: isMobile ? 14 : 18 }} />}
+              suffix={<span style={{ fontSize: isMobile ? 11 : 13 }}>{isEnglish ? 'std' : 'học viên'}</span>}
+              styles={{ content: { color: '#cf1322', fontWeight: 700, fontSize: isMobile ? 18 : 24 } }}
+            />
+            <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 12, color: '#cf1322', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              👉 {isEnglish ? 'Click to inspect list' : 'Chạm để xem chi tiết'}
+            </div>
+          </Card>
+        </Col>
       </Row>
 
       {/* 2. Quy Mô Toàn Hệ Thống & Phân Bổ Chương Trình Đào Tạo */}
@@ -301,6 +353,14 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
           </Card>
         </Col>
       </Row>
+
+      {/* Drawer Kiểm Toán Học Viên Vắng Học Cho Giám Đốc */}
+      <AbsentStudentsAuditDrawer
+        open={isAbsentDrawerOpen}
+        onClose={() => setIsAbsentDrawerOpen(false)}
+        absentRecords={absentData.absentRecords}
+        todayAbsentCount={absentData.todayAbsentCount}
+      />
     </div>
   );
 };

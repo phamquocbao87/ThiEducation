@@ -1,10 +1,11 @@
-import React from 'react';
-import { Card, Tag, Space, Typography } from 'antd';
+import React, { useMemo } from 'react';
+import { Card, Tag, Space, Typography, Progress } from 'antd';
 import {
   ClockCircleOutlined,
   TeamOutlined,
   GlobalOutlined,
   CalendarOutlined,
+  ReadOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { getClassLiveStatus } from '../utils/classTimeUtils';
@@ -14,6 +15,7 @@ import { ClassSessionTimer } from './ClassSessionTimer';
 import { ClassTimerService } from '../services/ClassTimerService';
 import { ClassAttendanceSummary } from '../../../shared/components/ClassAttendanceSummary';
 import { currentAttendance } from '../../../shared/models/classroom.model';
+import { generateClassSessionDates } from '../../../shared/utils/classSessionUtils';
 
 const { Text } = Typography;
 
@@ -37,6 +39,16 @@ export const ClassLiveCard = ({ cls, role = 'academic', onClick }) => {
     ? cls.studentIds.length
     : (Number(cls.totalStudents) || 0);
   const maxStudents = Number(cls.maxStudents) || 12;
+
+  // Tính toán số buổi đã học trên tổng số buổi của khóa học
+  const totalSessions = Number(cls.totalSessions) || Number(cls.courseTotalSessions) || 24;
+  const sessions = useMemo(() => {
+    return generateClassSessionDates(cls, totalSessions, isEnglish);
+  }, [cls, totalSessions, isEnglish]);
+  const completedSessions = useMemo(() => {
+    return sessions.filter((s) => s.endMs <= now).length;
+  }, [sessions, now]);
+  const progressPercent = Math.min(100, Math.round((completedSessions / totalSessions) * 100));
 
   return (
     <Card
@@ -94,6 +106,29 @@ export const ClassLiveCard = ({ cls, role = 'academic', onClick }) => {
 
         <ClassSessionTimer cls={cls} now={now} isUrgent={isUrgent} />
         <ClassAttendanceSummary cls={cls} now={now} />
+
+        {/* Hàng: Tiến độ số buổi đã học */}
+        <div
+          data-testid={`class-progress-${cls.id}`}
+          style={{
+            marginTop: 4,
+            marginBottom: 10,
+            padding: '6px 10px',
+            background: '#f8fafc',
+            borderRadius: 8,
+            border: '1px solid #e2e8f0',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>
+              {isEnglish ? 'Sessions Completed:' : 'Số buổi đã học:'}
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#0958d9', whiteSpace: 'nowrap' }}>
+              {completedSessions}/{totalSessions} {isEnglish ? 'sessions' : 'buổi'} ({progressPercent}%)
+            </span>
+          </div>
+          <Progress percent={progressPercent} size="small" strokeColor="#1890ff" showInfo={false} />
+        </div>
         {/* Hàng 3: Thời gian học, Ngày bắt đầu & Giáo viên */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#334155' }}>

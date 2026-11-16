@@ -65,6 +65,12 @@ export const StudentRecentEvaluationsCard = ({ evaluations = [] }) => {
               </Text>
             </div>
           </Space>
+
+          {evaluations.length > 0 && (
+            <Tag color="cyan" style={{ borderRadius: 6, fontWeight: 700, padding: '3px 10px', fontSize: 12, margin: 0, whiteSpace: 'nowrap' }}>
+              {isEnglish ? `${evaluations.length} Recent Sessions` : `${evaluations.length} Buổi Học Gần Nhất`}
+            </Tag>
+          )}
         </div>
 
         {/* Danh Sách Đánh Giá */}

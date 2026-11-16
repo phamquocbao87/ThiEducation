@@ -144,6 +144,7 @@ export class DashboardDataService extends BaseModuleService {
       pendingStudentRequests,
       unassignedStudentsCount: unassignedStudents.length,
       unassignedStudents,
+      allUsers: activeUsers,
     };
   }
 

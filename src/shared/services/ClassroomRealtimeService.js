@@ -270,12 +270,12 @@ export class ClassroomRealtimeService extends BaseModuleService {
       if (!isTeacher && !isAcademicOrAdmin) throw new Error('EVALUATION_FORBIDDEN');
 
       const now = Date.now();
-      const session = findClassSession(cls, now);
+      const session = findClassSession(cls, now, { allowRecentEnded: true });
       const sessionRef = doc(db, 'session_evaluations', expectedSessionId);
       const previous = await transaction.get(sessionRef);
       const old = previous.exists() ? previous.data() : {};
 
-      const updatedRecord = buildStudentEvaluation(cls, old, studentId, evalData, user, now);
+      const updatedRecord = buildStudentEvaluation(cls, old, studentId, { ...evalData, sessionId: expectedSessionId }, user, now);
       transaction.set(sessionRef, {
         ...old,
         ...updatedRecord,
@@ -317,7 +317,7 @@ export class ClassroomRealtimeService extends BaseModuleService {
 
       let currentRecord = { ...old };
       for (const [studentId, evalData] of Object.entries(evaluationsMap || {})) {
-        currentRecord = buildStudentEvaluation(cls, currentRecord, studentId, evalData, user, now);
+        currentRecord = buildStudentEvaluation(cls, currentRecord, studentId, { ...evalData, sessionId: expectedSessionId }, user, now);
       }
 
       transaction.set(sessionRef, {

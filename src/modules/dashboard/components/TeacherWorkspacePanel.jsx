@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Row, Col, Card, Statistic, Tag, Button, Space, Typography, Alert, Empty } from 'antd';
 import {
   VideoCameraOutlined,
@@ -14,6 +14,8 @@ import { useIsMobile } from '../../../shared/hooks/useIsMobile';
 import { ClassLiveCard } from './ClassLiveCard';
 import { useNavigate } from 'react-router-dom';
 import { sortClassesSmartly } from '../../../shared/utils/scheduleUtils';
+import { PendingEvaluationTaskService } from '../services/PendingEvaluationTaskService';
+import { TeacherEvaluationTasksCard } from './TeacherEvaluationTasksCard';
 
 const { Title, Text } = Typography;
 
@@ -33,13 +35,41 @@ export const TeacherWorkspacePanel = ({ workspaceData = {} }) => {
 
   const sortedClasses = useMemo(() => sortClassesSmartly(myClasses), [myClasses]);
 
+  const [pendingTasks, setPendingTasks] = useState([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!myClasses.length) return;
+    setLoadingTasks(true);
+    PendingEvaluationTaskService.getPendingEvaluations({
+      classes: myClasses,
+      userRole: 'teacher',
+      userId: myClasses[0]?.teacherId,
+      isEnglish,
+    })
+      .then((tasks) => {
+        if (mounted) setPendingTasks(tasks || []);
+      })
+      .catch((err) => console.warn('Lỗi quét task giáo viên:', err))
+      .finally(() => {
+        if (mounted) setLoadingTasks(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [myClasses, isEnglish]);
+
   const handleCardClick = (cls) => {
     navigate(`/classroom/${encodeURIComponent(cls.id)}`);
   };
 
   return (
     <div>
-      {/* 1. Banner Lớp Học Sắp Tới Nổi Bật (Next Class Alert) */}
+      {/* 1. Nhiệm Vụ Giảng Dạy: Buổi Học Quên Chưa Đánh Giá */}
+      <TeacherEvaluationTasksCard tasks={pendingTasks} />
+
+      {/* 2. Banner Lớp Học Sắp Tới Nổi Bật (Next Class Alert) */}
       {nextClass ? (
         <Alert
           type="info"

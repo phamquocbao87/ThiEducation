@@ -243,10 +243,12 @@ export const buildLessonPlan = (cls, planData = {}, actor, now = Date.now()) => 
 };
 
 export const buildStudentEvaluation = (cls, old = {}, studentId, evalData = {}, actor, now = Date.now()) => {
-  const session = findClassSession(cls, now);
-  if (!session) throw new Error('SESSION_NOT_FOUND');
-  if (now < session.start) throw new Error('SESSION_NOT_STARTED');
-  const sessionId = classroomSessionId(cls.id, session);
+  const session = findClassSession(cls, now, { allowRecentEnded: true });
+  const sessionId = evalData.sessionId || old.sessionId || classroomSessionId(cls.id, session);
+  if (!sessionId) throw new Error('SESSION_NOT_FOUND');
+  if (session && sessionId === classroomSessionId(cls.id, session) && now < session.start) {
+    throw new Error('SESSION_NOT_STARTED');
+  }
   const ids = [...new Set(cls.studentIds || [])];
   if (!ids.includes(studentId)) throw new Error('INVALID_ROSTER');
 
@@ -270,9 +272,9 @@ export const buildStudentEvaluation = (cls, old = {}, studentId, evalData = {}, 
     ...old,
     sessionId,
     classId: cls.id,
-    sessionStart: session.start,
-    sessionEnd: session.end,
-    date: classroomDate(session.start),
+    sessionStart: old.sessionStart || evalData.sessionStart || session?.start,
+    sessionEnd: old.sessionEnd || evalData.sessionEnd || session?.end,
+    date: old.date || evalData.date || (session?.start ? classroomDate(session.start) : classroomDate(now)),
     studentEvaluations,
     updatedAt: new Date(now).toISOString(),
     auditTrail: {

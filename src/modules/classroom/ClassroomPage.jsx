@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Alert, Button, message, Result, Space, Tabs, Tag } from 'antd';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertOutlined,
   BookOutlined,
@@ -33,7 +33,11 @@ export default function ClassroomPage() {
   const c = useClassroomController();
   const back = () => navigate('/dashboard');
 
-  const [activeTab, setActiveTab] = useState('seating');
+  const [searchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab');
+  const urlSessionMs = searchParams.get('sessionDateMs');
+
+  const [activeTab, setActiveTab] = useState(() => (urlTab === 'evaluation' ? 'evaluation' : 'seating'));
   const [selectedStudentForNote, setSelectedStudentForNote] = useState(null);
   const [quickNoteModalOpen, setQuickNoteModalOpen] = useState(false);
   const [lessonPlanModalOpen, setLessonPlanModalOpen] = useState(false);
@@ -81,6 +85,28 @@ export default function ClassroomPage() {
     const matched = scheduleSessions.find((s) => Math.abs(s.dateMs - c.session.start) < 60000);
     return matched ? matched.sessionIndex : 1;
   }, [c.session, scheduleSessions]);
+
+  // Deep link hỗ trợ chuyển thẳng vào Tab và Buổi học chỉ định từ Dashboard Tasks
+  useEffect(() => {
+    if (urlTab === 'evaluation') {
+      setActiveTab('evaluation');
+    }
+    if (urlSessionMs && scheduleSessions.length > 0 && c.cls) {
+      const targetMs = Number(urlSessionMs);
+      const found = scheduleSessions.find((s) => Math.abs(s.dateMs - targetMs) < 60000);
+      if (found) {
+        c.setSelectedSession({
+          start: found.dateMs,
+          end: found.endMs,
+          sessionIndex: found.sessionIndex,
+          isEnded: found.endMs <= c.now,
+          id: `LIVE_${c.cls.id}_${found.dateMs}`,
+          date: found.date,
+          label: found.label,
+        });
+      }
+    }
+  }, [urlTab, urlSessionMs, scheduleSessions, c.cls?.id]);
 
   if (!c.loading && !c.error && (!c.cls || !c.allowed)) {
     return (
@@ -282,6 +308,7 @@ export default function ClassroomPage() {
             now={c.now}
             isSessionUpcoming={c.isSessionUpcoming}
             isSessionLive={c.isSessionLive}
+            isSessionEnded={c.isSessionEnded}
             canEvaluate={c.canEvaluate}
             roster={c.students}
             attendance={sessionAttendance}
@@ -290,6 +317,9 @@ export default function ClassroomPage() {
             currentStudentId={currentStudentId}
             onSaveEvaluation={c.saveStudentEvaluation}
             onSaveAllEvaluations={c.saveAllEvaluations}
+            scheduleSessions={scheduleSessions}
+            selectedSessionOverride={c.selectedSessionOverride}
+            onSelectSession={c.setSelectedSession}
           />
         </div>
       ),

@@ -225,32 +225,61 @@ export class StudentDashboardService extends BaseModuleService {
     try {
       const allEvals = await SessionEvaluationService.getAllEvaluations();
       const rawEvaluations = [];
-      const todayStr = new Date().toISOString().split('T')[0];
+      const now = Date.now();
+
+      const parseDateToMs = (dateStr) => {
+        if (!dateStr) return null;
+        if (typeof dateStr === 'number') return dateStr;
+        const str = String(dateStr).trim();
+        const dmy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (dmy) return new Date(+dmy[3], +dmy[2] - 1, +dmy[1]).getTime();
+        const ymd = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (ymd) return new Date(+ymd[1], +ymd[2] - 1, +ymd[3]).getTime();
+        const parsed = Date.parse(str);
+        return isNaN(parsed) ? null : parsed;
+      };
 
       allEvals.forEach((docData) => {
         if (docData.isDeleted) return;
-        // Chặn tuyệt đối các buổi học tương lai chưa diễn ra
-        if (docData.date && docData.date > todayStr) return;
+
+        const sessionMs = docData.sessionStart || parseDateToMs(docData.date) || 0;
+        // Chặn các buổi học tương lai chưa diễn ra
+        if (sessionMs && sessionMs > now + 300000) return;
+
         // Kiểm tra đúng lớp của học viên
         if (docData.classId && !classIds.includes(docData.classId) && myClasses.length > 0) return;
 
         const evalForStudent = docData.studentEvaluations?.[studentId];
         const quickNote = docData.quickNotes?.[studentId];
+        const presenceStatus = docData.presence?.[studentId];
 
-        if (evalForStudent || quickNote) {
-          const stars = Math.max(1, Math.min(5, Math.round(Number(evalForStudent?.stars) || 5)));
-          const englishComment = evalForStudent?.comment || quickNote?.text || 'Actively engaged in class activities with high enthusiasm.';
-          const viComment = evalForStudent?.commentVi || (evalForStudent?.comment && !/^[A-Za-z0-9\s.,!?'"()-]+$/.test(evalForStudent?.comment) ? evalForStudent?.comment : '');
+        if (evalForStudent || quickNote || presenceStatus) {
+          const isOffline = presenceStatus === 'OFFLINE';
+          const stars = evalForStudent?.stars
+            ? Math.max(1, Math.min(5, Math.round(Number(evalForStudent.stars))))
+            : isOffline
+            ? 1
+            : 5;
+
+          const rawDate = docData.date || '';
+          const formattedDate = rawDate.includes('-')
+            ? rawDate.split('-').reverse().join('/')
+            : rawDate || '16/11/2026';
+
+          const englishComment = evalForStudent?.comment || quickNote?.text || (isOffline ? 'Absent from class today.' : 'Actively engaged in class activities with high enthusiasm.');
+          const viComment = evalForStudent?.commentVi || (evalForStudent?.comment && !/^[A-Za-z0-9\s.,!?'"()-]+$/.test(evalForStudent?.comment) ? evalForStudent?.comment : (isOffline ? 'Vắng mặt buổi học hôm nay.' : 'Học viên tham gia học tập tích cực và hoàn thành tốt bài tập.'));
 
           rawEvaluations.push({
             id: docData.id || docData.sessionId,
             classId: docData.classId,
-            dateKey: docData.date || '2026-11-14',
+            dateKey: formattedDate,
+            dateMs: sessionMs,
             updatedAt: docData.updatedAt || docData.createdAt || '',
-            sessionDate: docData.date ? docData.date.split('-').reverse().join('/') : '14/11/2026',
+            sessionDate: formattedDate,
             className: docData.className || 'WP01 G5 Ms. Maj',
             teacherName: docData.teacherName || evalForStudent?.evaluatedByName || 'Teacher Maj',
-            attendance: docData.presence?.[studentId] === 'ONLINE' ? 'Present (Có mặt đúng giờ)' : 'Present',
+            attendance: isOffline ? 'Absent (Vắng mặt)' : 'Present (Có mặt đúng giờ)',
+            isOffline,
             listeningScore: Number(evalForStudent?.listeningScore) || stars,
             speakingScore: Number(evalForStudent?.speakingScore) || (stars >= 4 ? stars - 0.5 : stars),
             readingScore: Number(evalForStudent?.readingScore) || stars,
@@ -258,7 +287,7 @@ export class StudentDashboardService extends BaseModuleService {
             overallRating: stars,
             topic: docData.topic || 'McGraw-Hill Wonders Curriculum',
             teacherComment: englishComment,
-            teacherCommentVi: viComment || 'Học viên tham gia học tập rất tích cực và hoàn thành tốt bài tập.',
+            teacherCommentVi: viComment,
             tags: quickNote?.tags || evalForStudent?.tags || ['🌟 Clear Reading', '🗣️ Active Speaking'],
             recordingUrl: docData.recordingUrl || '',
             isSessionRecording: Boolean(docData.recordingUrl),
@@ -277,10 +306,14 @@ export class StudentDashboardService extends BaseModuleService {
           }
         });
 
-      const realEvaluations = Array.from(dedupMap.values());
+      // Sắp xếp theo ngày học giảm dần (buổi mới nhất lên đầu tiên)
+      const realEvaluations = Array.from(dedupMap.values()).sort(
+        (a, b) => (b.dateMs || 0) - (a.dateMs || 0)
+      );
 
+      // Cắt đúng 10 ngày / 10 buổi học gần nhất
       if (realEvaluations.length > 0) {
-        return realEvaluations;
+        return realEvaluations.slice(0, 10);
       }
     } catch (err) {
       console.warn('[StudentDashboardService] Lỗi lấy evaluations từ Firestore:', err.message);

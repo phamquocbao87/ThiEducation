@@ -321,14 +321,99 @@ Dự án **ThiEducation** vận hành theo mô hình **6 Vai Trò (Roles)** tác
 3. **Phân Quyền & Cô Lập Lớp Học Tuyệt Đối (Class Scoped Video Isolation):**
    - Video bài giảng được lưu vào collection `learning_materials` với:
      `type: 'VIDEO'`, `classId: cls.id`, `sharedClassIds: [cls.id]`, `shareScope: 'CUSTOM'`, `isSessionRecording: true`.
+   - **Kỷ luật chuẩn hóa quyền chia sẻ (`normalizeMaterialShares` & `getMaterialsForUser`):**
+     * Khi tài liệu/video là loại nhắm đến lớp cụ thể (`isClassTargeted`: có `isSessionRecording: true` hoặc `targetType === 'class'` hoặc `sharedClassIds.length > 0`), hàm `normalizeMaterialShares` **TUYỆT ĐỐI KHÔNG ĐƯỢC TỰ ĐỘNG GÁN** `courseId` vào `sharedCourseIds`.
+     * Trong `MaterialService.getMaterialsForUser`, nếu tài liệu bị giới hạn theo lớp (`isClassRestricted`), bắt buộc chỉ học viên/giáo viên được phân bổ đúng lớp trong `sharedClassIds` mới được xem, chặn đứng hoàn toàn việc rò rỉ chéo sang các lớp khác cùng khóa học!
    - **Toàn bộ học viên của lớp này sẽ thấy** trên Cổng Học Viên (`StudentClassMaterialsCard` và `StudentRecentEvaluationsCard`).
    - **Tuyệt đối ẩn 100%** đối với học viên không thuộc lớp này để đảm bảo tính riêng tư.
 4. **Trải Nghiệm Xem Trực Tiếp (In-App Video Preview):**
    - Học viên bấm `[Preview / Xem]` hoặc `[Watch Video / Xem Video]` sẽ mở `MaterialPreviewModal` phát video trực tiếp (Iframe Google Drive hoặc HTML5 Video Player) với đầy đủ thanh điều khiển.
 
+---
+
+## 🛡️ 17. Quy Chuẩn Bảo Mật PII Phụ Huynh & Trạng Thái Học Phí Trong Danh Sách Lớp (Student & Teacher PII Privacy Guard)
+
+1. **Bối Cảnh & Nguy Cơ Rò Rỉ PII (Personally Identifiable Information):**
+   - Trên màn hình Khóa học & Lớp học (`/courses-classes`), Drawer Danh sách Lớp (`ClassDetailsDrawer` / `ClassRosterDrawer`) chứa danh sách toàn bộ học viên ghi danh vào lớp cùng số điện thoại phụ huynh (`Parent Contact`) và tình trạng đóng học phí (`Tuition Status`).
+   - Việc hiển thị công khai SĐT phụ huynh và học phí cho học viên hoặc giáo viên là vi phạm nghiêm trọng tính riêng tư của học viên và phụ huynh.
+2. **Nguyên Tắc Phân Quyền Bất Biến:**
+   - **Học viên (`student`):**
+     * **TUYỆT ĐỐI ẨN 100%** cột `Parent Contact` (Tên & SĐT phụ huynh) và cột `Tuition Status` (Tình trạng học phí) ở cả bảng học viên chính thức (`enrolledStudents`) và bảng học viên học thử (`trialStudents`).
+     * Tuyệt đối không cho phép học viên nhìn thấy số điện thoại của học viên khác hoặc phụ huynh khác ở bất kỳ giao diện nào (Roster Drawer, Live Classroom, User Management, Dashboard).
+     * Nút gọi/liên hệ Zalo phụ huynh trong phòng học trực tuyến (`StudentSeat.jsx`) khi học sinh mất tập trung chỉ mở cho cán bộ quản lý (`admin`, `director`, `academic`), tuyệt đối ẩn đối với học viên.
+   - **Giáo viên bản xứ (`teacher`):**
+     * **TUYỆT ĐỐI ẨN 100%** cột `Tuition Status` (tuân thủ nguyên tắc cốt lõi *Teacher Fee Privacy Guard*).
+     * **TUYỆT ĐỐI ẨN 100%** cột `Parent Contact` trên Roster Drawer. Giáo viên chỉ tương tác với học viên qua lớp học trực tuyến; nếu cần hỗ trợ liên hệ phụ huynh, giáo viên gửi yêu cầu trực tiếp cho Giáo vụ thông qua tin nhắn nội bộ hệ thống.
+   - **Cán bộ Quản lý & Vận hành (`admin`, `director`, `academic`, `accountant`):**
+     * Giữ nguyên 100% quyền xem đầy đủ 5 cột (`Student Name`, `Student ID`, `Attendance Rate`, `Tuition Status`, `Parent Contact`) để phục vụ công tác điều hành, chăm sóc học viên và đối soát học phí.
+3. **Triển Khai Kỹ Thuật Chuẩn Trong `ClassRosterDrawer.jsx`:**
+   ```jsx
+   const canViewFinancials = canManage || ['admin', 'director', 'academic', 'accountant'].includes(userRole);
+   const canViewParentContacts = canManage || ['admin', 'director', 'academic', 'accountant'].includes(userRole);
+
+   // Cột động được cấu thành dựa trên quyền:
+   const columns = [
+     // Cột 1: Tên học viên
+     // Cột 2: Mã học viên
+     // Cột 3: Tỷ lệ chuyên cần
+     ...(canViewFinancials ? [colTuitionStatus] : []),
+     ...(canViewParentContacts ? [colParentContact] : []),
+   ];
+   ```
+
+---
+
+## 📂 18. Cơ Chế Chia Sẻ & Phân Quyền Truy Cập Học Liệu Google Drive (Drive Material Access Guard)
+
+1. **Nguyên Tắc Lưu Trữ & Chia Sẻ Link Google Drive:**
+   - Khi nhân sự hoặc giáo vụ thêm học liệu bằng cách dán URL Google Drive vào form `MaterialUploadModal`:
+     * Tệp trên Google Drive **BẮT BUỘC PHẢI ĐƯỢC CHIA SẺ** ở chế độ: *"Bất kỳ ai có đường liên kết đều có thể xem"* (Anyone with the link can view).
+     * Tuyệt đối không dán liên kết từ Google Drive cá nhân đang ở chế độ *"Hạn chế"* (Restricted) vì người dùng khác mở ra sẽ bị Google Drive chặn Iframe với thông báo: *"Bạn cần có quyền truy cập"*.
+   - Khuyến khích sử dụng nút **Tải Tệp Lên Trực Tiếp** qua quy trình Zero-Egress của hệ thống để tệp được đẩy thẳng vào Google Drive lưu trữ chung của trường (`06_CLASS_RECORDINGS_MATERIALS/2026`).
 
 
 
 
 
 
+
+
+---
+
+## ⏰ 19. Quy Chuẩn Cửa Sổ Hậu Buổi Học 12 Giờ & Bộ Chọn Đánh Giá Bù Adaptive Mobile/Desktop (Post-Session Evaluation Window & Retroactive Selector)
+
+1. **Cửa Sổ Hậu Buổi Học 12 Giờ (`12-Hour Grace Evaluation Window`):**
+   - Sau khi buổi học trực tuyến kết thúc (ví dụ sau 21:10), hệ thống **TUYỆT ĐỐI KHÔNG KHÓA ĐÁNH GIÁ NGAY LẬP TỨC**.
+   - Cửa sổ chấm sao, nhập nhận xét sư phạm và upload video bài giảng tự động duy trì mở thêm **12 giờ (`12 * 3600 * 1000 ms`)** tính từ thời điểm tan lớp để giáo viên bản xứ (`teacher`) và giáo vụ (`academic`) thong thả hoàn tất báo cáo.
+2. **Bộ Chọn Buổi Học & Đánh Giá Bù (Retroactive Session Selector):**
+   - Tích hợp Dropdown bộ chọn buổi học thông minh tại đầu Tab 3 (`SessionEvaluationPanel`), phân loại rõ các trạng thái: `✅ Đã đánh giá (avg ⭐)`, `⚠️ Hôm nay (Chưa ĐG)`, `⚠️ Quên đánh giá (Đánh giá bù)`, `🔒 Chưa diễn ra`.
+   - Giáo viên có quyền chọn lại bất kỳ buổi học nào trong quá khứ bị sót (ví dụ Buổi 2, 4, 5...) để đánh giá bù. Dữ liệu tự động lưu chuẩn xác vào Firestore `session_evaluations/LIVE_<classId>_<sessionStart>`.
+3. **Trải Nghiệm Thích Ứng Di Động (Adaptive Mobile-First UX & Zero Table on Mobile):**
+   - **Desktop ($\ge 992\text{px}$):** Hiển thị dạng Bảng Table ngang chuẩn mực kèm Quick Pedagogical Tags 1-chạm (`🌟 Praise`, `🔤 Phonics`, `🗣️ Active`, `📚 Homework`).
+   - **Mobile ($< 992\text{px}$ — 390px):** Tuyệt đối không dùng Table gây tràn ngang; tự động chuyển sang **Danh Sách Thẻ Học Viên (Card-Based List)**. Rating sao to rõ, touch target $\ge 32-40\text{px}$, và thanh hành động ghim cố định ở đáy màn hình (**Sticky Bottom Action Bar**) với nút lớn `[💾 Lưu Buổi X]`.
+   - Bắt buộc kiểm toán 8 chỉ số QC, assert `Zero Overflow-X` (`scrollWidth <= innerWidth`) và `whiteSpace: 'nowrap'` chống rớt chữ.
+
+---
+
+## 📋 20. Hệ Thống Task Việc Cần Làm Dashboard (Teacher Deep Navigation 1-Chạm, Academic/Director Audit) & Kiểm Toán Học Viên Vắng Hôm Nay
+
+1. **Dashboard Task Cho Giáo Viên Bản Xứ (`TeacherEvaluationTasksCard`):**
+   - Quét toàn bộ các buổi học trong quá khứ đã kết thúc của giáo viên đang đăng nhập mà chưa có bản ghi đánh giá hoặc đánh giá chưa hoàn tất.
+   - Nút `[Evaluate Now ↗]` tích hợp deep-navigation 1-chạm: Chuyển hướng trực tiếp vào URL `/classroom/<classId>?tab=evaluation&sessionDateMs=<timestamp>`, tự động chuyển sang Tab 3 và nạp đúng buổi học cần chấm điểm.
+2. **Widget Giám Sát Đánh Giá Cho Ban Giám Hiệu (`PendingEvaluationTasksCard`):**
+   - Thống kê tỷ lệ hoàn tất đánh giá toàn trường (`evaluatedSessions / totalPassedSessions`).
+   - Danh sách lớp còn buổi nợ đánh giá kèm tên giáo viên đảm nhiệm.
+   - Nút `[🔔 Nhắc Giáo Viên]`: Gửi thông báo nhắc nhở giáo viên qua notification/chat.
+   - Nút `[📝 Xem & Đánh Giá Hộ ↗]`: Mở trực tiếp phòng học tại buổi đó để giáo vụ hoặc giám đốc hỗ trợ đánh giá thay.
+3. **Kiểm Toán Học Viên Vắng Học Hôm Nay Cho Giám Đốc & Giáo Vụ (`AbsentStudentsAuditDrawer`):**
+   - Thẻ KPI `🔴 Học Viên Vắng Hôm Nay: X em` hiển thị trực tiếp trên Dashboard Giám Đốc và Giáo Vụ (dạng hoverable card).
+   - Nhấp vào thẻ mở Drawer kiểm toán tổng hợp vắng học gom từ 3 nguồn: `session_evaluations`, `classroom_live` và `absence_requests`.
+   - Danh sách vắng nhóm và sắp xếp theo ngày (Hôm nay lên đầu, tiếp theo là các ngày trước).
+   - Hiển thị thông tin lớp, phụ huynh, SĐT kèm nút gọi Zalo, và nút xem chi tiết mở `StudentProfileDrawer`.
+4. **Thanh Tiến Độ Số Buổi Đã Học Trên Card Lớp (`ClassLiveCard`):**
+   - Tự động tính số buổi đã diễn ra (`endMs <= now`) theo thời khóa biểu chuẩn `generateClassSessionDates(cls, totalSessions)`.
+   - Hiển thị thanh tiến độ nhỏ gọn: `Số buổi đã học: X/Y buổi (Z%)`, cập nhật theo thời gian thực mà không làm vỡ bố cục Card.
+5. **Lịch Sử Đánh Giá 10 Buổi Gần Nhất Cho Học Viên & Phụ Huynh (`StudentRecentEvaluationsCard`):**
+   - Đọc toàn bộ các bản ghi `session_evaluations` của học viên, parse timestamp an toàn (hỗ trợ `DD/MM/YYYY` và `YYYY-MM-DD`), loại trừ các buổi tương lai, sắp xếp giảm dần theo thời gian.
+   - Lấy chính xác tối đa 10 buổi học gần nhất (`slice(0, 10)`).
+   - Hiển thị trực quan số sao, nhận xét sư phạm, bài tập về nhà và trạng thái chuyên cần (`Có mặt` / `Vắng`).

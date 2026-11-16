@@ -7,6 +7,7 @@ import {
   TeamOutlined,
   CheckCircleOutlined,
   UserAddOutlined,
+  UserDeleteOutlined,
   ArrowRightOutlined,
   AppstoreOutlined,
   TableOutlined,
@@ -19,6 +20,10 @@ import { useNavigate } from 'react-router-dom';
 import { ClassLiveCard } from './ClassLiveCard';
 import { sortClassesByLivePriority } from '../utils/classTimeUtils';
 import { AbsenceRequestService } from '../../attendance/services/AbsenceRequestService';
+import { PendingEvaluationTaskService } from '../services/PendingEvaluationTaskService';
+import { PendingEvaluationTasksCard } from './PendingEvaluationTasksCard';
+import { AbsentStudentsService } from '../services/AbsentStudentsService';
+import { AbsentStudentsAuditDrawer } from './AbsentStudentsAuditDrawer';
 
 const { Title, Text } = Typography;
 
@@ -77,6 +82,35 @@ export const AcademicOperationsPanel = ({ academicData = {} }) => {
     () => (absenceRequests || []).filter((r) => r.status === 'PENDING'),
     [absenceRequests]
   );
+
+  const [pendingEvaluationTasks, setPendingEvaluationTasks] = useState([]);
+  const [absentData, setAbsentData] = useState({ absentRecords: [], todayAbsentCount: 0 });
+  const [isAbsentDrawerOpen, setIsAbsentDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!allActiveClasses.length) return;
+
+    PendingEvaluationTaskService.getPendingEvaluations({
+      classes: allActiveClasses,
+      userRole: 'academic',
+      isEnglish,
+    })
+      .then((tasks) => {
+        if (mounted) setPendingEvaluationTasks(tasks || []);
+      })
+      .catch((err) => console.warn('Lỗi quét evaluation tasks:', err));
+
+    AbsentStudentsService.getAbsentStudentsData(allActiveClasses, academicData.allUsers || academicData.unassignedStudents)
+      .then((res) => {
+        if (mounted) setAbsentData(res || { absentRecords: [], todayAbsentCount: 0 });
+      })
+      .catch((err) => console.warn('Lỗi quét absent students:', err));
+
+    return () => {
+      mounted = false;
+    };
+  }, [allActiveClasses, isEnglish, academicData.allUsers]);
 
   const handleAcknowledgeAbsence = async (reqId) => {
     try {
@@ -209,7 +243,44 @@ export const AcademicOperationsPanel = ({ academicData = {} }) => {
             </div>
           </Card>
         </Col>
+
+        {/* Thẻ KPI Học Viên Vắng Học Hôm Nay */}
+        <Col xs={12} sm={12} lg={6}>
+          <Card
+            hoverable
+            onClick={() => setIsAbsentDrawerOpen(true)}
+            bordered={false}
+            style={{
+              borderRadius: 12,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              borderTop: '3px solid #ff4d4f',
+              backgroundColor: absentData.todayAbsentCount > 0 ? '#fff1f0' : '#ffffff',
+              height: '100%',
+              cursor: 'pointer',
+            }}
+            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 20px' } }}
+            data-testid="kpi-today-absent-students-academic"
+          >
+            <Statistic
+              title={
+                <Text strong style={{ fontSize: isMobile ? 11 : 13, display: 'block', lineHeight: 1.3, color: '#cf1322' }}>
+                  {isEnglish ? "Today's Absent Students" : 'Học Viên Vắng Hôm Nay'}
+                </Text>
+              }
+              value={absentData.todayAbsentCount}
+              prefix={<UserDeleteOutlined style={{ color: '#ff4d4f', fontSize: isMobile ? 14 : 18 }} />}
+              suffix={<span style={{ fontSize: isMobile ? 11 : 13 }}>{isEnglish ? 'std' : 'học viên'}</span>}
+              styles={{ content: { color: '#cf1322', fontWeight: 700, fontSize: isMobile ? 18 : 24 } }}
+            />
+            <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 12, color: '#cf1322', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              👉 {isEnglish ? 'Click to inspect list' : 'Chạm để xem chi tiết'}
+            </div>
+          </Card>
+        </Col>
       </Row>
+
+      {/* 2. Nhiệm Vụ Giáo Vụ Cần Xử Lý: Giáo Viên Chưa Hoàn Tất Đánh Giá */}
+      <PendingEvaluationTasksCard tasks={pendingEvaluationTasks} />
 
       {/* Thông Báo Đơn Báo Vắng Mặt Mới Cần Giáo Vụ Tiếp Nhận */}
       {pendingAbsences.length > 0 && (
@@ -391,6 +462,13 @@ export const AcademicOperationsPanel = ({ academicData = {} }) => {
         )}
       </Card>
 
+      {/* Drawer Kiểm Toán Học Viên Vắng Học & Không Vào Lớp */}
+      <AbsentStudentsAuditDrawer
+        open={isAbsentDrawerOpen}
+        onClose={() => setIsAbsentDrawerOpen(false)}
+        absentRecords={absentData.absentRecords}
+        todayAbsentCount={absentData.todayAbsentCount}
+      />
     </div>
   );
 };

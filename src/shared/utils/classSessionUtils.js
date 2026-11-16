@@ -30,14 +30,17 @@ const minutes = (value) => {
 };
 
 /** Resolve an actual session from configured weekly schedules, in their stored timezone. */
-export const findClassSession = (cls, now = Date.now()) => {
+export const findClassSession = (cls, now = Date.now(), options = {}) => {
   if (!cls || cls.isDeleted || ['Deleted', 'Đã xóa', 'Completed', 'Đã hoàn thành', 'Cancelled', 'Tạm hoãn'].includes(cls.status)
     || cls.operationStatus === 'Tạm hoãn') return null;
+  const allowRecentEnded = options.allowRecentEnded ?? false;
+  const graceWindowMs = options.graceWindowMs ?? (12 * 3600 * 1000); // 12 hours post-session evaluation window
   const classStart = dateKey(cls.startDate);
   const classEnd = dateKey(cls.endDate);
   const history = Array.isArray(cls.scheduleHistory) ? cls.scheduleHistory : [];
   const periods = history.length ? history : [{ schedule: cls.schedule, scheduleData: cls.scheduleData }];
-  const sessions = [];
+  const liveOrUpcoming = [];
+  const recentEnded = [];
   for (const period of periods) {
     const data = period.scheduleData || {};
     const range = String(period.schedule || '').match(/(\d{1,2}:\d{2})\s*(?:[-–~]|to|đến)\s*(\d{1,2}:\d{2})/i);
@@ -55,10 +58,25 @@ export const findClassSession = (cls, now = Date.now()) => {
       if (!days.includes(new Date(day).getUTCDay())) continue;
       const start = day + startMinutes * 60000 - offset * 3600000;
       const end = day + (endMinutes + (endMinutes < startMinutes ? 1440 : 0)) * 60000 - offset * 3600000;
-      if (end > now) sessions.push({ start, end });
+      if (end > now) {
+        liveOrUpcoming.push({ start, end });
+      } else if (allowRecentEnded && end <= now && (now - end) <= graceWindowMs) {
+        recentEnded.push({ start, end, isEnded: true });
+      }
     }
   }
-  return sessions.sort((a, b) => a.start - b.start)[0] || null;
+
+  // Ưu tiên 1: Phiên đang diễn ra trực tiếp (Live)
+  const live = liveOrUpcoming.find((s) => now >= s.start && now < s.end);
+  if (live) return live;
+
+  // Ưu tiên 2: Phiên vừa kết thúc trong cửa sổ hậu buổi học (Recent Ended) nếu cho phép
+  if (allowRecentEnded && recentEnded.length > 0) {
+    return recentEnded.sort((a, b) => b.end - a.end)[0];
+  }
+
+  // Ưu tiên 3: Phiên sắp diễn ra (Upcoming)
+  return liveOrUpcoming.sort((a, b) => a.start - b.start)[0] || null;
 };
 
 export const getSessionTimer = (session, now) => {

@@ -25,9 +25,12 @@ export const useClassroomController = () => {
   const userId = currentUser?.id;
   const role = currentUser?.role;
 
+  const [selectedSessionOverride, setSelectedSessionOverride] = useState(null);
+
   useEffect(() => {
     generation.current += 1;
     setState({ id: classId, cls: null, loaded: false });
+    setSelectedSessionOverride(null);
     setError('');
     setWriteError('');
     setPendingChanges({});
@@ -47,8 +50,9 @@ export const useClassroomController = () => {
 
   const cls = state.id === classId ? state.cls : null;
   const allowed = ClassroomService.canView(currentUser, cls);
-  const session = cls && allowed ? findClassSession(cls, now) : null;
-  const sessionId = classroomSessionId(classId, session);
+  const defaultSession = cls && allowed ? findClassSession(cls, now, { allowRecentEnded: true }) : null;
+  const session = selectedSessionOverride || defaultSession;
+  const sessionId = session?.id || classroomSessionId(classId, session);
   const rosterIds = allowed ? JSON.stringify(cls.studentIds || []) : '';
   const rosterKey = allowed ? `${classId}:${rosterIds}` : '';
 
@@ -83,13 +87,14 @@ export const useClassroomController = () => {
     && now >= session.start && now < session.end && !error && rosterState.ready
     && rosterState.key === rosterKey && recordState.ready && recordState.key === sessionId;
 
-  const isSessionUpcoming = Boolean(session && now < session.start);
+  const isSessionUpcoming = Boolean(session && !selectedSessionOverride && !session.isEnded && now < session.start);
   const isSessionLive = Boolean(session && now >= session.start && now < session.end);
+  const isSessionEnded = Boolean(session && (session.isEnded || now >= session.end));
   const canEvaluate = Boolean(
     allowed
     && (role === 'teacher' ? cls?.teacherId === userId : ['admin', 'director', 'academic'].includes(role))
     && session
-    && now >= session.start
+    && (now >= session.start || session.isEnded || Boolean(selectedSessionOverride))
   );
 
   const presence = { ...(record?.presence || {}), ...pendingChanges };
@@ -214,14 +219,20 @@ export const useClassroomController = () => {
 
   const saveStudentEvaluation = useCallback(async (studentId, evalData) => {
     if (!cls || !sessionId || !studentId) return;
-    if (session && now < session.start) {
+    if (session && !selectedSessionOverride && !session.isEnded && now < session.start) {
       console.warn('[useClassroomController] saveStudentEvaluation rejected: session not started');
       setWriteError('sessionNotStartedError');
       throw new Error('SESSION_NOT_STARTED');
     }
     setWriteError('');
     try {
-      const result = await ClassroomService.saveStudentEvaluation(classId, sessionId, studentId, evalData, currentUser);
+      const payload = {
+        ...evalData,
+        sessionStart: session?.start,
+        sessionEnd: session?.end,
+        date: session?.date,
+      };
+      const result = await ClassroomService.saveStudentEvaluation(classId, sessionId, studentId, payload, currentUser);
       setRecordState((prev) => (prev.key === sessionId ? { ...prev, record: { ...prev.record, ...result } } : prev));
       return result;
     } catch (err) {
@@ -229,18 +240,27 @@ export const useClassroomController = () => {
       setWriteError(err.message === 'SESSION_NOT_STARTED' ? 'sessionNotStartedError' : 'saveError');
       throw err;
     }
-  }, [cls, sessionId, classId, currentUser, session, now]);
+  }, [cls, sessionId, classId, currentUser, session, now, selectedSessionOverride]);
 
   const saveAllEvaluations = useCallback(async (evaluationsMap) => {
     if (!cls || !sessionId || !evaluationsMap) return;
-    if (session && now < session.start) {
+    if (session && !selectedSessionOverride && !session.isEnded && now < session.start) {
       console.warn('[useClassroomController] saveAllEvaluations rejected: session not started');
       setWriteError('sessionNotStartedError');
       throw new Error('SESSION_NOT_STARTED');
     }
     setWriteError('');
     try {
-      const result = await ClassroomService.saveAllEvaluations(classId, sessionId, evaluationsMap, currentUser);
+      const payloadMap = {};
+      Object.entries(evaluationsMap || {}).forEach(([sId, eData]) => {
+        payloadMap[sId] = {
+          ...eData,
+          sessionStart: session?.start,
+          sessionEnd: session?.end,
+          date: session?.date,
+        };
+      });
+      const result = await ClassroomService.saveAllEvaluations(classId, sessionId, payloadMap, currentUser);
       setRecordState((prev) => (prev.key === sessionId ? { ...prev, record: { ...prev.record, ...result } } : prev));
       return result;
     } catch (err) {
@@ -248,7 +268,7 @@ export const useClassroomController = () => {
       setWriteError(err.message === 'SESSION_NOT_STARTED' ? 'sessionNotStartedError' : 'saveError');
       throw err;
     }
-  }, [cls, sessionId, classId, currentUser, session, now]);
+  }, [cls, sessionId, classId, currentUser, session, now, selectedSessionOverride]);
 
   const saveLessonPlan = useCallback(async (sessionIndex, planData) => {
     if (!cls || !sessionIndex) return;
@@ -308,7 +328,10 @@ export const useClassroomController = () => {
     canEdit: Boolean(canEdit),
     isSessionUpcoming,
     isSessionLive,
+    isSessionEnded,
     canEvaluate,
+    selectedSessionOverride,
+    setSelectedSession: setSelectedSessionOverride,
     loading: !state.loaded || state.id !== classId,
     pending: Object.keys(pendingChanges).length > 0 || isMarkAllPending,
     pendingChanges,
