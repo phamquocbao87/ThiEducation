@@ -7,6 +7,7 @@ import {
   findTeacherScheduleConflicts,
   findStudentScheduleConflicts,
   buildUpdatedScheduleHistory,
+  sortClassesSmartly,
 } from '../../../shared/utils/scheduleUtils';
 
 /**
@@ -33,7 +34,7 @@ export class ClassService extends BaseModuleService {
             if (c.id) this._allKnownClassIds.add(String(c.id).toUpperCase());
           });
           const list = allDocs.filter((c) => !c.isDeleted && c.status !== 'Deleted');
-          return list;
+          return sortClassesSmartly(list);
         }
       } catch (err) {
         console.warn('[ClassService] Lỗi đọc Firestore classes:', err.message);
@@ -625,7 +626,7 @@ export class ClassService extends BaseModuleService {
     classes = [],
     { keyword = '', courseId = 'ALL', teacherId = 'ALL' }
   ) {
-    return classes.filter((cls) => {
+    const filtered = classes.filter((cls) => {
       const matchCourse = courseId === 'ALL' || cls.courseId === courseId;
       const matchTeacher =
         teacherId === 'ALL' ||
@@ -646,5 +647,6 @@ export class ClassService extends BaseModuleService {
         'room',
       ]);
     });
+    return sortClassesSmartly(filtered);
   }
 }

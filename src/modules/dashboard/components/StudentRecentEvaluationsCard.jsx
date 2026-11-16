@@ -9,14 +9,18 @@ import {
   ReadOutlined,
   EditOutlined,
   CustomerServiceOutlined,
+  VideoCameraOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { MaterialPreviewModal } from '../../materials/components/MaterialPreviewModal';
 
 const { Title, Text, Paragraph } = Typography;
 
 export const StudentRecentEvaluationsCard = ({ evaluations = [] }) => {
   const { isEnglish } = useLanguage();
   const [selectedEval, setSelectedEval] = useState(null);
+  const [playingVideo, setPlayingVideo] = useState(null);
 
   return (
     <>
@@ -111,27 +115,50 @@ export const StudentRecentEvaluationsCard = ({ evaluations = [] }) => {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Rate disabled allowHalf value={ev.overallRating || 4.5} style={{ fontSize: 13, color: '#f59e0b' }} />
-                      <Text strong style={{ fontSize: 13, color: '#d97706', marginLeft: 2 }}>
-                        {ev.overallRating || 4.5}
-                      </Text>
-                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Rate disabled allowHalf value={ev.overallRating || 4.5} style={{ fontSize: 13, color: '#f59e0b' }} />
+                        <Text strong style={{ fontSize: 13, color: '#d97706', marginLeft: 2 }}>
+                          {ev.overallRating || 4.5}
+                        </Text>
+                      </div>
 
-                    <Button
-                      size="small"
-                      icon={<EyeOutlined />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedEval(ev);
-                      }}
-                      style={{ borderRadius: 6, fontSize: 12, fontWeight: 600 }}
-                      data-testid={`btn-view-eval-${ev.id}`}
-                    >
-                      {isEnglish ? 'Details' : 'Chi Tiết'}
-                    </Button>
-                  </div>
+                      {ev.recordingUrl && (
+                        <Button
+                          size="small"
+                          icon={<VideoCameraOutlined style={{ color: '#7c3aed' }} />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPlayingVideo(ev);
+                          }}
+                          style={{
+                            borderRadius: 6,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            borderColor: '#d8b4fe',
+                            color: '#7c3aed',
+                            backgroundColor: '#faf5ff',
+                            whiteSpace: 'nowrap',
+                          }}
+                          data-testid={`btn-watch-recording-${ev.id}`}
+                        >
+                          {isEnglish ? 'Watch Video' : 'Xem Video'}
+                        </Button>
+                      )}
+
+                      <Button
+                        size="small"
+                        icon={<EyeOutlined />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedEval(ev);
+                        }}
+                        style={{ borderRadius: 6, fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}
+                        data-testid={`btn-view-eval-${ev.id}`}
+                      >
+                        {isEnglish ? 'Details' : 'Chi Tiết'}
+                      </Button>
+                    </div>
                 </div>
 
                 {/* Nhận xét của giáo viên */}
@@ -273,8 +300,62 @@ export const StudentRecentEvaluationsCard = ({ evaluations = [] }) => {
                 </div>
               )}
             </div>
+
+            {/* Khung Xem Video Buổi Học (nếu có recordingUrl) */}
+            {selectedEval.recordingUrl && (
+              <div
+                style={{
+                  backgroundColor: '#f5f3ff',
+                  padding: '12px 14px',
+                  borderRadius: 8,
+                  border: '1px solid #ddd6fe',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700, color: '#5b21b6', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <VideoCameraOutlined /> {isEnglish ? 'Session Video Recording Available' : 'Video Buổi Học Đã Ghi Hình'}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6d28d9', marginTop: 2 }}>
+                    {isEnglish
+                      ? 'Watch the foreign teacher class recording on Google Drive'
+                      : 'Xem lại toàn bộ video bài giảng của giáo viên bản xứ trên Google Drive'}
+                  </div>
+                </div>
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<PlayCircleOutlined />}
+                  style={{ borderRadius: 6, backgroundColor: '#7c3aed', borderColor: '#7c3aed', fontWeight: 600 }}
+                  onClick={() => setPlayingVideo(selectedEval)}
+                  data-testid="btn-modal-watch-recording"
+                >
+                  {isEnglish ? 'Play Recording' : 'Phát Video'}
+                </Button>
+              </div>
+            )}
           </div>
         </Modal>
+      )}
+
+      {/* Modal phát video bài giảng */}
+      {playingVideo && (
+        <MaterialPreviewModal
+          open={Boolean(playingVideo)}
+          material={{
+            id: `rec_${playingVideo.id}`,
+            title: `${isEnglish ? 'Session Recording' : 'Video Buổi Học'} — ${playingVideo.className} (${playingVideo.sessionDate})`,
+            url: playingVideo.recordingUrl,
+            type: 'VIDEO',
+            courseName: playingVideo.className,
+            description: playingVideo.teacherComment || 'Zoom session recording video',
+          }}
+          onClose={() => setPlayingVideo(null)}
+        />
       )}
     </>
   );

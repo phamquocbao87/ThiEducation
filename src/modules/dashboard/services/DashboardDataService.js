@@ -2,6 +2,7 @@ import { BaseModuleService } from '../../../shared/services/BaseModuleService';
 import { TUITION_STATUS } from '../../tuition/models/tuition.model';
 import { PAYROLL_STATUS } from '../../contracts/models/contracts.model';
 import { checkClassDateAndSchedule } from '../utils/classTimeUtils';
+import { sortClassesSmartly } from '../../../shared/utils/scheduleUtils';
 
 /**
  * DashboardDataService: Tổng hợp và tính toán toàn bộ chỉ số thời gian thực
@@ -226,15 +227,18 @@ export class DashboardDataService extends BaseModuleService {
       month: '11/2026',
     };
 
+    // Sắp xếp lớp học thông minh (246 trước, 357 tiếp theo, Daily sau cùng)
+    const sortedClasses = sortClassesSmartly(myClasses);
+
     // Lớp học sắp tới gần nhất (Next upcoming class)
-    const nextClass = myClasses[0] || null;
+    const nextClass = sortedClasses[0] || null;
 
     return {
-      myClasses,
+      myClasses: sortedClasses,
       myStudents,
       latestPayroll,
       nextClass,
-      totalClasses: myClasses.length,
+      totalClasses: sortedClasses.length,
       totalStudents: myStudents.length,
     };
   }
@@ -255,6 +259,9 @@ export class DashboardDataService extends BaseModuleService {
       return false;
     });
 
+    // Sắp xếp lớp học thông minh
+    const sortedClasses = sortClassesSmartly(myClasses);
+
     // Lọc hóa đơn học phí của học viên từ collection tuitions
     const myBills = (tuitions || []).filter((t) => {
       if (t.isDeleted) return false;
@@ -267,14 +274,14 @@ export class DashboardDataService extends BaseModuleService {
     const isPaid = activeBill?.tuitionStatus === TUITION_STATUS.PAID;
 
     // Lớp học tiếp theo
-    const nextClass = myClasses[0] || null;
+    const nextClass = sortedClasses[0] || null;
 
     return {
-      myClasses,
+      myClasses: sortedClasses,
       activeBill,
       isPaid,
       nextClass,
-      enrolledClassesCount: myClasses.length,
+      enrolledClassesCount: sortedClasses.length,
     };
   }
 

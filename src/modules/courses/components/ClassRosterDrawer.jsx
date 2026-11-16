@@ -307,7 +307,7 @@ export const ClassRosterDrawer = ({
             </Button>
           )}
 
-          {canViewClassRoomLinks && zaloUrl && (
+          {!isTeacherRole && canViewClassRoomLinks && zaloUrl && (
             <Button
               icon={<MessageOutlined />}
               onClick={() => window.open(zaloUrl, '_blank')}
@@ -853,22 +853,24 @@ export const ClassRosterDrawer = ({
           </>
         )}
 
-        <Descriptions.Item
-          label={isEnglish ? 'Class Zalo Group Chat' : 'Link Nhóm Chat Zalo Của Lớp'}
-          span={2}
-        >
-          {canViewClassRoomLinks ? (
-            <a href={zaloUrl} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>
-              {zaloUrl}
-            </a>
-          ) : (
-            <Text type="secondary">
-              {isEnglish
-                ? '🔒 Class Zalo group link will be unlocked after enrollment approval.'
-                : '🔒 Link nhóm Zalo lớp sẽ hiển thị sau khi được duyệt tham gia lớp học.'}
-            </Text>
-          )}
-        </Descriptions.Item>
+        {!isTeacherRole && (
+          <Descriptions.Item
+            label={isEnglish ? 'Class Zalo Group Chat' : 'Link Nhóm Chat Zalo Của Lớp'}
+            span={2}
+          >
+            {canViewClassRoomLinks ? (
+              <a href={zaloUrl} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>
+                {zaloUrl}
+              </a>
+            ) : (
+              <Text type="secondary">
+                {isEnglish
+                  ? '🔒 Class Zalo group link will be unlocked after enrollment approval.'
+                  : '🔒 Link nhóm Zalo lớp sẽ hiển thị sau khi được duyệt tham gia lớp học.'}
+              </Text>
+            )}
+          </Descriptions.Item>
+        )}
       </Descriptions>
 
       {/* 5. BẢNG LỊCH SỬ THAY ĐỔI THỜI KHÓA BIỂU THEO GIAI ĐOẠN (SCHEDULE VERSION HISTORY) */}

@@ -159,3 +159,43 @@ Mỗi khi báo cáo hoàn thành cho Sếp Bảo, Agent bắt buộc phải đí
      if (docData.date && docData.date > todayStr) return;
      ```
    - Tuyệt đối không để buổi học ngày tương lai chưa diễn ra hiển thị như một buổi học đã hoàn thành.
+
+---
+
+## 🚀 6. Quy Trình 12 Bước Xử Lý Bugs & Multi-Hosting Staging Release Protocol
+
+Khi tiếp nhận tài liệu báo cáo bugs hoặc yêu cầu nâng cấp hệ thống (`docs/bugs-*.docx`, `.md`), toàn bộ AI Agent và Coder **BẮT BUỘC tuân thủ nghiêm ngặt quy trình khép kín 12 bước sau**:
+
+1. **Bước 1 (Quét & Phân Loại Toàn Bộ Bugs):** Đọc kỹ tài liệu bugs, trích xuất danh sách tất cả các điểm cần xử lý, phân loại theo màn hình và phân hệ chức năng.
+2. **Bước 2 (Tái Hiện Lỗi — Reproduce):** Tái hiện chính xác từng lỗi trên môi trường thực tế (Localhost / Sandbox) bằng script kiểm thử hoặc browser thật.
+3. **Bước 3 (Rà Soát Mẫu Lỗi Tương Tự — Cross-Screen Audit):** Quét toàn bộ các màn hình, phân hệ và 6 Roles còn lại xem có xuất hiện pattern lỗi tương tự hay không (ngữ pháp số nhiều, nút bấm rớt chữ, tràn ngang mobile, hardcode i18n...).
+4. **Bước 4 (Sửa Chữa Kiến Trúc Đồng Bộ):** Áp dụng giải pháp kỹ thuật sạch sẽ, xử lý tận gốc cả điểm chính và các điểm tương tự phát hiện ở Bước 3.
+5. **Bước 5 (Kiểm Thử 3 Tầng Bắt Buộc):**
+   - *Tầng 1 (Unit Test):* Chạy độc lập thuật toán logic, scoping, filters với tập dataset mock (`scripts/test_courses_unit_and_scoping.mjs`).
+   - *Tầng 2 (Integrated E2E Multi-Role):* Kiểm thử trên trình duyệt Chromium thật qua các vai trò (`student`, `teacher`, `admin`, `academic`, `director`, `accountant`).
+   - *Tầng 3 (Stress Test & Viewport Assertions):* Benchmark tốc độ lọc ($< 0.5\text{ms}$), chống rò rỉ bộ nhớ, và đo đạc `ASSERT Zero Overflow-X` trên Mobile 390px (`scrollWidth <= innerWidth`).
+6. **Bước 6 (Thu Thập Minh Chứng Bằng Ảnh Chụp — Screenshots):** Chụp ảnh màn hình toàn bộ các ca kiểm thử lưu vào thư mục báo cáo.
+7. **Bước 7 (Thẩm Định Checklist Nghiệm Thu):** Đảm bảo 100% test cases đạt PASS trước khi tiến hành đóng gói.
+8. **Bước 8 (Triển Khai Môi Trường DEV):** Chạy `npm run deploy:dev` lên môi trường Sandbox (`lakeducation-dev`).
+9. **Bước 9 (Kiểm Thử E2E Trên Môi Trường DEV):** Chạy lại trọn vẹn bộ test trên live URL của DEV (`https://lakeducation-dev-erp.web.app`), chụp ảnh minh chứng DEV.
+10. **Bước 10 (Triển Khai Backup Production & Production):** Chạy `npm run deploy:backup` và `npm run deploy:prod` sau khi DEV pass 100%.
+11. **Bước 11 (Kiểm Thử Production & Kỷ Luật Zero Test Residue):**
+    - Chạy kiểm thử E2E trên Production URL (`https://bk.lakeducation.edu.vn` / `https://erp.lakeducation.edu.vn`).
+    - **Cưỡng chế:** Tuyệt đối không tạo hoặc để lại bất kỳ dữ liệu test rác nào trên Firestore thật `lakeducationdb`.
+12. **Bước 12 (Báo Cáo & Bàn Giao Đầy Đủ):** Xuất bản Biên bản nghiệm thu tổng hợp kèm live links của cả 3 môi trường và thư mục ảnh minh chứng.
+
+---
+
+## ⚡ 7. Chuẩn Playwright E2E Tối Ưu Cho Ứng Dụng Firebase/Firestore SPA (Tránh Timeout 30s)
+
+- **Vấn đề cốt lõi:** Các ứng dụng React Single Page Application (SPA) tích hợp Cloud Firestore và Firebase Analytics liên tục duy trì các kết nối ngầm (WebSocket streaming, long-polling listeners). Do đó, việc sử dụng `wait_until='networkidle'` sẽ khiến Playwright bị **Timeout 30.000ms** vì kết nối mạng không bao giờ hoàn toàn idle.
+- **Quy tắc bất biến:**
+  ```python
+  # ✅ ĐÚNG: Nạp DOM nhanh và chờ render ổn định
+  page.goto(f'{URL}/path', wait_until='domcontentloaded')
+  page.wait_for_timeout(3000)  # Hoặc page.wait_for_selector('[data-testid="..."]')
+  
+  # ❌ CẤM: Gây timeout do Firebase listeners ngầm
+  page.goto(f'{URL}/path', wait_until='networkidle')
+  ```
+- Áp dụng thống nhất cho toàn bộ các script kiểm thử tự động trên Localhost, Dev và Production.

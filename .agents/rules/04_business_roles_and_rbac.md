@@ -226,6 +226,108 @@ Dự án **ThiEducation** vận hành theo mô hình **6 Vai Trò (Roles)** tác
    - Khi ẩn học phí, 2 Card KPI còn lại (`Duration` và `Max Class Size`) tự động dàn đều 50/50 (`sm={12}`) và dòng `Study Frequency` trải dài `span={2}` để giao diện liền mạch thẩm mỹ, không để lại khoảng trống trơ trọi.
    - Ban giám đốc (`director`), Giáo vụ (`academic`), IT Admin (`admin`), và Học viên (`student`) vẫn nhìn thấy đầy đủ học phí bình thường.
 
+---
+
+## 🚫 12. Kỷ Luật Cách Ly Nền Tảng Zalo Đối Với Giáo Viên Bản Xứ (Native Teacher Zalo Isolation Guard)
+
+1. **Bối Cảnh & Nguyên Tắc Sư Phạm:**
+   - Trong mô hình giáo dục trực tuyến LAK EDUCATION, **Giáo viên bản xứ (`teacher`)** là người nước ngoài (Native English Speakers), không sử dụng nền tảng nhắn tin Zalo (vốn là ứng dụng nội địa Việt Nam).
+   - Nhóm Zalo lớp học (`zaloGroupLink`) và các nút bấm liên quan đến Zalo **CHỈ DÀNH RIÊNG** cho bộ phận Giáo Vụ (`academic`), Ban Lãnh Đạo (`director`, `admin`) và Học viên / Phụ huynh Việt Nam (`student`) để hỗ trợ học tập và gửi tài liệu.
+   - Việc hiển thị nút hay link Zalo cho Giáo viên bản xứ gây dư thừa giao diện, tạo sự bối rối và tiềm ẩn rủi ro giao tiếp ngoài luồng sư phạm chuẩn.
+
+2. **Quy Tắc Bất Biến (Strict 100% Zalo Suppression for Teachers):**
+   - Ẩn **100%** toàn bộ các nút bấm, nhãn và đường liên kết Zalo đối với tài khoản vai trò Giáo viên (`role === 'teacher'`, `!isTeacherRole`) trên tất cả các màn hình:
+     * **Card lớp học tại `/courses-classes` (`ClassManagementTab.jsx`):** Ẩn dòng `💬 Zalo Chat: [Join Zalo Group]`.
+     * **Drawer Chi tiết lớp học & Danh sách học viên (`ClassRosterDrawer.jsx`):** Ẩn nút `Zalo Group` trên Header và ẩn mục `Class Zalo Group Chat` trong bảng Descriptions chi tiết lớp.
+     * **Thanh thao tác đáy thẻ lớp trên Dashboard (`ClassCardActions.jsx`):** Ẩn nút `Zalo` ở chân card lớp học trên Workspace của Giáo viên.
+     * **Popup trạng thái ca học trực tuyến (`ClassLiveStatusModal.jsx`):** Ẩn nút `Zalo Group` trong popup chi tiết ca học trực tuyến.
+     * **Phòng học trực tuyến Live Classroom (`StudentSeat.jsx`, `SessionEvaluationModal.jsx`, `StudentCardGrid.jsx`):** Duy trì triệt để điều kiện `!isTeacherRole` (không hiển thị link Zalo phụ huynh cho giáo viên).
+   - **Bảo Toàn Tính Năng (Zero Regression):** Tài khoản Giáo vụ (`academic`), Giám đốc (`director`), IT (`admin`) và Học viên (`student`) vẫn truy cập và mở nhóm Zalo lớp học bình thường.
+
+---
+
+## 📅 13. Quy Tắc Sắp Xếp Lớp Học Thông Minh Theo Khung Lịch Vận Hành (Smart Class Timetable Sorting Invariant)
+
+1. **Bối Cảnh Vận Hành Trung Tâm Đào Tạo:**
+   - Giáo viên bản xứ và học viên theo dõi thời khóa biểu hàng tuần. Việc hiển thị thẻ lớp học lộn xộn hoặc ngẫu nhiên theo thứ tự thêm vào database sẽ gây khó khăn cho việc nắm bắt lịch giảng dạy.
+   - Chuẩn sắp xếp thời khóa biểu trực quan trong giáo dục: Các ca học đầu tuần (2-4-6) xếp trước $\rightarrow$ các ca học giữa tuần (3-5-7) xếp tiếp theo $\rightarrow$ các ca học Hàng ngày (Daily) $\rightarrow$ các ca học Cuối tuần (Sat-Sun).
+
+2. **Bảng Trọng Số Lịch Học Bắt Buộc (`scheduleUtils.getScheduleDaysWeight`):**
+   - **Trọng số 10:** Thứ 2 - 4 - 6 (`Mon, Wed, Fri` / `246` / `2-4-6` / `T2-T4-T6`) $\rightarrow$ Xếp **đầu tiên** (bên trái ngoài cùng trên Desktop, trên cùng danh sách trên Mobile).
+   - **Trọng số 20:** Thứ 3 - 5 - 7 (`Tue, Thu, Sat` / `357` / `3-5-7` / `T3-T5-T7`) $\rightarrow$ Xếp **tiếp theo** (ở giữa).
+   - **Trọng số 30:** Hàng ngày (`Daily` / `Hàng ngày` / `All week`) $\rightarrow$ Xếp **tiếp theo**.
+   - **Trọng số 40:** Cuối tuần (`Weekend` / `Sat-Sun` / `T7-CN` / `Cuối tuần`) $\rightarrow$ Xếp **sau cùng**.
+   - **Trọng số 50:** Các lịch học đặc thù khác.
+   - **Sắp xếp thứ cấp (Secondary Sort):** Trong cùng nhóm lịch, tự động sắp xếp tăng dần theo số thứ tự định danh lớp trích xuất từ tên hoặc mã lớp (`WP01` < `WP02` < `WP03`... hoặc `LH001` < `LH002`...).
+
+3. **Chốt Chặn Kiến Trúc Bắt Buộc (Centralized Smart Sorter):**
+   - Thuật toán trung tâm `sortClassesSmartly(classList)` được export tại [`src/shared/utils/scheduleUtils.js`](file:///Volumes/DATA/projects/ThiEducation/src/shared/utils/scheduleUtils.js).
+   - Toàn bộ các Service đọc dữ liệu lớp học:
+     * `ClassService.getAllClasses()`
+     * `ClassService.filterClasses()`
+     * `DashboardDataService.getTeacherWorkspaceRealData()`
+     * `DashboardDataService.getStudentPortalRealData()`
+     * `ClassroomRealtimeService.subscribeClasses()`
+     * `TeacherWorkspacePanel.jsx` (`useMemo(() => sortClassesSmartly(myClasses))`)
+     **BẮT BUỘC** gọi `sortClassesSmartly` trước khi trả về dữ liệu hoặc render ra DOM, đảm bảo trải nghiệm nhất quán 100% trên toàn bộ các phân hệ của hệ thống.
+
+---
+
+## 🔒 14. Quy Tắc Vô Hiệu Hóa Ô Lớp Học Ghi Danh Đối Với Học Viên (Student Enrolled Classes Lock & Protection Guard)
+
+1. **Bối Cảnh Nghiệp Vụ & Quyền Hạn:**
+   - Tại LAK Education, việc ghi danh học viên vào lớp học (`enrolledClassIds`) thuộc thẩm quyền độc quyền của Giáo vụ (`academic`), Giám đốc (`director`) hoặc IT Admin (`admin`) dựa trên đánh giá trình độ và sĩ số tối đa của lớp (tối đa 10 học viên).
+   - Học viên/Phụ huynh **TUYỆT ĐỐI KHÔNG ĐƯỢC TỰ Ý** thêm, đổi hoặc gỡ bỏ các lớp học ghi danh khi chỉnh sửa hồ sơ cá nhân tại `/my-profile/edit`.
+2. **Quy Chuẩn Kỹ Thuật Bắt Buộc (UI + Logic Protection):**
+   - **Giao diện UI (`src/modules/users/UserDetailPage.jsx`):**
+     * Biến nhận diện vai trò: `const isStudentRole = (currentUser?.role || '').toLowerCase() === 'student';`
+     * Ô `<Select name="enrolledClassIds">` bắt buộc gán `disabled={isStudentRole || !canEditSensitive}` và `allowClear={!isStudentRole && canEditSensitive}`.
+     * Thẻ nhãn lớp: `<Tag color="blue">{isEnglish ? 'Multiple Classes' : 'Nhiều Lớp'}</Tag>`.
+     * Ghi chú hướng dẫn hiển thị biểu tượng ổ khóa:
+       * *Tiếng Anh:* `🔒 Enrolled classes are assigned by the Academic department. Contact your Academic advisor to change classes.`
+       * *Tiếng Việt:* `🔒 Lớp học ghi danh do Giáo vụ phân bổ. Vui lòng liên hệ Giáo vụ để thay đổi lớp học.`
+   - **Bảo mật Tầng Logic Backend-Client (`handleSave`):**
+     * Trong hàm `handleSave`, nếu `isStudentRole || !canEditSensitive`, payload cập nhật gửi lên database **BẮT BUỘC giữ nguyên `user?.enrolledClassIds` gốc từ database**, ngăn chặn triệt để mọi hành vi sửa đổi dữ liệu trái phép qua DevTools hoặc REST API client.
+   - **Bảo Toàn Quyền Quản Trị (Zero Regression):**
+     * Khi Giáo vụ, Giám đốc hoặc Admin vào chỉnh sửa học viên tại `/user-management/:id/edit`, `canEditSensitive === true`, ô Select vẫn mở bình thường để cán bộ quản trị toàn quyền gán lớp.
+
+---
+
+## 🎨 15. Kỷ Luật Tinh Gọn Giao Diện Đào Tạo & Ẩn Thẻ KPI Toàn Trường Cho Học Viên (Student Course Scoping & Clean UI Guard)
+
+1. **Bối Cảnh Vận Hành:**
+   - Học viên đăng nhập vào hệ thống để theo dõi lớp học, giáo trình và vào phòng học trực tuyến Zoom.
+   - Các thẻ thống kê quy mô toàn trường (Course Programs, Active Online Classes, Native Teachers, Total Students) và nút quản lý học viên là thông tin quản trị nội bộ của trung tâm, gây rối mắt và làm lộ dữ liệu vận hành nếu hiển thị cho học viên.
+2. **Quy Tắc Bất Biến Trên `/courses-classes` (`CoursesPage.jsx`):**
+   - **Ẩn nút `[Student Management]`:** Chỉ hiển thị cho cán bộ quản lý có thẩm quyền (`{!isStudentRole && canManage && (...)}`).
+   - **Ẩn toàn bộ 4 Thẻ KPI Quy Mô Toàn Trường:** Bọc điều kiện `{!isStudentRole && (<Row gutter={[16, 16]}>...)}`.
+   - **Đưa Thẻ Lớp Học Lên Đầu Trang:** Thẻ lớp học của học viên lập tức hiển thị ngay đầu màn hình mà không cần cuộn trang.
+   - **Cá nhân hóa Tiêu đề & Mô tả Trang Thân Thiện:**
+     * *Tiêu đề:* `My Classes & Courses` (Tiếng Việt: `Lớp Học & Khóa Học Của Con`).
+     * *Mô tả:* `View your enrolled online classes, timetable, and McGraw-Hill Wonders curriculum.` (Tiếng Việt: `Theo dõi lớp học trực tuyến, thời khóa biểu và giáo trình McGraw-Hill Wonders của bạn.`).
+
+---
+
+## 📹 16. Quy Chuẩn Video Recording Buổi Học Cho Giáo Viên & Cô Lập Theo Lớp Cho Học Viên (Session Recording & Class Scoped Video Isolation Invariant)
+
+1. **Bối Cảnh Vận Hành & Tính Chất Tính Năng:**
+   - Sau mỗi buổi học trực tuyến Zoom/Meet, video ghi hình giúp học viên ôn tập bài giảng, phát âm chuẩn giáo trình McGraw-Hill Wonders.
+   - **TÍNH CHẤT TÙY CHỌN (OPTIONAL):** Tính năng này là lựa chọn của Giáo viên bản xứ và Giáo vụ, **HOÀN TOÀN KHÔNG BẮT BUỘC**. Giáo viên có thể tải lên tệp video, dán liên kết hoặc bỏ trống mà không ảnh hưởng hay chặn bất kỳ luồng điểm danh/đánh giá nào.
+2. **Cơ Chế Lưu Trữ Google Drive Zero-Egress (Hosting-Store API):**
+   - Tệp video (`.mp4`, `.mov`, `.webm`, `.mkv`) được tải trực tiếp từ trình duyệt lên Google Drive qua `DriveStorageService.uploadFile` vào thư mục:
+     `06_CLASS_RECORDINGS_MATERIALS/2026` (Folder ID: `1X7vGrwOCGspqSatOu-Ue21rL-sRsmrsS`).
+   - Hỗ trợ thanh tiến trình upload trực tiếp (`0% -> 100%`) qua `XMLHttpRequest` và proxy `/google-upload` khi chạy Localhost để chống lỗi CORS.
+   - Hỗ trợ dán link Google Drive / Cloud URL nếu giáo viên đã tải lên trước đó.
+3. **Phân Quyền & Cô Lập Lớp Học Tuyệt Đối (Class Scoped Video Isolation):**
+   - Video bài giảng được lưu vào collection `learning_materials` với:
+     `type: 'VIDEO'`, `classId: cls.id`, `sharedClassIds: [cls.id]`, `shareScope: 'CUSTOM'`, `isSessionRecording: true`.
+   - **Toàn bộ học viên của lớp này sẽ thấy** trên Cổng Học Viên (`StudentClassMaterialsCard` và `StudentRecentEvaluationsCard`).
+   - **Tuyệt đối ẩn 100%** đối với học viên không thuộc lớp này để đảm bảo tính riêng tư.
+4. **Trải Nghiệm Xem Trực Tiếp (In-App Video Preview):**
+   - Học viên bấm `[Preview / Xem]` hoặc `[Watch Video / Xem Video]` sẽ mở `MaterialPreviewModal` phát video trực tiếp (Iframe Google Drive hoặc HTML5 Video Player) với đầy đủ thanh điều khiển.
+
+
+
 
 
 

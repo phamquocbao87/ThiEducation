@@ -73,6 +73,32 @@ ThiEducation/
      - **Quy tắc Bảo Mật Học Phí Đối Với Giáo Viên Bản Xứ (Teacher Fee Privacy Guard):**
        * Trên Tab Danh mục Khóa học (`CourseCatalogTab`) và Drawer Chi tiết (`CourseDetailDrawer`), giáo viên (`teacher`) **TUYỆT ĐỐI KHÔNG NHÌN THẤY BẤT KỲ LOẠI HỌC PHÍ NÀO** (`feePerMonth`, `totalCourseFee`, Card tím `Monthly Fee`, dòng `Full Course Tuition`).
        * Khi ẩn học phí, 2 Card KPI còn lại (`Duration` và `Max Class Size`) tự động dàn đều 50/50 (`sm={12}`) và dòng `Study Frequency` trải dài `span={2}` để giao diện liền mạch thẩm mỹ, không để lại khoảng trống trơ trọi.
+     - **Quy tắc Cách Ly Nền Tảng Zalo Đối Với Giáo Viên Bản Xứ (Native Teacher Zalo Isolation Guard):**
+       * Giáo viên tại LAK Education là **Giáo viên bản xứ (Native English Teachers)**, không sử dụng nền tảng Zalo.
+       * Nhóm Zalo lớp học (`zaloGroupLink`) và các nút/nhãn liên quan đến Zalo **CHỈ DÀNH RIÊNG** cho Giáo vụ (`academic`), Giám đốc (`director`), IT (`admin`) và Học viên/Phụ huynh (`student`).
+       * BẮT BUỘC ẩn **100%** toàn bộ các nút bấm, nhãn và đường liên kết Zalo đối với vai trò Giáo viên (`role === 'teacher'`, `!isTeacherRole`) trên toàn bộ hệ thống (`ClassManagementTab`, `ClassRosterDrawer`, `ClassCardActions`, `ClassLiveStatusModal`, `StudentSeat`, `SessionEvaluationModal`).
+     - **Quy tắc Sắp Xếp Lớp Học Thông Minh Theo Khung Lịch Vận Hành (Smart Class Timetable Sorting Invariant):**
+       * Danh sách thẻ lớp học bắt buộc được sắp xếp thông minh qua `sortClassesSmartly(classList)` ([`scheduleUtils.js`](file:///Volumes/DATA/projects/ThiEducation/src/shared/utils/scheduleUtils.js)).
+       * **Thứ tự ưu tiên:** Lớp 2-4-6 (`Mon, Wed, Fri` - Trọng số 10, bên trái ngoài cùng / trên cùng) $\rightarrow$ Lớp 3-5-7 (`Tue, Thu, Sat` - Trọng số 20, ở giữa) $\rightarrow$ Lớp Hàng ngày (`Daily` - Trọng số 30) $\rightarrow$ Lớp Cuối tuần (`Sat-Sun` - Trọng số 40).
+       * Trong cùng nhóm lịch, tự động sắp xếp theo số thứ tự lớp (`WP01` < `WP02` < `WP03`... hoặc `LH001` < `LH002`...).
+       * Áp dụng bắt buộc trong `ClassService` (`getAllClasses`, `filterClasses`), `DashboardDataService` (`getTeacherWorkspaceRealData`, `getStudentPortalRealData`), `ClassroomRealtimeService` (`subscribeClasses`) và `TeacherWorkspacePanel`.
+     - **Quy tắc Vô Hiệu Hóa Ô Lớp Học Ghi Danh Đối Với Học Viên (Student Enrolled Classes Lock & Protection Guard):**
+       * Trên trang chỉnh sửa hồ sơ cá nhân (`/my-profile/edit`), học viên (`currentUser?.role === 'student'`) **TUYỆT ĐỐI KHÔNG ĐƯỢC PHÉP** tự ý chọn, đổi hoặc gỡ bỏ các lớp học ghi danh (`enrolledClassIds`).
+       * Ô `<Select name="enrolledClassIds">` bắt buộc gán `disabled={isStudentRole || !canEditSensitive}` và `allowClear={!isStudentRole && canEditSensitive}`.
+       * Hiển thị ghi chú ổ khóa chuyên biệt: `🔒 Enrolled classes are assigned by the Academic department. Contact your Academic advisor to change classes.` (VI: `🔒 Lớp học ghi danh do Giáo vụ phân bổ. Vui lòng liên hệ Giáo vụ để thay đổi lớp học.`).
+       * **Bảo mật tầng logic trong `handleSave`:** Nếu người lưu là học viên (`isStudentRole || !canEditSensitive`), payload lưu lên hệ thống cưỡng chế giữ nguyên `user.enrolledClassIds` gốc từ database.
+       * Quyền phân bổ và điều chuyển lớp học thuộc quyền hạn độc quyền của Giáo vụ (`academic`), Giám đốc (`director`) và IT Admin (`admin`) tại `/user-management/:id/edit`.
+     - **Quy tắc Tinh Gọn Giao Diện Đào Tạo & Ẩn Thẻ KPI Toàn Trường Cho Học Viên (Student Course Scoping & Clean UI Guard):**
+       * Trên màn hình Khóa học & Lớp học (`/courses-classes`):
+         - Ẩn hoàn toàn nút `[Student Management]` đối với Học viên (`{!isStudentRole && canManage && (...)}`).
+         - Ẩn toàn bộ 4 Thẻ KPI thống kê quy mô toàn trường (`Course Programs`, `Active Online Classes`, `Native Teachers`, `Total Students`) đối với Học viên (`{!isStudentRole && (<Row gutter={[16, 16]}>...)}`).
+         - Thẻ lớp học của học viên được đẩy ngay lên đầu màn hình không cần cuộn trang.
+         - Cá nhân hóa tiêu đề trang: `My Classes & Courses` (VI: `Lớp Học & Khóa Học Của Con`), mô tả: `View your enrolled online classes, timetable, and McGraw-Hill Wonders curriculum.` (VI: `Theo dõi lớp học trực tuyến, thời khóa biểu và giáo trình McGraw-Hill Wonders của bạn.`).
+     - **Quy chuẩn Video Recording Buổi Học Cho Giáo Viên & Cô Lập Theo Lớp Cho Học Viên (Session Recording & Class Scoped Video Isolation Invariant):**
+       * Tùy chọn (Optional) dành cho Giáo viên bản xứ và Giáo vụ sau mỗi buổi học trực tuyến, không bắt buộc, không chặn luồng điểm danh hay đánh giá sư phạm nếu không có video.
+       * Tải tệp trực tiếp lên Google Drive Zero-Egress vào thư mục `06_CLASS_RECORDINGS_MATERIALS/2026` (Folder ID: `1X7vGrwOCGspqSatOu-Ue21rL-sRsmrsS`) với tiến trình upload trực tiếp (0% - 100%).
+       * Tự động đồng bộ vào Firestore `learning_materials` với `type: 'VIDEO'`, `classId: cls.id`, `sharedClassIds: [cls.id]`, `shareScope: 'CUSTOM'`, `isSessionRecording: true`.
+       * Toàn bộ học viên ghi danh vào lớp lập tức thấy video trên `StudentClassMaterialsCard` và `StudentRecentEvaluationsCard`, bấm `[Preview / Xem]` xem trực tiếp qua `MaterialPreviewModal`. Học viên ngoài lớp tuyệt đối không nhìn thấy.
 6. **Kỷ Luật Bất Biến Về Phạm Vi Task, Quy Trình 6 Bước Fix Bug Toàn Diện & Đánh Giá Tác Động (Strict 6-Step Bug-Fixing Protocol & Cross-Screen Audit Invariant):**
    - **🚨 QUY TRÌNH 6 BƯỚC BẮT BUỘC KHI SẾP BẢO NÊU BUG HOẶC YÊU CẦU FIX LỖI (SẾP BẢO DIRECTIVE):**
      * **Bước 1 — Tái hiện lỗi (Reproduce Bug):** Bắt buộc tái hiện chính xác lỗi trên môi trường thực tế (ghi nhận luồng thao tác, ảnh chụp màn hình, log lỗi hoặc viết script Playwright tái hiện), tuyệt đối không suy đoán mò mẫm.
@@ -95,6 +121,8 @@ ThiEducation/
        1. **Tầng 1 — Unit Test:** Kiểm tra độc lập thuật toán lọc dữ liệu, xử lý điều kiện biên với tập dữ liệu mock đa dạng (`scripts/test_courses_unit_and_scoping.mjs`).
        2. **Tầng 2 — Integrated Test (Playwright E2E Headless):** Chạy kiểm thử đa vai trò (`student`, `teacher`, `admin`) trên trình duyệt Chromium thật kết nối database Cloud Firestore thật (`scripts/qc_integrated_test_courses_and_privacy.py`).
        3. **Tầng 3 — Stress Test:** Kiểm tra chịu tải thuật toán trên tập dữ liệu lớn (500+ items qua 1.000 lượt gọi, benchmark $< 0.5\text{ms}$/lượt); kiểm tra chuyển đổi phiên liên tục chống rò rỉ cache/bộ nhớ; và assert Zero Overflow-X trên Mobile 390px (`scrollWidth <= innerWidth` — `scripts/qc_stress_test_courses_and_scoping.py`).
+    - **Quy Trình 12 Bước Xử Lý Bugs & Multi-Hosting Staging Release Protocol:**
+      * Khi tiếp nhận danh mục bugs (`bugs-*.docx`, `.md`), toàn bộ quy trình thực hiện theo 12 bước nghiêm ngặt: (1) Quét danh mục -> (2) Reproduce -> (3) Cross-Screen Pattern Scan -> (4) Sửa chữa đồng bộ -> (5) 3-Tier Testing -> (6) Chụp ảnh screenshots -> (7) Pass checklist 100% -> (8) Deploy DEV -> (9) Test DEV E2E -> (10) Deploy Backup & Prod -> (11) Test Prod kèm Zero Test Residue -> (12) Báo cáo nghiệm thu & live links. Chi tiết tại [`.agents/rules/07_qc_and_it_audit_protocol.md`](file:///Volumes/DATA/projects/ThiEducation/.agents/rules/07_qc_and_it_audit_protocol.md).
 7. **Kỷ Luật Bảo Mật Web, Chống Bot Phishing False-Positive & Ép Chuyển Hướng Canonical Domain (Anti-Phishing Hardening & Force Canonical Domain Invariant):**
    - **Tuyệt đối không để xảy ra hiểu lầm Phishing trên tên miền phụ:**
      * Subdomain `*.web.app` và `*.firebaseapp.com` bị các bot bảo mật (Google Safe Browsing) quét liên tục.
@@ -142,6 +170,10 @@ ThiEducation/
      - 🎓 **Giáo vụ (`academic`):** Chỉ có quyền Active / Deactive đối với Giáo viên (`teacher`), Học viên (`student`). Tuyệt đối không can thiệp Admin, Giám đốc hoặc Giáo vụ khác.
      - 🛠️ **IT Admin (`admin`):** Toàn quyền đối với mọi tài khoản (trừ tài khoản của chính mình và Root Admin).
      - Nút Switch trên giao diện phải liên kết với `PermissionService.canChangeUserStatus`; khi không đủ quyền thì `disabled` kèm Tooltip song ngữ giải thích lý do.
+   - **Quy Chuẩn Song Ngữ Sạch 100% Không Lẫn Lộn Anh/Việt (Clean Bilingual Harmonization Standard):**
+     - Khi giao diện chuyển sang tiếng Anh (`isEnglish === true` hoặc `language === 'en'`), **100% nội dung hiển thị** (nhãn, thẻ tag `Multiple Classes` thay vì `Nhiều Lớp`, extra, placeholder, validation, và enum từ database) **BẮT BUỘC PHẢI LÀ TIẾNG ANH**.
+     - Cấm tuyệt đối hardcode chuỗi tiếng Việt tĩnh trong JSX mà không bọc `{isEnglish ? ... : ...}` hoặc `t(...)`.
+     - Các trường trạng thái lưu tiếng Việt trong Firestore (`tuitionStatus: 'Chờ đối soát' | 'Đã đóng đủ' | 'Chưa đóng'`) phải được xử lý qua hàm ánh xạ `formatTuitionStatus(status, isEnglish)`.
 4. **Kỷ Luật Vận Hành 100% Dữ Liệu Thực Tế & Gỡ Bỏ Cơ Chế Giả Lập Tài Khoản (Pure Real Data & Zero Impersonation Simulation Invariant):**
    - Theo chỉ đạo trực tiếp của Sếp Bảo: Hệ thống **VẬN HÀNH 100% TRÊN DỮ LIỆU THỰC TẾ** từ Cloud Firestore (`lakeducationdb`), tuyệt đối **KHÔNG** dùng mock data hay trộn danh bạ giả lập.
    - Cơ chế giả lập / Impersonation (*"Admin Xem Dưới Tên User"*) và Modal chuyển đổi vai trò demo trên Header đã được **gỡ bỏ hoàn toàn**.

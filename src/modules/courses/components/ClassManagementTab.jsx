@@ -644,7 +644,7 @@ export const ClassManagementTab = ({
                       )}
                     </div>
 
-                    {record.zaloGroupLink && (
+                    {!isTeacherRole && record.zaloGroupLink && (
                       <div
                         style={{
                           display: 'flex',

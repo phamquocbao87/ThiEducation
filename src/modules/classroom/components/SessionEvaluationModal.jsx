@@ -14,10 +14,12 @@ import {
   StarFilled,
   TeamOutlined,
   TrophyOutlined,
+  VideoCameraOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { SimpleEvaluationEditor } from './SimpleEvaluationEditor';
 import { EvaluationHistoryDrawer } from './EvaluationHistoryDrawer';
+import { SessionRecordingUploadModal } from '../../materials/components/SessionRecordingUploadModal';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -42,6 +44,7 @@ export const SessionEvaluationPanel = ({
   const [evaluations, setEvaluations] = useState({});
   const [zaloPreview, setZaloPreview] = useState(null);
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+  const [isRecordingModalOpen, setIsRecordingModalOpen] = useState(false);
   const localEditsRef = useRef({});
 
   const isTeacher = userRole === 'teacher';
@@ -671,8 +674,23 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
           </Title>
         </div>
 
-        {isTeacher && (
+        {(isTeacher || isAcademic) && (
           <Space size="middle" wrap>
+            <Button
+              icon={<VideoCameraOutlined style={{ color: '#7c3aed' }} />}
+              style={{
+                borderRadius: 8,
+                fontWeight: 600,
+                borderColor: '#d8b4fe',
+                color: '#7c3aed',
+                backgroundColor: '#faf5ff',
+              }}
+              onClick={() => setIsRecordingModalOpen(true)}
+              data-testid="btn-upload-session-recording"
+            >
+              {isEnglish ? 'Upload Recording (Optional)' : 'Tải Video Buổi Học (Tùy Chọn)'}
+            </Button>
+
             {isSessionUpcoming && (
               <Tag color="orange" icon={<LockOutlined />} style={{ padding: '4px 10px', borderRadius: 6, fontWeight: 600 }}>
                 {isEnglish ? 'Evaluation Locked (Upcoming)' : 'Chưa Đến Giờ Học (Đang Khóa)'}
@@ -850,6 +868,17 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
         currentSessionId={attendance?.sessionId || attendance?.id}
         userRole={userRole}
         currentStudentId={currentStudentId}
+      />
+
+      {/* Modal tải lên video recording sau buổi học (Optional) */}
+      <SessionRecordingUploadModal
+        open={isRecordingModalOpen}
+        classData={cls}
+        currentUser={{ role: userRole }}
+        onClose={() => setIsRecordingModalOpen(false)}
+        onSuccess={() => {
+          message.success(isEnglish ? 'Recording uploaded and shared to class!' : 'Đã tải lên video bài giảng cho lớp!');
+        }}
       />
     </Card>
   );

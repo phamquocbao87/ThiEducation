@@ -260,6 +260,8 @@ export class StudentDashboardService extends BaseModuleService {
             teacherComment: englishComment,
             teacherCommentVi: viComment || 'Học viên tham gia học tập rất tích cực và hoàn thành tốt bài tập.',
             tags: quickNote?.tags || evalForStudent?.tags || ['🌟 Clear Reading', '🗣️ Active Speaking'],
+            recordingUrl: docData.recordingUrl || '',
+            isSessionRecording: Boolean(docData.recordingUrl),
           });
         }
       });

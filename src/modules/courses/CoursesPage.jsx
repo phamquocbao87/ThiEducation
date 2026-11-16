@@ -73,6 +73,9 @@ export const CoursesPage = () => {
     handleClearAllData,
   } = useCoursesController();
 
+  const isStudentRole = currentUser?.role === 'student';
+  const isTeacherRole = currentUser?.role === 'teacher';
+
   const [searchParams] = useSearchParams();
 
   // Xử lý Deep-Linking từ Notifications hoặc URL trực tiếp
@@ -138,62 +141,82 @@ export const CoursesPage = () => {
       >
         <div>
           <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
-            {t('courses.pageTitle')}
+            {isStudentRole
+              ? isEnglish
+                ? 'My Classes & Courses'
+                : 'Lớp Học & Khóa Học Của Con'
+              : isTeacherRole
+              ? isEnglish
+                ? 'Assigned Classes & Curriculum'
+                : 'Lớp Giảng Dạy & Giáo Trình'
+              : t('courses.pageTitle')}
           </Title>
           <Text type="secondary">
-            {isEnglish
+            {isStudentRole
+              ? isEnglish
+                ? 'View your enrolled online classes, timetable, and McGraw-Hill Wonders curriculum.'
+                : 'Theo dõi lớp học trực tuyến, thời khóa biểu và giáo trình McGraw-Hill Wonders của bạn.'
+              : isTeacherRole
+              ? isEnglish
+                ? 'View your assigned online classes, weekly schedule, and McGraw-Hill Wonders curriculum.'
+                : 'Theo dõi danh sách lớp được phân công giảng dạy, lịch học và giáo trình McGraw-Hill Wonders.'
+              : isEnglish
               ? 'Organize McGraw-Hill Wonders curriculum programs, set up online classes, and assign 1 Native Teacher per class.'
               : 'Quản trị chương trình đào tạo McGraw-Hill Wonders ELA, khởi tạo lớp học và phân công 01 Giáo viên bản xứ phụ trách.'}
           </Text>
         </div>
-        <Button
-          icon={<IdcardOutlined />}
-          onClick={() => navigate('/students')}
-          style={{ borderRadius: 8 }}
-        >
-          {isEnglish ? 'Student Management' : 'Quản Lý Học Viên'}
-        </Button>
+        {!isStudentRole && canManage && (
+          <Button
+            icon={<IdcardOutlined />}
+            onClick={() => navigate('/students')}
+            style={{ borderRadius: 8 }}
+          >
+            {isEnglish ? 'Student Management' : 'Quản Lý Học Viên'}
+          </Button>
+        )}
       </div>
 
-      {/* 2. Thẻ Thống Kê Tổng Quan */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-        <Col xs={12} sm={6}>
-          <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <Statistic
-              title={t('courses.stats.programs')}
-              value={allCourses.length}
-              prefix={<BookOutlined style={{ color: '#1890ff' }} />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <Statistic
-              title={t('courses.stats.activeClasses')}
-              value={allClasses.length}
-              prefix={<CalendarOutlined style={{ color: '#722ed1' }} />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <Statistic
-              title={t('courses.stats.teachers')}
-              value={teachers.length}
-              prefix={<UserOutlined style={{ color: '#52c41a' }} />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <Statistic
-              title={t('courses.stats.students')}
-              value={allStudents.length}
-              prefix={<TeamOutlined style={{ color: '#fa8c16' }} />}
-            />
-          </Card>
-        </Col>
-      </Row>
+      {/* 2. Thẻ Thống Kê Tổng Quan (Chỉ hiển thị cho Cán bộ Quản trị & Giáo vụ, ẩn đối với Học viên) */}
+      {!isStudentRole && (
+        <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+          <Col xs={12} sm={6}>
+            <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <Statistic
+                title={t('courses.stats.programs')}
+                value={allCourses.length}
+                prefix={<BookOutlined style={{ color: '#1890ff' }} />}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <Statistic
+                title={t('courses.stats.activeClasses')}
+                value={allClasses.length}
+                prefix={<CalendarOutlined style={{ color: '#722ed1' }} />}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <Statistic
+                title={t('courses.stats.teachers')}
+                value={teachers.length}
+                prefix={<UserOutlined style={{ color: '#52c41a' }} />}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <Statistic
+                title={t('courses.stats.students')}
+                value={allStudents.length}
+                prefix={<TeamOutlined style={{ color: '#fa8c16' }} />}
+              />
+            </Card>
+          </Col>
+        </Row>
+      )}
 
       {/* 3. Khối Tabs Chuyên Môn: Khóa Học vs Lớp Học */}
       <Card

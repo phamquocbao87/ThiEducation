@@ -12,6 +12,7 @@ import {
   classroomSessionId,
 } from '../models/classroom.model';
 import { findClassSession } from '../utils/classSessionUtils';
+import { sortClassesSmartly } from '../utils/scheduleUtils';
 
 /** Shared read/write boundary for classroom details and Dashboard monitoring. */
 export class ClassroomRealtimeService extends BaseModuleService {
@@ -23,8 +24,8 @@ export class ClassroomRealtimeService extends BaseModuleService {
     if (!user || !PermissionService.canAccessModule(user.role, 'classroom')) return () => {};
     const ref = collection(db, 'classes');
     const source = user.role === 'teacher' ? query(ref, where('teacherId', '==', user.id)) : ref;
-    return onSnapshot(source, (snap) => next(snap.docs.map((d) => ({ ...d.data(), id: d.id }))
-      .filter((c) => !c.isDeleted && c.status !== 'Deleted')), error);
+    return onSnapshot(source, (snap) => next(sortClassesSmartly(snap.docs.map((d) => ({ ...d.data(), id: d.id }))
+      .filter((c) => !c.isDeleted && c.status !== 'Deleted'))), error);
   }
 
   static subscribeSession(id, next, error) {

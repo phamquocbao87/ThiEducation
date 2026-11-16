@@ -18,6 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { getClassLiveStatus } from '../utils/classTimeUtils';
 import { MeetingPlatformBadge, detectMeetingPlatform } from '../../../shared/utils/meetingPlatformUtils';
 import { TeacherMeetingRoomModal } from '../../courses/components/TeacherMeetingRoomModal';
+import { SessionRecordingUploadModal } from '../../materials/components/SessionRecordingUploadModal';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -26,6 +27,7 @@ export const ClassLiveStatusModal = ({ visible, classData, onClose, role = 'acad
   const navigate = useNavigate();
 
   const [meetingModalOpen, setMeetingModalOpen] = React.useState(false);
+  const [recordingModalOpen, setRecordingModalOpen] = React.useState(false);
   const [activeClass, setActiveClass] = React.useState(classData);
 
   React.useEffect(() => {
@@ -210,7 +212,7 @@ export const ClassLiveStatusModal = ({ visible, classData, onClose, role = 'acad
             </>
           )}
 
-          {currentCls.zaloGroupLink && (
+          {role !== 'teacher' && currentCls.zaloGroupLink && (
             <Button
               icon={<MessageOutlined style={{ color: '#0068ff' }} />}
               style={{ borderColor: '#0068ff', color: '#0068ff', borderRadius: 8 }}
@@ -227,6 +229,17 @@ export const ClassLiveStatusModal = ({ visible, classData, onClose, role = 'acad
               onClick={() => setMeetingModalOpen(true)}
             >
               {isEnglish ? 'Edit Meeting Links' : 'Cập Nhật Link Phòng'}
+            </Button>
+          )}
+
+          {(role === 'teacher' || role === 'academic' || role === 'admin' || role === 'director') && (
+            <Button
+              icon={<VideoCameraOutlined style={{ color: '#7c3aed' }} />}
+              style={{ borderColor: '#d8b4fe', color: '#7c3aed', borderRadius: 8, fontWeight: 600, backgroundColor: '#faf5ff' }}
+              onClick={() => setRecordingModalOpen(true)}
+              data-testid="btn-live-modal-upload-recording"
+            >
+              {isEnglish ? 'Upload Recording (Optional)' : 'Tải Lên Video Buổi Học (Tùy Chọn)'}
             </Button>
           )}
         </div>
@@ -264,6 +277,18 @@ export const ClassLiveStatusModal = ({ visible, classData, onClose, role = 'acad
         onSuccess={(updated) => {
           setActiveClass(updated);
           onClassUpdated?.(updated);
+        }}
+      />
+
+      {/* Modal Tải Lên Video Buổi Học Cho Lớp */}
+      <SessionRecordingUploadModal
+        open={recordingModalOpen}
+        classData={currentCls}
+        currentUser={{ role }}
+        onClose={() => setRecordingModalOpen(false)}
+        onSuccess={() => {
+          setRecordingModalOpen(false);
+          message.success(isEnglish ? 'Recording uploaded and shared to class!' : 'Đã tải lên video bài giảng cho lớp!');
         }}
       />
     </Modal>

@@ -492,6 +492,33 @@
    - **Localhost & Dev Domain:** Mặc định 100% kết nối vào sandbox `lakeducation-dev`, hiển thị thanh banner màu xanh lá cây `MÔI TRƯỜNG PHÁT TRIỂN • DỮ LIỆU DEV`, và 100% (55/55 tài khoản) sử dụng mật khẩu DEV chuẩn **`@Bcd1234`**. Tuyệt đối không để máy local kết nối tự do vào Database Thật của Production.
    - **Chốt chặn Fail-Closed (`scripts/verify_deployment_safety.mjs`):** Tích hợp vào lệnh `npm run build`. Trước khi đóng gói, tự động assert 10 kịch bản giả lập runtime. Nếu phát hiện bất kỳ sự sai lệch cấu hình nào giữa 3 môi trường, lệnh build lập tức FAIL ngay ở bước 1, ngăn chặn triệt để mọi rủi ro deploy nhầm.
 
+---
+
+## 🌐 15. Quy Chuẩn Song Ngữ Sạch 100% Không Lẫn Lộn Anh/Việt (Clean Bilingual Harmonization Standard)
+
+1. **Nguyên Tắc Bất Biến:**
+   - Hệ thống LAK Education phục vụ cả Giáo viên bản xứ (100% tiếng Anh) và Học viên / Phụ huynh / Cán bộ giáo vụ (Việt & Anh).
+   - Khi giao diện chuyển sang tiếng Anh (`isEnglish === true` hoặc `language === 'en'`), **100% nội dung hiển thị** (nhãn `label`, tag, văn bản phụ `extra`, văn bản gợi ý `placeholder`, thông báo validate, dialog, tooltip, và enum từ database) **BẮT BUỘC PHẢI LÀ TIẾNG ANH**.
+   - Tuyệt đối nghiêm cấm việc hardcode chuỗi tiếng Việt tĩnh trực tiếp trong JSX mà không bọc qua điều kiện `{isEnglish ? 'English' : 'Tiếng Việt'}` hoặc `t(...)`.
+
+2. **Ánh Xạ Chuẩn Hóa Dữ Liệu Enum Database (Firestore Enum Mapping):**
+   - Các trường trạng thái lưu trữ bằng tiếng Việt trong Cloud Firestore (ví dụ `tuitionStatus`: `"Chờ đối soát"`, `"Đã đóng đủ"`, `"Chưa đóng"`) **TUYỆT ĐỐI KHÔNG** được render trực tiếp `{user.tuitionStatus}`.
+   - Bắt buộc xử lý qua hàm tiện ích ánh xạ từ điển:
+     ```javascript
+     const formatTuitionStatus = (status, isEnglish) => {
+       if (!status || status === 'Chờ đối soát') return isEnglish ? 'Pending Audit' : 'Chờ đối soát';
+       if (status === 'Đã đóng đủ') return isEnglish ? 'Paid in Full' : 'Đã đóng đủ';
+       if (status === 'Chưa đóng' || status === 'Chưa thanh toán') return isEnglish ? 'Unpaid' : 'Chưa đóng';
+       return status;
+     };
+     ```
+
+3. **Checklist Kiểm Tra Tự Động Trước Khi Hoàn Thành:**
+   - [x] Không còn thẻ Tag hiển thị tiếng Việt trên màn hình tiếng Anh (`Multiple Classes` thay vì `Nhiều Lớp`).
+   - [x] Không còn ghi chú `extra` hardcode tiếng Việt dưới ô nhập liệu.
+   - [x] Placeholder Form hỗ trợ song ngữ đồng bộ (`placeholder={isEnglish ? '...' : '...'}`).
+   - [x] Thông báo lỗi Form `message.warning` / `message.error` hiển thị đúng ngôn ngữ đang chọn.
+
 
 
 

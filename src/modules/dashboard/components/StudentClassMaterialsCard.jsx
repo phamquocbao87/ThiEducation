@@ -133,9 +133,15 @@ export const StudentClassMaterialsCard = ({ materials = [], myClasses = [], cour
                         <Tag color={meta.color} style={{ fontSize: 10, lineHeight: '16px', margin: 0, padding: '0 4px', borderRadius: 4, flexShrink: 0 }}>
                           {meta.label}
                         </Tag>
+                        {item.isSessionRecording && (
+                          <Tag color="purple" style={{ fontSize: 10, lineHeight: '16px', margin: 0, padding: '0 4px', borderRadius: 4, flexShrink: 0 }}>
+                            📹 {isEnglish ? 'Session Video' : 'Video Buổi Học'}
+                          </Tag>
+                        )}
                       </div>
 
                       <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.4 }}>
+                        {item.sessionDate ? `📅 ${item.sessionDate} • ` : ''}
                         {item.fileSize ? `${item.fileSize} • ` : ''}
                         {item.description || (isEnglish ? 'Curriculum resource' : 'Tài nguyên bài học')}
                       </div>

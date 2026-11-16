@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Row, Col, Card, Statistic, Tag, Button, Space, Typography, Alert, Empty } from 'antd';
 import {
   VideoCameraOutlined,
@@ -13,6 +13,7 @@ import { useLanguage } from '../../../core/context/LanguageContext';
 import { useIsMobile } from '../../../shared/hooks/useIsMobile';
 import { ClassLiveCard } from './ClassLiveCard';
 import { useNavigate } from 'react-router-dom';
+import { sortClassesSmartly } from '../../../shared/utils/scheduleUtils';
 
 const { Title, Text } = Typography;
 
@@ -29,6 +30,8 @@ export const TeacherWorkspacePanel = ({ workspaceData = {} }) => {
     totalClasses = 0,
     totalStudents = 0,
   } = workspaceData;
+
+  const sortedClasses = useMemo(() => sortClassesSmartly(myClasses), [myClasses]);
 
   const handleCardClick = (cls) => {
     navigate(`/classroom/${encodeURIComponent(cls.id)}`);
@@ -199,9 +202,9 @@ export const TeacherWorkspacePanel = ({ workspaceData = {} }) => {
           </Space>
         </div>
 
-        {myClasses.length > 0 ? (
+        {sortedClasses.length > 0 ? (
           <Row gutter={[16, 16]}>
-            {myClasses.map((cls) => (
+            {sortedClasses.map((cls) => (
               <Col xs={24} sm={12} lg={8} key={cls.id}>
                 <ClassLiveCard cls={cls} role="teacher" onClick={handleCardClick} />
               </Col>

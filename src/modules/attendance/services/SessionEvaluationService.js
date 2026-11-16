@@ -1,6 +1,7 @@
 import { BaseModuleService } from '../../../shared/services/BaseModuleService';
 import { db, IS_FIREBASE_ENABLED } from '../../../core/services/firebase';
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
+import { MaterialService } from '../../materials/services/MaterialService';
 
 /**
  * Sub-Feature Class 3 (Attendance Module): Session Attendance & 4-Skill English Evaluation
@@ -93,6 +94,34 @@ export class SessionEvaluationService extends BaseModuleService {
     };
 
     await this.saveEvaluation(newRecord);
+
+    // Đồng bộ tức thì sang learning_materials cho toàn bộ học viên của lớp (Class Scoped) nếu có video recording
+    if (newRecord.recordingUrl && newRecord.recordingUrl.trim()) {
+      try {
+        await MaterialService.saveMaterial({
+          id: `rec_${selectedClass.id}_${Date.now()}`,
+          title: `Video Buổi Học: ${selectedClass.name} (${dateStr})`,
+          type: 'VIDEO',
+          url: newRecord.recordingUrl.trim(),
+          downloadUrl: newRecord.recordingUrl.trim(),
+          courseId: selectedClass.courseId || 'ALL',
+          courseName: selectedClass.courseName || selectedClass.name,
+          classId: selectedClass.id,
+          className: selectedClass.name,
+          sharedClassIds: [selectedClass.id],
+          shareScope: 'CUSTOM',
+          targetType: 'class',
+          targetId: selectedClass.id,
+          visibility: 'ALL',
+          isSessionRecording: true,
+          sessionDate: dateStr,
+          description: newRecord.teacherFeedback || `Video recording for ${selectedClass.name}`,
+        }, currentUser);
+      } catch (matErr) {
+        console.warn('[SessionEvaluationService] Không thể đồng bộ sang learning_materials:', matErr.message);
+      }
+    }
+
     return [newRecord, ...attendances];
   }
 }

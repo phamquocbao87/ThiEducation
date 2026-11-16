@@ -105,6 +105,14 @@ const formatDateToStr = (val) => {
   return String(val);
 };
 
+// Ánh xạ trạng thái học phí song ngữ Anh - Việt chuẩn xác
+const formatTuitionStatus = (status, isEnglish) => {
+  if (!status || status === 'Chờ đối soát') return isEnglish ? 'Pending Audit' : 'Chờ đối soát';
+  if (status === 'Đã đóng đủ') return isEnglish ? 'Paid in Full' : 'Đã đóng đủ';
+  if (status === 'Chưa đóng' || status === 'Chưa thanh toán') return isEnglish ? 'Unpaid' : 'Chưa đóng';
+  return status;
+};
+
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
@@ -168,6 +176,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
   const isTargetStudent = watchedRole === USER_ROLES.STUDENT;
   const isGmail = isGmailAddress(watchedEmail);
   const isTeacherRole = (currentUser?.role || '').toLowerCase() === 'teacher';
+  const isStudentRole = (currentUser?.role || '').toLowerCase() === 'student';
   const shouldHidePhone = isTeacherRole && isTargetStudent && !isSelfProfile;
 
   // Kiểm tra trùng lịch học online thời gian thực trong chế độ Chỉnh sửa
@@ -595,7 +604,11 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
       }
 
       if (user?.role === USER_ROLES.STUDENT) {
-        const editEnrolled = Array.isArray(values.enrolledClassIds) ? values.enrolledClassIds : [];
+        // Bảo vệ dữ liệu lớp học: Học viên tự sửa profile hoặc người không có quyền canEditSensitive không được đổi lớp
+        const canModifyStudentClasses = canEditSensitive && !isStudentRole;
+        const editEnrolled = canModifyStudentClasses
+          ? (Array.isArray(values.enrolledClassIds) ? values.enrolledClassIds : [])
+          : (user?.enrolledClassIds || []);
         updatePayload.enrolledClassIds = editEnrolled;
         updatePayload.className = editEnrolled
           .map((cid) => {
@@ -627,9 +640,9 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
       navigate(baseProfilePath);
     } catch (err) {
       if (err.errorFields) {
-        message.warning('Vui lòng kiểm tra lại các trường thông tin bắt buộc');
+        message.warning(isEnglish ? 'Please check required fields' : 'Vui lòng kiểm tra lại các trường thông tin bắt buộc');
       } else {
-        message.error(err.message || 'Lỗi lưu thông tin');
+        message.error(err.message || (isEnglish ? 'Error saving profile' : 'Lỗi lưu thông tin'));
       }
     } finally {
       setSaving(false);
@@ -1103,7 +1116,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                         {user.address || '—'}
                       </Descriptions.Item>
                       <Descriptions.Item label={isEnglish ? 'Province / City' : 'Tỉnh / Thành Phố'}>
-                        {user.city || 'TP. Hồ Chí Minh'}
+                        {user.city || (isEnglish ? 'Ho Chi Minh City' : 'TP. Hồ Chí Minh')}
                       </Descriptions.Item>
                     </Descriptions>
 
@@ -1310,7 +1323,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                               <Title level={4} style={{ margin: '2px 0 0', color: '#15803d' }}>
                                 {linkedClasses.length > 0
                                   ? Array.from(new Set(linkedClasses.map((c) => c.courseLevel || c.level || c.courseName || 'Wonders ELA'))).join(', ')
-                                  : (user.level ? (user.level.startsWith('Wonders') ? user.level : `Wonders ${user.level}`) : 'Wonders ELA (Chưa xếp lớp)')}
+                                  : (user.level ? (user.level.startsWith('Wonders') ? user.level : `Wonders ${user.level}`) : (isEnglish ? 'Wonders ELA (Unassigned)' : 'Wonders ELA (Chưa xếp lớp)'))}
                               </Title>
                               <Text type="secondary" style={{ fontSize: 11, color: '#16a34a' }}>
                                 {isEnglish ? 'Tied to active enrolled classes' : 'Tự động xác định theo lớp ghi danh'}
@@ -1336,7 +1349,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                                   color={user.tuitionStatus === 'Đã đóng đủ' ? 'green' : user.tuitionStatus === 'Chờ đối soát' ? 'gold' : 'blue'}
                                   style={{ fontSize: 13, padding: '2px 8px', marginTop: 4, fontWeight: 600 }}
                                 >
-                                  {user.tuitionStatus || (isEnglish ? 'Pending Audit' : 'Chờ đối soát')}
+                                  {formatTuitionStatus(user.tuitionStatus, isEnglish)}
                                 </Tag>
                               </div>
                               <Text type="secondary" style={{ fontSize: 11, color: '#7c3aed' }}>
@@ -1394,12 +1407,12 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                                       {linkedClasses[0]?.teacherName || 'Mr. David Smith (USA 🇺🇸)'}
                                     </Text>
                                     <div style={{ fontSize: 12, color: '#64748b' }}>
-                                      Giáo viên Bản Xứ • Lớp {linkedClasses[0]?.name || 'Wonders ELA'}
+                                      {isEnglish ? 'Native Teacher' : 'Giáo viên Bản Xứ'} • {isEnglish ? 'Class' : 'Lớp'} {linkedClasses[0]?.name || 'Wonders ELA'}
                                     </div>
                                   </div>
                                 </Space>
                                 <Tag color="gold" style={{ fontWeight: 600 }}>
-                                  Đánh giá định kỳ Zoom
+                                  {isEnglish ? 'Periodic Zoom Assessment' : 'Đánh giá định kỳ Zoom'}
                                 </Tag>
                               </div>
 
@@ -1407,7 +1420,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                               <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
                                 <Col xs={12} sm={6}>
                                   <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 8, border: '1px solid #fde68a' }}>
-                                    <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>Phát âm Phonics</div>
+                                    <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>{isEnglish ? 'Phonics & Pronunciation' : 'Phát âm Phonics'}</div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                                       <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
                                       <span style={{ fontWeight: 700, color: '#0f172a' }}>5.0 / 5.0</span>
@@ -1416,7 +1429,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                                 </Col>
                                 <Col xs={12} sm={6}>
                                   <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 8, border: '1px solid #fde68a' }}>
-                                    <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>Chính tả & Từ vựng</div>
+                                    <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>{isEnglish ? 'Spelling & Vocabulary' : 'Chính tả & Từ vựng'}</div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                                       <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
                                       <span style={{ fontWeight: 700, color: '#0f172a' }}>5.0 / 5.0</span>
@@ -1425,7 +1438,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                                 </Col>
                                 <Col xs={12} sm={6}>
                                   <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 8, border: '1px solid #fde68a' }}>
-                                    <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>Mức độ tập trung</div>
+                                    <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>{isEnglish ? 'Classroom Focus' : 'Mức độ tập trung'}</div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                                       <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
                                       <span style={{ fontWeight: 700, color: '#0f172a' }}>5.0 / 5.0</span>
@@ -1434,7 +1447,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                                 </Col>
                                 <Col xs={12} sm={6}>
                                   <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 8, border: '1px solid #fde68a' }}>
-                                    <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>Nghe hiểu tiếng Anh</div>
+                                    <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>{isEnglish ? 'English Comprehension' : 'Nghe hiểu tiếng Anh'}</div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                                       <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
                                       <span style={{ fontWeight: 700, color: '#0f172a' }}>4.5 / 5.0</span>
@@ -1445,7 +1458,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
 
                               <div style={{ padding: '10px 14px', background: '#ffffff', borderRadius: 8, border: '1px solid #f3f4f6' }}>
                                 <Text italic style={{ color: '#334155', fontSize: 13, lineHeight: '1.6' }}>
-                                  "{user.academicNotes || 'Học viên tích cực tương tác qua Zoom breakout rooms, phát âm chuẩn các âm đuôi và cụm phụ âm. Tiếp thu nhanh từ vựng bài học McGraw-Hill Wonders và hoàn thành tốt bài tập trên lớp.'}"
+                                  "{user.academicNotes || (isEnglish ? 'Student actively interacts through Zoom breakout rooms, clearly pronounces ending sounds and blends. Quickly acquires McGraw-Hill Wonders lesson vocabulary and finishes assignments well.' : 'Học viên tích cực tương tác qua Zoom breakout rooms, phát âm chuẩn các âm đuôi và cụm phụ âm. Tiếp thu nhanh từ vựng bài học McGraw-Hill Wonders và hoàn thành tốt bài tập trên lớp.')}"
                                 </Text>
                               </div>
                             </Card>
@@ -1453,8 +1466,8 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                             <Alert
                               type="info"
                               showIcon
-                              message="Chưa có đánh giá từ giáo viên"
-                              description="Học viên chưa tham gia buổi học nào. Sau mỗi buổi học Zoom, giáo viên bản xứ sẽ trực tiếp chấm điểm 4 kỹ năng và cập nhật nhận xét chi tiết vào đây."
+                              message={isEnglish ? 'No teacher evaluation yet' : 'Chưa có đánh giá từ giáo viên'}
+                              description={isEnglish ? 'Student has not participated in any class yet. After each Zoom session, the native teacher will evaluate 4 skills and add detailed feedback here.' : 'Học viên chưa tham gia buổi học nào. Sau mỗi buổi học Zoom, giáo viên bản xứ sẽ trực tiếp chấm điểm 4 kỹ năng và cập nhật nhận xét chi tiết vào đây.'}
                               style={{ borderRadius: 10 }}
                             />
                           )}
@@ -1643,7 +1656,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                               </div>
                               {log.actor && (
                                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                                  Thực hiện bởi: {log.actor.name} ({log.actor.role})
+                                  {isEnglish ? 'Performed by:' : 'Thực hiện bởi:'} {log.actor.name} ({log.actor.role})
                                 </div>
                               )}
                             </div>
@@ -1832,7 +1845,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                         >
                           <Input
                             disabled
-                            placeholder="FAM_09xxxxxxxx (Tự động gán)"
+                            placeholder={isEnglish ? 'FAM_09xxxxxxxx (Auto-assigned)' : 'FAM_09xxxxxxxx (Tự động gán)'}
                             style={{ width: '100%', height: 38, borderRadius: 8, background: '#f8fafc' }}
                           />
                         </Form.Item>
@@ -2066,20 +2079,31 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                             label={
                               <Space size={6}>
                                 <Text strong>{isEnglish ? 'Enrolled Classes' : 'Lớp Học Online Ghi Danh'}</Text>
-                                <Tag color="blue" style={{ fontSize: 11, fontWeight: 600 }}>Nhiều Lớp</Tag>
+                                <Tag color="blue" style={{ fontSize: 11, fontWeight: 600 }}>{isEnglish ? 'Multiple Classes' : 'Nhiều Lớp'}</Tag>
                               </Space>
                             }
                             extra={
-                              <span style={{ fontSize: 12, color: '#64748b' }}>
-                                💡 Mỗi học viên có thể đăng ký nhiều lớp học online. Hệ thống sẽ tự động phát hiện và chặn trùng khung giờ học trực tuyến Zoom.
-                              </span>
+                              isStudentRole ? (
+                                <span style={{ fontSize: 12, color: '#64748b' }}>
+                                  🔒 {isEnglish
+                                    ? 'Enrolled classes are assigned by the Academic department. Contact your Academic advisor to change classes.'
+                                    : 'Lớp học ghi danh do Giáo vụ phân bổ. Vui lòng liên hệ Giáo vụ để thay đổi lớp học.'}
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: 12, color: '#64748b' }}>
+                                  {isEnglish
+                                    ? '💡 Each student can enroll in multiple online classes. The system automatically detects and prevents Zoom timetable conflicts.'
+                                    : '💡 Mỗi học viên có thể đăng ký nhiều lớp học online. Hệ thống sẽ tự động phát hiện và chặn trùng khung giờ học trực tuyến Zoom.'}
+                                </span>
+                              )
                             }
                           >
                             <Select
                               mode="multiple"
                               placeholder={isEnglish ? 'Select 1 or more Zoom classes...' : 'Chọn 1 hoặc nhiều lớp học Zoom tham gia...'}
                               style={{ width: '100%', minHeight: 40, borderRadius: 8 }}
-                              allowClear
+                              allowClear={!isStudentRole && canEditSensitive}
+                              disabled={isStudentRole || !canEditSensitive}
                               optionLabelProp="label"
                               notFoundContent={
                                 <div style={{ padding: '8px 0', textAlign: 'center', color: '#64748b' }}>
@@ -2103,7 +2127,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                                         {cls.schedule}
                                       </Tag>
                                       <Tag color="purple" style={{ margin: 0 }}>
-                                        {cls.teacherName || 'GV Bản Xứ'}
+                                        {cls.teacherName || (isEnglish ? 'Native Teacher' : 'GV Bản Xứ')}
                                       </Tag>
                                     </Space>
                                   </div>
@@ -2129,7 +2153,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                               message={
                                 <div>
                                   <Text strong style={{ color: '#cf1322', fontSize: 13 }}>
-                                    ⛔ PHÁT HIỆN TRÙNG KHUNG GIỜ HỌC ONLINE:
+                                    {isEnglish ? '⛔ ONLINE TIMETABLE CONFLICT DETECTED:' : '⛔ PHÁT HIỆN TRÙNG KHUNG GIỜ HỌC ONLINE:'}
                                   </Text>
                                   <ul style={{ margin: '6px 0 0 18px', padding: 0, color: '#434343', fontSize: 13 }}>
                                     {editConflictInfo.conflicts.map((c, idx) => (
@@ -2145,7 +2169,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                         <Col xs={24} sm={12}>
                           <Form.Item
                             label={<Text strong>{isEnglish ? 'Curriculum Level (Auto-Derived)' : 'Cấp Độ Chương Trình (Tự Động Theo Lớp)'}</Text>}
-                            extra={<span style={{ fontSize: 12, color: '#64748b' }}>Cấp độ đi liền với lớp học đã chọn, không cần chọn thủ công.</span>}
+                            extra={<span style={{ fontSize: 12, color: '#64748b' }}>{isEnglish ? 'Curriculum level is automatically linked to enrolled classes.' : 'Cấp độ đi liền với lớp học đã chọn, không cần chọn thủ công.'}</span>}
                           >
                             <div
                               style={{
@@ -2168,7 +2192,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                                 ))
                               ) : (
                                 <Text type="secondary" style={{ fontSize: 13 }}>
-                                  {user.level ? `Wonders ${user.level}` : 'Tự động xác định theo lớp ghi danh'}
+                                  {user.level ? (user.level.startsWith('Wonders') ? user.level : `Wonders ${user.level}`) : (isEnglish ? 'Auto-derived from enrolled classes' : 'Tự động xác định theo lớp ghi danh')}
                                 </Text>
                               )}
                             </div>
@@ -2178,7 +2202,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                         <Col xs={24} sm={12}>
                           <Form.Item
                             label={<Text strong>{isEnglish ? 'Tuition Status (Automated)' : 'Tình Trạng Học Phí (Hệ Thống Tự Động)'}</Text>}
-                            extra={<span style={{ fontSize: 12, color: '#64748b' }}>Hệ thống kế toán tự động đối soát dựa trên học phần đăng ký, không chỉnh sửa thủ công.</span>}
+                            extra={<span style={{ fontSize: 12, color: '#64748b' }}>{isEnglish ? 'Accounting system automatically reconciles tuition fees based on enrolled courses.' : 'Hệ thống kế toán tự động đối soát dựa trên học phần đăng ký, không chỉnh sửa thủ công.'}</span>}
                           >
                             <div
                               style={{
@@ -2196,7 +2220,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                                 color={user.tuitionStatus === 'Đã đóng đủ' ? 'green' : user.tuitionStatus === 'Chờ đối soát' ? 'gold' : 'blue'}
                                 style={{ margin: 0, fontWeight: 600, padding: '2px 8px' }}
                               >
-                                {user.tuitionStatus || 'Chờ đối soát'}
+                                {formatTuitionStatus(user.tuitionStatus, isEnglish)}
                               </Tag>
                               <Text type="secondary" style={{ fontSize: 12 }}>
                                 {isEnglish ? 'Automated Accounting Sync' : 'Đối soát tự động từ Kế toán'}
@@ -2218,7 +2242,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                           <Form.Item
                             name="parentPhone"
                             label={<Text strong>{isEnglish ? 'Parent Phone Number (Default Phone 1)' : 'Số Điện Thoại Phụ Huynh (Mặc Định Là SĐT 1)'}</Text>}
-                            extra={<span style={{ fontSize: 12, color: '#16a34a' }}>Đồng bộ với Số Điện Thoại 1 chính.</span>}
+                            extra={<span style={{ fontSize: 12, color: '#16a34a' }}>{isEnglish ? 'Synced with Primary Phone 1.' : 'Đồng bộ với Số Điện Thoại 1 chính.'}</span>}
                           >
                             <Input
                               prefix={<PhoneOutlined style={{ color: '#0284c7' }} />}

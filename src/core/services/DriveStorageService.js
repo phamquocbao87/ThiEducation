@@ -60,7 +60,10 @@ export class DriveStorageService {
       notes = '',
       purpose = 'general',
       key = '',
+      onProgress = null,
     } = options;
+
+    if (typeof onProgress === 'function') onProgress(15);
 
     // Bước 1: Khởi tạo phiên Resumable Upload
     const sessionRes = await fetch(`${this.CONFIG.API_BASE}/storage/upload-session`, {
@@ -91,21 +94,53 @@ export class DriveStorageService {
     }
 
     const contentRange = file.size > 0 ? `bytes 0-${file.size - 1}/${file.size}` : 'bytes */0';
-    const uploadRes = await fetch(effectiveUploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': file.type || 'application/octet-stream',
-        'Content-Range': contentRange,
-      },
-      body: file,
-    });
+    let driveResult;
 
-    if (!uploadRes.ok) {
-      throw new Error('Tải dữ liệu lên Google Drive thất bại.');
+    if (typeof onProgress === 'function' && typeof XMLHttpRequest !== 'undefined') {
+      driveResult = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', effectiveUploadUrl);
+        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+        xhr.setRequestHeader('Content-Range', contentRange);
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable && evt.total > 0) {
+            const rawPercent = Math.round((evt.loaded / evt.total) * 70); // 20% -> 90%
+            onProgress(20 + rawPercent);
+          }
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText));
+            } catch (err) {
+              resolve({ id: '' });
+            }
+          } else {
+            reject(new Error(`Tải dữ liệu lên Google Drive thất bại: HTTP ${xhr.status}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error('Lỗi mạng khi tải tệp lên Google Drive.'));
+        xhr.send(file);
+      });
+    } else {
+      const uploadRes = await fetch(effectiveUploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+          'Content-Range': contentRange,
+        },
+        body: file,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error('Tải dữ liệu lên Google Drive thất bại.');
+      }
+      driveResult = await uploadRes.json();
     }
 
-    const driveResult = await uploadRes.json();
-    const fileId = driveResult.id;
+    const fileId = driveResult?.id;
+
+    if (typeof onProgress === 'function') onProgress(92);
 
     // Bước 3: Xác nhận hoàn tất và nhận bộ link CDN (lh3) + Direct Download
     const confirmRes = await fetch(`${this.CONFIG.API_BASE}/storage/confirm`, {
@@ -127,6 +162,8 @@ export class DriveStorageService {
     if (!confirmData.success) {
       throw new Error(confirmData.error || 'Không thể xác nhận tệp trên Hosting-Store.');
     }
+
+    if (typeof onProgress === 'function') onProgress(100);
 
     return confirmData.data;
   }

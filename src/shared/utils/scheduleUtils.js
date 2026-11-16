@@ -486,3 +486,83 @@ export const findScheduleConflictsInClassList = (classIds = [], allClasses = [])
     conflicts,
   };
 };
+
+/**
+ * Trọng số lịch học cho việc sắp xếp thông minh lớp học:
+ * 1. Thứ 2 - 4 - 6 (Mon - Wed - Fri / 246 / T2) -> 10
+ * 2. Thứ 3 - 5 - 7 (Tue - Thu - Sat / 357 / T3) -> 20
+ * 3. Hàng ngày / Daily (Mon to Sun) -> 30
+ * 4. Cuối tuần / Weekend (Sat - Sun / T7 - CN) -> 40
+ * 5. Khác -> 50
+ */
+export const getScheduleDaysWeight = (cls) => {
+  const combined = `${cls?.name || ''} ${cls?.schedule || ''} ${cls?.code || ''}`.toLowerCase();
+
+  // 1. Daily (All week / Hàng ngày)
+  if (/(daily|hàng\s*ngày|hang\s*ngay|mon,\s*tue,\s*wed,\s*thu,\s*fri,\s*sat,\s*sun)/i.test(combined)) {
+    return 30;
+  }
+
+  // 2. 2-4-6 (Mon, Wed, Fri / Thứ 2, 4, 6)
+  if (/(2[-_/]?4[-_/]?6|mon[^\n\r]*wed[^\n\r]*fri|thứ\s*2[^\n\r]*thứ\s*4|t2[-_/]?t4[-_/]?t6)/i.test(combined)) {
+    return 10;
+  }
+
+  // 3. 3-5-7 (Tue, Thu, Sat / Thứ 3, 5, 7)
+  if (/(3[-_/]?5[-_/]?7|tue[^\n\r]*thu[^\n\r]*sat|thứ\s*3[^\n\r]*thứ\s*5|t3[-_/]?t5[-_/]?t7)/i.test(combined)) {
+    return 20;
+  }
+
+  // 4. Weekend (Sat - Sun / T7 - CN / Cuối tuần)
+  if (/(sat[^\n\r]*sun|t7[-_/]?cn|chủ\s*nhật|cuối\s*tuần|cuoi\s*tuan|weekend)/i.test(combined)) {
+    return 40;
+  }
+
+  // 5. Kiểm tra mảng scheduleData.days nếu có
+  if (Array.isArray(cls?.scheduleData?.days) && cls.scheduleData.days.length > 0) {
+    const days = cls.scheduleData.days;
+    if (days.length >= 7) return 30;
+    if (days.includes(1) && days.includes(3) && days.includes(5)) return 10;
+    if (days.includes(2) && days.includes(4) && days.includes(6)) return 20;
+    if (days.includes(6) && days.includes(0)) return 40;
+    const minDay = Math.min(...days.map((d) => (d === 0 ? 7 : d)));
+    return minDay * 5;
+  }
+
+  return 50;
+};
+
+/**
+ * Trích xuất chỉ số thứ tự lớp (e.g. WP01 -> 1, WP02 -> 2, LH001 -> 1)
+ */
+export const extractClassSequenceNumber = (cls) => {
+  const str = `${cls?.name || ''} ${cls?.code || ''} ${cls?.id || ''}`;
+  const match = str.match(/(?:WP|LH|Class\s*|Lớp\s*|G\d+-)(\d+)/i);
+  return match ? parseInt(match[1], 10) : null;
+};
+
+/**
+ * Sắp xếp danh sách lớp học thông minh theo chuẩn vận hành trung tâm đào tạo:
+ * Ưu tiên: Lớp 2-4-6 trước -> Lớp 3-5-7 tiếp theo -> Lớp Hàng ngày (Daily) -> Cuối tuần
+ * Trong cùng nhóm lịch, sắp xếp theo số thứ tự lớp (WP01, WP02, WP03...) và tên lớp.
+ */
+export const sortClassesSmartly = (classList = []) => {
+  if (!Array.isArray(classList)) return [];
+  return [...classList].sort((a, b) => {
+    // 1. Trọng số lịch học ngày trong tuần (246 trước 357 trước Daily)
+    const weightA = getScheduleDaysWeight(a);
+    const weightB = getScheduleDaysWeight(b);
+    if (weightA !== weightB) return weightA - weightB;
+
+    // 2. Số thứ tự lớp (WP01 < WP02 < WP03...)
+    const numA = extractClassSequenceNumber(a);
+    const numB = extractClassSequenceNumber(b);
+    if (numA !== null && numB !== null && numA !== numB) {
+      return numA - numB;
+    }
+
+    // 3. Fallback theo tên lớp
+    return String(a?.name || '').localeCompare(String(b?.name || ''), 'vi', { numeric: true });
+  });
+};
+

@@ -17,7 +17,7 @@ export const ClassCardActions = ({ cls, role, onClick }) => {
         onClick={() => window.open(meetingUrl, '_blank')}>
         {t(role === 'teacher' ? 'classroom.cardOpenHost' : 'classroom.cardJoin')}
       </Button> : <Tag style={{ margin: 0, fontSize: 11 }}>{t('classroom.cardNoLink')}</Tag>}
-      {cls.zaloGroupLink && <Button size="small" icon={<MessageOutlined />} style={{ borderRadius: 6, color: '#0068ff' }}
+      {role !== 'teacher' && cls.zaloGroupLink && <Button size="small" icon={<MessageOutlined />} style={{ borderRadius: 6, color: '#0068ff' }}
         onClick={() => window.open(cls.zaloGroupLink, '_blank')}>Zalo</Button>}
     </Space>
     <Button type="link" size="small" style={{ padding: 0, fontSize: 12, fontWeight: 600 }} onClick={() => onClick?.(cls)}>

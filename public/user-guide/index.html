@@ -1,0 +1,1990 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cẩm Nang Hướng Dẫn Sử Dụng Hệ Thống LAK EDUCATION ERP</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1d4ed8;
+      --primary-dark: #1e40af;
+      --primary-light: #eff6ff;
+      --primary-border: #bfdbfe;
+      --accent: #0284c7;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --border-card: #e2e8f0;
+      --sidebar-width: 300px;
+      --header-height: 70px;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 12px rgba(15,23,42,0.08);
+      --shadow-lg: 0 12px 30px rgba(15,23,42,0.12);
+      --tag-student: #10b981;
+      --tag-teacher: #f59e0b;
+      --tag-academic: #6366f1;
+      --tag-accountant: #06b6d4;
+      --tag-director: #8b5cf6;
+      --tag-admin: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100vw;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text-main);
+      background-color: var(--bg-page);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* HEADER */
+    header.guide-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--header-height);
+      background: #ffffff;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      z-index: 1000;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+    }
+
+    .brand-logo-badge {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, #1d4ed8, #2563eb);
+      color: #ffffff;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 800;
+      box-shadow: 0 4px 10px rgba(29, 78, 216, 0.3);
+    }
+
+    .brand-title h1 {
+      font-size: 17px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.3px;
+    }
+
+    .brand-title p {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .search-input-wrap {
+      position: relative;
+      width: 320px;
+    }
+
+    .search-input-wrap input {
+      width: 100%;
+      height: 40px;
+      padding: 0 16px 0 40px;
+      border-radius: 999px;
+      border: 1px solid var(--border-card);
+      background: #f1f5f9;
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .search-input-wrap input:focus {
+      background: #ffffff;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
+    }
+
+    .search-input-wrap svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #64748b;
+    }
+
+    .btn-header {
+      height: 38px;
+      padding: 0 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-card);
+      background: #ffffff;
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-header:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    .btn-header.primary {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+    }
+
+    .btn-header.primary:hover {
+      background: var(--primary-dark);
+    }
+
+    /* MAIN CONTAINER */
+    .guide-wrapper {
+      display: flex;
+      margin-top: var(--header-height);
+      min-height: calc(100vh - var(--header-height));
+    }
+
+    /* SIDEBAR */
+    aside.guide-sidebar {
+      width: var(--sidebar-width);
+      position: fixed;
+      top: var(--header-height);
+      bottom: 0;
+      left: 0;
+      background: #ffffff;
+      border-right: 1px solid var(--border-card);
+      overflow-y: auto;
+      padding: 24px 16px 40px 20px;
+      scrollbar-width: thin;
+    }
+
+    .nav-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #94a3b8;
+      margin: 20px 0 10px 12px;
+    }
+
+    .nav-section-title:first-child {
+      margin-top: 0;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #334155;
+      text-decoration: none;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+      margin-bottom: 2px;
+    }
+
+    .nav-link:hover {
+      background: #f1f5f9;
+      color: var(--primary);
+    }
+
+    .nav-link.active {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .nav-link .icon {
+      font-size: 16px;
+      width: 20px;
+      text-align: center;
+    }
+
+    .role-badge-sidebar {
+      margin-left: auto;
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    /* CONTENT AREA */
+    main.guide-content {
+      margin-left: var(--sidebar-width);
+      flex: 1;
+      padding: 40px 60px 100px;
+      max-width: 1200px;
+    }
+
+    /* HERO BANNER */
+    .hero-banner {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #0284c7 100%);
+      color: #ffffff;
+      border-radius: var(--radius-lg);
+      padding: 48px;
+      margin-bottom: 40px;
+      box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-banner::after {
+      content: '';
+      position: absolute;
+      right: -60px;
+      bottom: -60px;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 70%);
+      border-radius: 50%;
+    }
+
+    .hero-banner h2 {
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+    }
+
+    .hero-banner p {
+      font-size: 15px;
+      color: #e0f2fe;
+      max-width: 760px;
+      line-height: 1.7;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .hero-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 6px 14px;
+      border-radius: 999px;
+      backdrop-filter: blur(4px);
+    }
+
+    /* QUICK ROLE FILTER */
+    .role-filter-section {
+      background: #ffffff;
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      margin-bottom: 40px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .role-filter-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #64748b;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .role-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .role-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1.5px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .role-pill.all {
+      background: #f1f5f9;
+      color: #334155;
+      border-color: #cbd5e1;
+    }
+
+    .role-pill.student {
+      background: #ecfdf5;
+      color: #065f46;
+      border-color: #a7f3d0;
+    }
+
+    .role-pill.teacher {
+      background: #fffbeb;
+      color: #92400e;
+      border-color: #fde68a;
+    }
+
+    .role-pill.academic {
+      background: #eef2ff;
+      color: #3730a3;
+      border-color: #c7d2fe;
+    }
+
+    .role-pill.accountant {
+      background: #ecfeff;
+      color: #155e75;
+      border-color: #a5f3fc;
+    }
+
+    .role-pill.director {
+      background: #f5f3ff;
+      color: #5b21b6;
+      border-color: #ddd6fe;
+    }
+
+    .role-pill.admin {
+      background: #fef2f2;
+      color: #991b1b;
+      border-color: #fecaca;
+    }
+
+    .role-pill:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    }
+
+    /* MODULE SECTION */
+    .module-card {
+      background: #ffffff;
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      margin-bottom: 40px;
+      box-shadow: var(--shadow-sm);
+      scroll-margin-top: 90px;
+    }
+
+    .module-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .module-badge-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .module-number {
+      width: 32px;
+      height: 32px;
+      background: var(--primary);
+      color: #ffffff;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .module-title h3 {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.3px;
+    }
+
+    .module-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-left: 44px;
+    }
+
+    .role-tag-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tag-badge.student { background: #d1fae5; color: #065f46; }
+    .tag-badge.teacher { background: #fef3c7; color: #92400e; }
+    .tag-badge.academic { background: #e0e7ff; color: #3730a3; }
+    .tag-badge.accountant { background: #cffafe; color: #155e75; }
+    .tag-badge.director { background: #ede9fe; color: #5b21b6; }
+    .tag-badge.admin { background: #fee2e2; color: #991b1b; }
+
+    .route-spec {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      color: #0369a1;
+      margin-bottom: 20px;
+    }
+
+    /* STEP FLOW */
+    .step-list {
+      list-style: none;
+      margin: 20px 0;
+      position: relative;
+      padding-left: 28px;
+    }
+
+    .step-list::before {
+      content: '';
+      position: absolute;
+      left: 10px;
+      top: 12px;
+      bottom: 12px;
+      width: 2px;
+      background: #e2e8f0;
+    }
+
+    .step-item {
+      position: relative;
+      margin-bottom: 18px;
+      font-size: 14px;
+      color: #334155;
+    }
+
+    .step-item::before {
+      content: '';
+      position: absolute;
+      left: -28px;
+      top: 5px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid var(--primary);
+    }
+
+    .step-item strong {
+      color: #0f172a;
+      display: inline-block;
+      margin-bottom: 2px;
+    }
+
+    /* SCREENSHOT FIGURE */
+    .screenshot-figure {
+      margin: 24px 0 28px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border-card);
+      box-shadow: var(--shadow-md);
+      background: #0f172a;
+    }
+
+    .screenshot-toolbar {
+      background: #1e293b;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid #334155;
+    }
+
+    .toolbar-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .toolbar-url {
+      background: #0f172a;
+      padding: 3px 14px;
+      border-radius: 999px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #94a3b8;
+      margin-left: 8px;
+      flex: 1;
+      max-width: 480px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .screenshot-figure img {
+      width: 100%;
+      height: auto;
+      display: block;
+      cursor: zoom-in;
+      transition: transform 0.2s ease;
+    }
+
+    .screenshot-caption {
+      background: #f8fafc;
+      padding: 10px 16px;
+      font-size: 12.5px;
+      color: #64748b;
+      border-top: 1px solid #e2e8f0;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* CALLOUT BOXES */
+    .callout {
+      border-radius: var(--radius-sm);
+      padding: 16px 20px;
+      margin: 20px 0;
+      display: flex;
+      gap: 14px;
+      font-size: 13.5px;
+      line-height: 1.6;
+    }
+
+    .callout-icon {
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .callout.tip {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+    }
+
+    .callout.warning {
+      background: #fffbeb;
+      border: 1px solid #fef3c7;
+      color: #92400e;
+    }
+
+    .callout.important {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+    }
+
+    .callout.privacy {
+      background: #faf5ff;
+      border: 1px solid #e9d5ff;
+      color: #6b21a8;
+    }
+
+    /* FEATURE GRID */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .feature-card-item {
+      background: #f8fafc;
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-sm);
+      padding: 18px;
+    }
+
+    .feature-card-item h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .feature-card-item p {
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    /* FOOTER */
+    footer.guide-footer {
+      background: #ffffff;
+      border-top: 1px solid var(--border-card);
+      padding: 40px 60px;
+      margin-left: var(--sidebar-width);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    /* LIGHTBOX MODAL */
+    .lightbox-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.85);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      backdrop-filter: blur(4px);
+    }
+
+    .lightbox-modal.open {
+      display: flex;
+    }
+
+    .lightbox-modal img {
+      max-width: 95vw;
+      max-height: 90vh;
+      border-radius: var(--radius-sm);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 24px;
+      right: 32px;
+      color: #ffffff;
+      font-size: 32px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 1024px) {
+      aside.guide-sidebar {
+        display: none;
+      }
+      main.guide-content, footer.guide-footer {
+        margin-left: 0 !important;
+        padding: 24px 16px !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+      }
+      header.guide-header {
+        padding: 0 16px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      .search-input-wrap {
+        display: none;
+      }
+      .btn-header:not(.primary) {
+        display: none;
+      }
+      .btn-header.primary {
+        padding: 0 10px;
+        font-size: 12px;
+      }
+      .brand-title p {
+        display: none;
+      }
+      .hero-banner {
+        padding: 24px 20px !important;
+      }
+      .hero-banner h2 {
+        font-size: 24px !important;
+      }
+      .module-card {
+        padding: 20px 16px !important;
+      }
+      .module-header {
+        flex-direction: column !important;
+        gap: 12px !important;
+      }
+      .route-spec {
+        word-break: break-all !important;
+        white-space: normal !important;
+        font-size: 11px !important;
+      }
+      .hero-meta-item {
+        font-size: 11.5px !important;
+        padding: 4px 10px !important;
+      }
+    }
+
+    @media print {
+      aside.guide-sidebar, header.guide-header, .role-filter-section, .btn-header {
+        display: none !important;
+      }
+      main.guide-content, footer.guide-footer {
+        margin-left: 0 !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+      }
+      .module-card {
+        page-break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="guide-header">
+    <a href="#" class="brand-group">
+      <div class="brand-logo-badge">LAK</div>
+      <div class="brand-title">
+        <h1>LAK EDUCATION ERP</h1>
+        <p>Cẩm Nang Hướng Dẫn Vận Hành Hệ Thống</p>
+      </div>
+    </a>
+
+    <div class="header-actions">
+      <div class="search-input-wrap">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="guideSearchInput" placeholder="Tìm kiếm chức năng, role, bài tập...">
+      </div>
+
+      <button class="btn-header" onclick="window.print()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 6 2 18 2 18 9"></polyline>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+          <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
+        In / Xuất PDF
+      </button>
+
+      <a href="https://bk.lakeducation.edu.vn" target="_blank" class="btn-header primary">
+        Vào Hệ Thống ERP &rarr;
+      </a>
+    </div>
+  </header>
+
+  <div class="guide-wrapper">
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="guide-sidebar">
+      <div class="nav-section-title">Khởi Động & Xác Thực</div>
+      <a href="#intro" class="nav-link active"><span class="icon">🚀</span> Giới Thiệu & 6 Roles</a>
+      <a href="#auth" class="nav-link"><span class="icon">🔐</span> Đăng Nhập & Hồ Sơ Con</a>
+
+      <div class="nav-section-title">1. Học Viên & Phụ Huynh</div>
+      <a href="#student-dashboard" class="nav-link"><span class="icon">🏠</span> Student Dashboard <span class="role-badge-sidebar" style="background:#d1fae5;color:#065f46">HV</span></a>
+      <a href="#student-classes" class="nav-link"><span class="icon">📚</span> Lớp Học & Vào Meet <span class="role-badge-sidebar" style="background:#d1fae5;color:#065f46">HV</span></a>
+      <a href="#student-homework" class="nav-link"><span class="icon">✍️</span> Bài Tập Về Nhà <span class="role-badge-sidebar" style="background:#d1fae5;color:#065f46">HV</span></a>
+      <a href="#student-eval" class="nav-link"><span class="icon">⭐</span> Đánh Giá & Video <span class="role-badge-sidebar" style="background:#d1fae5;color:#065f46">HV</span></a>
+      <a href="#student-tuition" class="nav-link"><span class="icon">💳</span> Học Phí & Biên Lai <span class="role-badge-sidebar" style="background:#d1fae5;color:#065f46">HV</span></a>
+
+      <div class="nav-section-title">2. Giáo Viên Bản Xứ</div>
+      <a href="#teacher-dashboard" class="nav-link"><span class="icon">👨‍🏫</span> Teacher Portal <span class="role-badge-sidebar" style="background:#fef3c7;color:#92400e">GV</span></a>
+      <a href="#teacher-classes" class="nav-link"><span class="icon">📖</span> Lớp Dạy & Ẩn Học Phí <span class="role-badge-sidebar" style="background:#fef3c7;color:#92400e">GV</span></a>
+      <a href="#teacher-students" class="nav-link"><span class="icon">🛡️</span> Bảo Mật Học Viên <span class="role-badge-sidebar" style="background:#fef3c7;color:#92400e">GV</span></a>
+      <a href="#teacher-attendance" class="nav-link"><span class="icon">✅</span> Điểm Danh & Video <span class="role-badge-sidebar" style="background:#fef3c7;color:#92400e">GV</span></a>
+      <a href="#teacher-homework" class="nav-link"><span class="icon">📝</span> Giao Bài & Chấm Điểm <span class="role-badge-sidebar" style="background:#fef3c7;color:#92400e">GV</span></a>
+
+      <div class="nav-section-title">3. Giáo Vụ Đào Tạo</div>
+      <a href="#academic-courses" class="nav-link"><span class="icon">🏫</span> Khóa Học & Lớp Học <span class="role-badge-sidebar" style="background:#e0e7ff;color:#3730a3">GVU</span></a>
+      <a href="#academic-students" class="nav-link"><span class="icon">🎒</span> Quản Lý Học Viên <span class="role-badge-sidebar" style="background:#e0e7ff;color:#3730a3">GVU</span></a>
+      <a href="#academic-schedules" class="nav-link"><span class="icon">📅</span> TKB Trực Tuyến Live <span class="role-badge-sidebar" style="background:#e0e7ff;color:#3730a3">GVU</span></a>
+      <a href="#academic-materials" class="nav-link"><span class="icon">📁</span> Kho Học Liệu Số <span class="role-badge-sidebar" style="background:#e0e7ff;color:#3730a3">GVU</span></a>
+
+      <div class="nav-section-title">4. Kế Toán & Giám Đốc</div>
+      <a href="#accountant-billing" class="nav-link"><span class="icon">💰</span> Học Phí & Đợt Thu <span class="role-badge-sidebar" style="background:#cffafe;color:#155e75">KT</span></a>
+      <a href="#accountant-payroll" class="nav-link"><span class="icon">🧾</span> Tính Lương Giáo Viên <span class="role-badge-sidebar" style="background:#cffafe;color:#155e75">KT</span></a>
+      <a href="#director-overview" class="nav-link"><span class="icon">👑</span> Điều Hành Giám Đốc <span class="role-badge-sidebar" style="background:#ede9fe;color:#5b21b6">GĐ</span></a>
+
+      <div class="nav-section-title">5. IT Admin & Bảo Mật</div>
+      <a href="#admin-users" class="nav-link"><span class="icon">⚙️</span> Quản Trị Người Dùng <span class="role-badge-sidebar" style="background:#fee2e2;color:#991b1b">ADM</span></a>
+      <a href="#admin-profile" class="nav-link"><span class="icon">👤</span> Hồ Sơ & Mật Khẩu <span class="role-badge-sidebar" style="background:#fee2e2;color:#991b1b">ADM</span></a>
+      <a href="#faq-support" class="nav-link"><span class="icon">❓</span> Hỏi Đáp & Hỗ Trợ</a>
+    </aside>
+
+    <!-- CONTENT -->
+    <main class="guide-content">
+
+      <!-- HERO BANNER -->
+      <section class="hero-banner" id="intro">
+        <h2>Cẩm Nang Sử Dụng LAK EDUCATION ERP</h2>
+        <p>
+          Hệ thống Quản trị Đào tạo Chuẩn Quốc Tế phục vụ 520+ Học viên và 68+ Cán bộ & Giáo viên bản xứ. 
+          Tài liệu này hướng dẫn đầy đủ, chi tiết từng chức năng cho toàn bộ 6 vai trò trong hệ thống với hình ảnh minh họa chụp trực tiếp từ môi trường hoạt động thực tế.
+        </p>
+        <div class="hero-meta">
+          <div class="hero-meta-item">📌 Phiên bản: <strong>Version 1.2.143</strong></div>
+          <div class="hero-meta-item">🏛️ Cơ sở: LAK EDUCATION (lakeducation.com)</div>
+          <div class="hero-meta-item">🔒 Bảo mật dữ liệu Cloud Firestore lakeducationdb</div>
+          <div class="hero-meta-item">🌐 Hỗ trợ song ngữ Tiếng Anh 🇬🇧 & Tiếng Việt 🇻🇳</div>
+        </div>
+      </section>
+
+      <!-- ROLE FILTER PILLS -->
+      <div class="role-filter-section">
+        <div class="role-filter-title">Chọn vai trò của bạn để xem hướng dẫn nhanh:</div>
+        <div class="role-pills">
+          <a href="#intro" class="role-pill all">Tất Cả Chức Năng</a>
+          <a href="#student-dashboard" class="role-pill student">🎒 Học Viên & Phụ Huynh</a>
+          <a href="#teacher-dashboard" class="role-pill teacher">👨‍🏫 Giáo Viên Bản Xứ</a>
+          <a href="#academic-courses" class="role-pill academic">📋 Cán Bộ Giáo Vụ</a>
+          <a href="#accountant-billing" class="role-pill accountant">💰 Kế Toán Tài Chính</a>
+          <a href="#director-overview" class="role-pill director">👑 Ban Giám Đốc</a>
+          <a href="#admin-users" class="role-pill admin">🛠️ Quản Trị Hệ Thống</a>
+        </div>
+      </div>
+
+      <!-- MODULE 0: ĐĂNG NHẬP & HỒ SƠ CON -->
+      <article class="module-card" id="auth">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">00</div>
+              <div class="module-title"><h3>Cổng Đăng Nhập & Bộ Chọn Hồ Sơ Con</h3></div>
+            </div>
+            <div class="module-subtitle">Cổng xác thực tập trung an toàn, bảo vệ chống giả mạo và phân luồng thông minh</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge student">Học Viên</span>
+            <span class="tag-badge teacher">Giáo Viên</span>
+            <span class="tag-badge academic">Giáo Vụ</span>
+            <span class="tag-badge accountant">Kế Toán</span>
+            <span class="tag-badge director">Giám Đốc</span>
+            <span class="tag-badge admin">Admin</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Cổng đăng nhập: https://bk.lakeducation.edu.vn/login (hoặc https://erp.lakeducation.edu.vn/login)</div>
+
+        <p>Hệ thống hỗ trợ 2 phương thức đăng nhập bảo mật tách biệt tuyệt đối:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Cách 1: Đăng nhập bằng Số Điện Thoại / Email & Mật Khẩu LAK:</strong> Dành cho Học viên, Phụ huynh và Cán bộ. Nhập SĐT chính hoặc Email công vụ cùng mật khẩu đã cấp. Mật khẩu được mã hóa băm Bcrypt chuẩn công nghiệp.
+          </li>
+          <li class="step-item">
+            <strong>Cách 2: Đăng nhập Google Workspace SSO:</strong> Nút đăng nhập 1 chạm an toàn dành riêng cho Cán bộ nhân viên sở hữu tài khoản Google Workspace (<code>@lakeducation.com</code> hoặc Gmail đã liên kết).
+          </li>
+          <li class="step-item">
+            <strong>Bộ Chọn Hồ Sơ Con (Family Profile Switcher):</strong> Đối với phụ huynh có từ 2 con trở lên học cùng lúc (dùng chung 1 SĐT), sau khi đăng nhập hệ thống sẽ tự động hiển thị hộp thoại chọn con. Phụ huynh có thể chuyển đổi linh hoạt bất kỳ lúc nào qua nút <em>"Switch Child / Đổi Hồ Sơ"</em> trên thanh Header mà không cần đăng xuất.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/login</div>
+          </div>
+          <img src="./images/01_login_portal.png" alt="Cổng Đăng Nhập LAK EDUCATION">
+          <div class="screenshot-caption">
+            <span>Giao diện Cổng Đăng Nhập LAK EDUCATION ERP với 2 Tab xác thực tách biệt</span>
+            <span>Hình 0.1</span>
+          </div>
+        </div>
+
+        <div class="callout tip">
+          <div class="callout-icon">💡</div>
+          <div>
+            <strong>Mẹo nhanh:</strong> Học viên có thể dùng SĐT phụ huynh để đăng nhập. Mật khẩu mặc định khởi tạo được gửi qua tin nhắn Zalo nội bộ khi hoàn tất ghi danh.
+          </div>
+        </div>
+      </article>
+
+      <!-- ======================================================== -->
+      <!-- PHẦN 1: HỌC VIÊN & PHỤ HUYNH -->
+      <!-- ======================================================== -->
+
+      <!-- MODULE 1: STUDENT DASHBOARD -->
+      <article class="module-card" id="student-dashboard">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">01</div>
+              <div class="module-title"><h3>Student Portal — Trang Tổng Quan Học Tập</h3></div>
+            </div>
+            <div class="module-subtitle">Khu vực trung tâm theo dõi lịch học, nhóm Zalo, nền tảng K-12 và tài liệu</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge student">Học Viên (HV)</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /dashboard (Dành cho Học viên)</div>
+
+        <div class="feature-grid">
+          <div class="feature-card-item">
+            <h4>⏰ Lịch Học Sắp Diễn Ra</h4>
+            <p>Hiển thị thời gian đếm ngược chính xác, ngày học trong tuần, tên lớp và giáo viên phụ trách kèm nút truy cập Zalo lớp học.</p>
+          </div>
+          <div class="feature-card-item">
+            <h4>💬 Nhóm Zalo Lớp Học (Class Zalo)</h4>
+            <p>Nút "Class Zalo Group" kết nối trực tiếp đến nhóm trao đổi giữa phụ huynh và giáo vụ phụ trách lớp.</p>
+          </div>
+          <div class="feature-card-item">
+            <h4>🌟 Top 4 US K-12 Platforms</h4>
+            <p>Truy cập nhanh 4 nền tảng bổ trợ tiêu chuẩn Hoa Kỳ: Epic! Books, Raz-Plus / Kids A-Z, Quizlet và Khan Academy.</p>
+          </div>
+          <div class="feature-card-item">
+            <h4>📁 Học Liệu Lớp Học</h4>
+            <p>Sách giáo trình điện tử McGraw-Hill Wonders (PDF), Album audio nghe và tài liệu bài giảng được phân bổ riêng cho lớp.</p>
+          </div>
+        </div>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/dashboard</div>
+          </div>
+          <img src="./images/student_01_dashboard.png" alt="Student Dashboard">
+          <div class="screenshot-caption">
+            <span>Student Dashboard: Thẻ đếm ngược buổi học, nút Class Zalo Group và 4 Thẻ US K-12 Learning Corner</span>
+            <span>Hình 1.1</span>
+          </div>
+        </div>
+
+        <div class="callout important">
+          <div class="callout-icon">📌</div>
+          <div>
+            <strong>Kỷ luật hiển thị:</strong> Nhãn lớp học hiển thị chuẩn xác ngữ pháp số nhiều (<code>1 class</code> / <code>2 classes</code>). Các nút truy cập nhanh luôn giữ bố cục nằm ngang, không bị co vỡ chữ trên di động.
+          </div>
+        </div>
+      </article>
+
+      <!-- MODULE 2: STUDENT COURSES & MEET LOCK -->
+      <article class="module-card" id="student-classes">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">02</div>
+              <div class="module-title"><h3>Quản Lý Lớp Học & Khóa Phòng Meet 10 Phút</h3></div>
+            </div>
+            <div class="module-subtitle">Bảo mật danh sách lớp ghi danh và cơ chế mở phòng học an toàn</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge student">Học Viên (HV)</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /courses-classes (Tab Lớp Học)</div>
+
+        <p>Học viên chỉ được nhìn thấy lớp mà mình đã ghi danh hoặc đang chờ duyệt. Cơ chế bảo mật phòng học trực tuyến hoạt động như sau:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Phân quyền cô lập (Class Scoping):</strong> Học viên tuyệt đối không nhìn thấy các lớp của học viên khác, đảm bảo tính riêng tư 100%.
+          </li>
+          <li class="step-item">
+            <strong>Cơ chế khóa Meet trước giờ học 10 phút:</strong> Nút vào lớp hiển thị <code>⏰ Opens 10m Before</code> (hoặc <em>Phòng Mở Trước 10 Phút</em>) và bị vô hiệu hóa. Nút chỉ tự động mở sáng khi còn cách giờ học đúng 10 phút (600 giây).
+          </li>
+          <li class="step-item">
+            <strong>Drawer Thông Tin Lớp (Class Roster Drawer):</strong> Bấm vào nút <em>"Roster"</em> để xem danh sách bạn bè cùng lớp và đường link học trực tuyến hợp nhất duy nhất: <code>Online Classroom Link</code>.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/courses-classes</div>
+          </div>
+          <img src="./images/student_02_classes.png" alt="Student Courses & Classes">
+          <div class="screenshot-caption">
+            <span>Danh sách lớp học của học viên với nút vào lớp bị khóa trước giờ học 10 phút</span>
+            <span>Hình 1.2</span>
+          </div>
+        </div>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/courses-classes (Drawer)</div>
+          </div>
+          <img src="./images/student_03_roster_drawer.png" alt="Student Class Roster Drawer">
+          <div class="screenshot-caption">
+            <span>Drawer thông tin lớp học với Link lớp học hợp nhất (Online Classroom Link)</span>
+            <span>Hình 1.3</span>
+          </div>
+        </div>
+
+        <div class="callout warning">
+          <div class="callout-icon">⏰</div>
+          <div>
+            <strong>Lý do khóa 10 phút:</strong> Nhằm bảo đảm học viên không vào phòng học khi giáo viên bản xứ chưa chuẩn bị xong giáo án hoặc phòng Zoom chưa được giáo vụ kích hoạt.
+          </div>
+        </div>
+      </article>
+
+      <!-- MODULE 3: STUDENT HOMEWORK & EXERCISES -->
+      <article class="module-card" id="student-homework">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">03</div>
+              <div class="module-title"><h3>Bài Tập Về Nhà & Nộp Bài (Exercises)</h3></div>
+            </div>
+            <div class="module-subtitle">Theo dõi hạn nộp, tải bài tập và xem phản hồi chấm điểm của thầy cô</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge student">Học Viên (HV)</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /homework (hoặc menu Sidebar "Exercises")</div>
+
+        <p>Học viên theo dõi toàn bộ tiến độ làm bài tập được giao từ giáo viên:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Danh sách bài tập (Assignment List):</strong> Hiển thị tên bài tập, hạn chót (Due Date), yêu cầu chi tiết và file đính kèm từ thầy cô.
+          </li>
+          <li class="step-item">
+            <strong>Nộp bài tập trực tuyến:</strong> Bấm vào bài tập để tải lên hình ảnh vở bài tập, file ghi âm giọng đọc (Audio) hoặc bài viết dạng văn bản.
+          </li>
+          <li class="step-item">
+            <strong>Xem điểm số và lời nhận xét:</strong> Sau khi thầy cô chấm bài, học viên nhận được thông báo điểm số và nhận xét chi tiết từng câu.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/homework</div>
+          </div>
+          <img src="./images/student_04_homework.png" alt="Student Homework Exercises">
+          <div class="screenshot-caption">
+            <span>Bảng danh sách bài tập về nhà với tiêu đề và hạn chót rõ ràng</span>
+            <span>Hình 1.4</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- MODULE 4: STUDENT EVALUATIONS & RECORDED VIDEO -->
+      <article class="module-card" id="student-eval">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">04</div>
+              <div class="module-title"><h3>Điểm Danh, Đánh Giá & Bản Ghi Video Buổi Học</h3></div>
+            </div>
+            <div class="module-subtitle">Minh bạch quá trình học tập từng buổi kèm video xem lại bài giảng</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge student">Học Viên (HV)</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /class-attendance-evaluation</div>
+
+        <p>Sau mỗi buổi học, phụ huynh và học viên có thể xem:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Trạng thái chuyên cần (Attendance Status):</strong> Đúng giờ (Present), Đi muộn (Late), Có phép (Excused) hoặc Vắng mặt (Absent).
+          </li>
+          <li class="step-item">
+            <strong>Nhận xét của Giáo viên bản xứ (Teacher's Feedback):</strong> Đánh giá mức độ tập trung, phát âm, từ vựng và tương tác trong giờ học.
+          </li>
+          <li class="step-item">
+            <strong>Bản ghi Video buổi học (Recorded Video):</strong> Đường link xem lại video quay toàn bộ buổi học trên Zoom/Drive để ôn tập hoặc xem lại khi nghỉ học.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/class-attendance-evaluation</div>
+          </div>
+          <img src="./images/student_05_evaluations.png" alt="Student Attendance Evaluations">
+          <div class="screenshot-caption">
+            <span>Lịch sử điểm danh và đánh giá buổi học kèm đường link video bài giảng</span>
+            <span>Hình 1.5</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- MODULE 5: STUDENT TUITION & INVOICES -->
+      <article class="module-card" id="student-tuition">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">05</div>
+              <div class="module-title"><h3>Theo Dõi Học Phí & Biên Lai Thu Tiền</h3></div>
+            </div>
+            <div class="module-subtitle">Tra cứu các kỳ đóng học phí, lịch sử thanh toán và hóa đơn điện tử</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge student">Học Viên (HV)</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /tuition-billing</div>
+
+        <p>Phụ huynh quản lý minh bạch các khoản tài chính học tập của con:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Tổng quan kỳ học phí:</strong> Thời hạn thanh toán đợt tới, số tiền đã đóng và số buổi học tương ứng.
+          </li>
+          <li class="step-item">
+            <strong>Tra cứu biên lai:</strong> Tải xuống biên lai điện tử có mã số phiếu thu và dấu xác nhận của Phòng Kế toán LAK EDUCATION.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/tuition-billing</div>
+          </div>
+          <img src="./images/student_06_tuition.png" alt="Student Tuition Invoices">
+          <div class="screenshot-caption">
+            <span>Bảng theo dõi các kỳ học phí và trạng thái thanh toán</span>
+            <span>Hình 1.6</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- ======================================================== -->
+      <!-- PHẦN 2: GIÁO VIÊN BẢN XỨ (TEACHER) -->
+      <!-- ======================================================== -->
+
+      <!-- MODULE 6: TEACHER PORTAL & OVERVIEW -->
+      <article class="module-card" id="teacher-dashboard">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">06</div>
+              <div class="module-title"><h3>Teacher Portal — Bảng Điều Khiển Giảng Dạy</h3></div>
+            </div>
+            <div class="module-subtitle">Tổng hợp lịch giảng dạy hàng tuần, các lớp phụ trách và học sinh cần lưu ý</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge teacher">Giáo Viên (GV)</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /dashboard (Dành cho Giáo viên)</div>
+
+        <p>Bảng điều khiển dành riêng cho giáo viên bản xứ:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Lịch giảng dạy hôm nay (Today's Classes):</strong> Hiển thị giờ vào lớp, link Zoom giảng dạy và sĩ số học sinh.
+          </li>
+          <li class="step-item">
+            <strong>Tự động quy đổi múi giờ ngầm:</strong> Hệ thống tự động chuyển đổi giờ học sang múi giờ của giáo viên (ví dụ giờ Philippines GMT+8 hoặc giờ Mỹ) mà không gây nhầm lẫn.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/dashboard</div>
+          </div>
+          <img src="./images/teacher_01_dashboard.png" alt="Teacher Dashboard">
+          <div class="screenshot-caption">
+            <span>Teacher Dashboard: Lịch giảng dạy trực tuyến và danh sách lớp học</span>
+            <span>Hình 2.1</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- MODULE 7: TEACHER COURSES & FEE PRIVACY -->
+      <article class="module-card" id="teacher-classes">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">07</div>
+              <div class="module-title"><h3>Quản Lý Lớp Dạy & Bảo Mật Học Phí Tuyệt Đối</h3></div>
+            </div>
+            <div class="module-subtitle">Kỷ luật ẩn 100% học phí đối với giáo viên bản xứ để bảo vệ tính bảo mật tài chính</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge teacher">Giáo Viên (GV)</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /courses-classes (Quyền Giáo viên)</div>
+
+        <div class="callout privacy">
+          <div class="callout-icon">🔒</div>
+          <div>
+            <strong>Kỷ Luật Bảo Mật Học Phí (Teacher Fee Privacy Guard):</strong><br>
+            Trên toàn bộ hệ thống, giáo viên bản xứ <strong>TUYỆT ĐỐI KHÔNG NHÌN THẤY BẤT KỲ LOẠI HỌC PHÍ NÀO</strong> (Học phí tháng, học phí toàn khóa, thẻ Monthly Fee...).
+            Giao diện tự động dàn đều các thẻ Thời lượng (Duration) và Sĩ số (Max Class Size) theo tỷ lệ 50/50 tạo bố cục thoáng đãng và liền mạch.
+          </div>
+        </div>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/courses-classes</div>
+          </div>
+          <img src="./images/teacher_02_classes.png" alt="Teacher Courses Classes No Fee">
+          <div class="screenshot-caption">
+            <span>Giao diện Danh mục Khóa học dành cho Giáo viên — Đã ẩn hoàn toàn mọi cột học phí</span>
+            <span>Hình 2.2</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- MODULE 8: TEACHER STUDENT PRIVACY & NOTE RELAY -->
+      <article class="module-card" id="teacher-students">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">08</div>
+              <div class="module-title"><h3>Bảo Mật SĐT Học Viên & Chuyển Tiếp Tin Qua Giáo Vụ</h3></div>
+            </div>
+            <div class="module-subtitle">Cơ chế Academic Relay Protocol bảo vệ thông tin liên lạc của phụ huynh</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge teacher">Giáo Viên (GV)</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /students (Quyền Giáo viên)</div>
+
+        <p>Để đảm bảo tính chuyên nghiệp và chuẩn mực sư phạm quốc tế:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Che mờ Số Điện Thoại (Masked Phone):</strong> SĐT phụ huynh được che mờ tự nhiên thành <code>***333</code>. Giáo viên không thấy nút gọi điện hay liên kết Zalo cá nhân.
+          </li>
+          <li class="step-item">
+            <strong>Ẩn Trạng Thái Học Phí & Switch Tài Khoản:</strong> Giáo viên không thấy thông tin nợ phí hay công nợ của học sinh; nút gạt khóa tài khoản bị ẩn.
+          </li>
+          <li class="step-item">
+            <strong>Hiển Thị Ngày Sinh & Giới Tính:</strong> Bổ sung ngày sinh (Date of Birth) và giới tính (Gender) để giáo viên xưng hô đúng và chuẩn bị quà sinh nhật cho học sinh.
+          </li>
+          <li class="step-item">
+            <strong>Cơ chế Chuyển tiếp tin qua Giáo vụ (Academic Relay):</strong> Khi cần trao đổi với phụ huynh, giáo viên bấm nút <em>"Nhắn Tin"</em> (Message) để gửi ghi chú sư phạm đến Giáo vụ. Giáo vụ sẽ là cầu nối liên hệ phụ huynh.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/students</div>
+          </div>
+          <img src="./images/teacher_03_students_privacy.png" alt="Teacher Students Privacy">
+          <div class="screenshot-caption">
+            <span>Thẻ học sinh bảo mật: SĐT che mờ, hiển thị ngày sinh và giới tính, nút liên hệ qua Giáo vụ</span>
+            <span>Hình 2.3</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- MODULE 9: TEACHER ATTENDANCE & EVALUATION -->
+      <article class="module-card" id="teacher-attendance">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">09</div>
+              <div class="module-title"><h3>Điểm Danh, Gắn Link Video & Đánh Giá Buổi Học</h3></div>
+            </div>
+            <div class="module-subtitle">Quy trình điểm danh đầu giờ và nhập nhận xét sư phạm cuối buổi</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge teacher">Giáo Viên (GV)</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /class-attendance-evaluation</div>
+
+        <p>Quy trình thực hiện của giáo viên trong mỗi buổi học:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Bước 1 — Điểm danh đầu giờ:</strong> Chọn lớp học, đánh dấu trạng thái của từng học sinh (Present / Late / Absent).
+          </li>
+          <li class="step-item">
+            <strong>Bước 2 — Nhập nhận xét sư phạm (Teacher's Feedback):</strong> Đánh giá thái độ, từ vựng và bài đọc. Cột nhận xét hỗ trợ Popover phóng to khi bấm vào để đọc trọn vẹn văn bản dài.
+          </li>
+          <li class="step-item">
+            <strong>Bước 3 — Gắn link bản ghi (Recorded Video):</strong> Dán đường link video ghi hình buổi học để hệ thống tự động đồng bộ sang tài khoản của học sinh.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/class-attendance-evaluation</div>
+          </div>
+          <img src="./images/teacher_04_attendance_eval.png" alt="Teacher Attendance Evaluation">
+          <div class="screenshot-caption">
+            <span>Bảng điểm danh và đánh giá: Cột Teacher's Feedback và Recorded Video song ngữ</span>
+            <span>Hình 2.4</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- MODULE 10: TEACHER HOMEWORK CREATION & GRADING -->
+      <article class="module-card" id="teacher-homework">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">10</div>
+              <div class="module-title"><h3>Giao Bài Tập & Chấm Điểm (Homework Management)</h3></div>
+            </div>
+            <div class="module-subtitle">Soạn thảo bài tập về nhà theo từng Unit giáo trình McGraw-Hill Wonders</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge teacher">Giáo Viên (GV)</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /homework (Tab Homework Management)</div>
+
+        <p>Giáo viên tạo và quản lý bài tập theo chuẩn quốc tế:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Soạn thảo bài tập mới:</strong> Nhập tiêu đề (Assignment Title), hạn chót (Due Date), hướng dẫn làm bài và đính kèm học liệu.
+          </li>
+          <li class="step-item">
+            <strong>Chấm điểm và phản hồi:</strong> Xem danh sách học sinh đã nộp bài, tải bài làm của học sinh, chấm điểm thang 100 và ghi lời động viên.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/homework</div>
+          </div>
+          <img src="./images/teacher_05_homework.png" alt="Teacher Homework Panel">
+          <div class="screenshot-caption">
+            <span>Bảng quản trị bài tập với tiêu đề cột song ngữ và bộ lọc theo lớp học</span>
+            <span>Hình 2.5</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- ======================================================== -->
+      <!-- PHẦN 3: GIÁO VỤ ĐÀO TẠO (ACADEMIC) -->
+      <!-- ======================================================== -->
+
+      <!-- MODULE 11: ACADEMIC COURSES & CLASSES ALLOCATION -->
+      <article class="module-card" id="academic-courses">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">11</div>
+              <div class="module-title"><h3>Quản Lý Đào Tạo: Khóa Học & Phân Bổ Lớp Học</h3></div>
+            </div>
+            <div class="module-subtitle">Trục vận hành trung tâm kết nối Khóa học, Giáo viên bản xứ và Học viên</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge academic">Giáo Vụ</span>
+            <span class="tag-badge director">Giám Đốc</span>
+            <span class="tag-badge admin">Admin</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /courses-classes (Tab 1: Lớp Học & Phân Bổ | Tab 2: Khóa Học | Tab 3: Cấp Độ)</div>
+
+        <p>Mô hình đào tạo chuẩn LAK EDUCATION: <strong>1 Khóa Học &rarr; Nhiều Lớp Học &rarr; Mỗi Lớp 1 Giáo Viên & Nhiều Học Viên</strong>.</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Tab 1 — Quản Lý Lớp Học & Phân Bổ:</strong> Tạo lớp học mới, phân công giáo viên giảng dạy, cấu hình lịch học hàng tuần, Link Zoom, kiểm soát sĩ số chuẩn (ví dụ <code>8 / 10 học viên</code>) và danh sách học sinh học thử (Trial Badge <code>+1 trial</code>).
+          </li>
+          <li class="step-item">
+            <strong>Tab 2 — Danh Mục Khóa Học (Course Catalog):</strong> Quản lý khung chương trình ELA (McGraw-Hill Wonders G1 đến G6), mục tiêu đầu ra, học phí niêm yết và thời lượng khóa học.
+          </li>
+          <li class="step-item">
+            <strong>Tab 3 — Cấp Độ Giáo Trình (Curriculum Levels):</strong> Cấu hình hệ thống cấp độ chuẩn Mỹ, lộ trình đào tạo và phân loại giáo trình.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/courses-classes</div>
+          </div>
+          <img src="./images/academic_02_courses_classes.png" alt="Academic Courses & Classes">
+          <div class="screenshot-caption">
+            <span>Giao diện Quản lý Đào tạo 3 Tab: Phân bổ lớp học, giáo viên phụ trách và theo dõi sĩ số</span>
+            <span>Hình 3.1</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- MODULE 12: ACADEMIC STUDENTS & ADMISSIONS -->
+      <article class="module-card" id="academic-students">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">12</div>
+              <div class="module-title"><h3>Quản Lý Học Viên, Hồ Sơ Tuyển Sinh & Cụm Gia Đình</h3></div>
+            </div>
+            <div class="module-subtitle">Hồ sơ 360 độ học viên, kết nối phụ huynh và phê duyệt đăng ký lớp</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge academic">Giáo Vụ</span>
+            <span class="tag-badge director">Giám Đốc</span>
+            <span class="tag-badge admin">Admin</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /students</div>
+
+        <p>Cán bộ giáo vụ có toàn quyền quản lý hồ sơ học sinh:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Thông tin liên lạc đầy đủ:</strong> Xem số điện thoại chính, số điện thoại phụ của phụ huynh, mở Zalo hoặc gọi điện tư vấn 1 chạm.
+          </li>
+          <li class="step-item">
+            <strong>Quản lý Cụm Gia Đình (Family Cluster):</strong> Tự động nhận diện anh chị em ruột học cùng qua mã <code>familyId</code> để áp dụng chính sách giảm giá gia đình.
+          </li>
+          <li class="step-item">
+            <strong>Hòm thư ghi chú từ Giáo viên (Academic Notes Relay):</strong> Đọc các tin nhắn của giáo viên gửi về thái độ, học lực của học sinh và chuyển tải đến phụ huynh.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/students</div>
+          </div>
+          <img src="./images/academic_03_students.png" alt="Academic Students Management">
+          <div class="screenshot-caption">
+            <span>Hồ sơ học sinh toàn diện dành cho Giáo vụ: Đầy đủ SĐT, nút Zalo và liên kết gia đình</span>
+            <span>Hình 3.2</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- MODULE 13: ACADEMIC LIVE ZOOM SCHEDULES -->
+      <article class="module-card" id="academic-schedules">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">13</div>
+              <div class="module-title"><h3>Thời Khóa Biểu Trực Tuyến Live Zoom Calendar</h3></div>
+            </div>
+            <div class="module-subtitle">Lịch tuần trực quan, kiểm soát xung đột ca dạy và phòng học trực tuyến</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge academic">Giáo Vụ</span>
+            <span class="tag-badge teacher">Giáo Viên</span>
+            <span class="tag-badge director">Giám Đốc</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /zoom-schedules</div>
+
+        <p>Lịch tuần trực quan giúp điều phối lịch học linh hoạt:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Lưới lịch học theo tuần/tháng:</strong> Xem lịch học của từng lớp, phân loại theo màu sắc khóa học và giáo viên phụ trách.
+          </li>
+          <li class="step-item">
+            <strong>Phát hiện xung đột phòng học:</strong> Cảnh báo khi một giáo viên bị xếp trùng 2 ca dạy cùng một khung giờ.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/zoom-schedules</div>
+          </div>
+          <img src="./images/academic_04_schedules.png" alt="Academic Live Schedules">
+          <div class="screenshot-caption">
+            <span>Thời khóa biểu trực tuyến Live Zoom: Kiểm soát ca học và phòng Zoom theo tuần</span>
+            <span>Hình 3.3</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- MODULE 14: ACADEMIC LEARNING MATERIALS HUB -->
+      <article class="module-card" id="academic-materials">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">14</div>
+              <div class="module-title"><h3>Kho Học Liệu Số & Phân Quyền Chia Sẻ Đa Đối Tượng</h3></div>
+            </div>
+            <div class="module-subtitle">Lưu trữ giáo trình PDF, Audio bài nghe, Slide và cấp quyền theo Khóa/Lớp/Học viên</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge academic">Giáo Vụ</span>
+            <span class="tag-badge admin">Admin</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /learning-materials</div>
+
+        <p>Quản lý và số hóa tài liệu học tập toàn trường:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Kéo thả tải lên hàng loạt:</strong> Hỗ trợ tài liệu PDF, tệp Audio MP3/WAV, Slide PowerPoint bài giảng và liên kết Google Drive.
+          </li>
+          <li class="step-item">
+            <strong>Drawer Phân Quyền Chia Sẻ (Material Share Drawer):</strong> Cấp quyền truy cập tài liệu linh hoạt theo 3 cấp: Toàn khóa học (Course), Theo từng lớp cụ thể (Class) hoặc Cho riêng từng học viên xuất sắc (Student).
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/learning-materials</div>
+          </div>
+          <img src="./images/academic_05_materials.png" alt="Academic Materials Hub">
+          <div class="screenshot-caption">
+            <span>Kho Học Liệu Số: Quản lý sách giáo khoa điện tử và phân quyền tài liệu</span>
+            <span>Hình 3.4</span>
+          </div>
+        </div>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/learning-materials (Share Drawer)</div>
+          </div>
+          <img src="./images/academic_06_materials_share.png" alt="Material Share Drawer">
+          <div class="screenshot-caption">
+            <span>Drawer Phân Quyền Chia Sẻ Tài Liệu: Cấp quyền xem và tải theo Khóa / Lớp / Học viên</span>
+            <span>Hình 3.5</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- ======================================================== -->
+      <!-- PHẦN 4: KẾ TOÁN & BAN GIÁM ĐỐC -->
+      <!-- ======================================================== -->
+
+      <!-- MODULE 15: TUITION BILLING & CONTRACTS -->
+      <article class="module-card" id="accountant-billing">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">15</div>
+              <div class="module-title"><h3>Quản Lý Thu Học Phí, Đợt Thu & Đối Soát Công Nợ</h3></div>
+            </div>
+            <div class="module-subtitle">Nghiệp vụ tài chính dành riêng cho Phòng Kế Toán và Ban Giám Đốc</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge accountant">Kế Toán</span>
+            <span class="tag-badge director">Giám Đốc</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /tuition-billing</div>
+
+        <p>Kiểm soát dòng tiền học phí chính xác và chuyên nghiệp:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Tạo đợt thu học phí mới:</strong> Lập đợt thu theo tháng/quý/khóa, áp dụng chính sách giảm giá cụm gia đình.
+          </li>
+          <li class="step-item">
+            <strong>Ghi nhận thanh toán & Xuất biên lai:</strong> Xác nhận giao dịch chuyển khoản ngân hàng hoặc tiền mặt, tự động cập nhật trạng thái đã thanh toán cho phụ huynh.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/tuition-billing</div>
+          </div>
+          <img src="./images/accountant_01_tuition.png" alt="Accountant Tuition Billing">
+          <div class="screenshot-caption">
+            <span>Bảng Quản lý thu học phí, danh sách hóa đơn và tình hình công nợ học sinh</span>
+            <span>Hình 4.1</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- MODULE 16: TEACHER PAYROLL & DISBURSAL -->
+      <article class="module-card" id="accountant-payroll">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">16</div>
+              <div class="module-title"><h3>Hợp Đồng & Tính Lương Giáo Viên Bản Xứ</h3></div>
+            </div>
+            <div class="module-subtitle">Tính lương tự động theo số giờ dạy thực tế trên Zoom và đối soát thưởng phạt</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge accountant">Kế Toán</span>
+            <span class="tag-badge director">Giám Đốc</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /teacher-contracts (Tab Bảng Lương)</div>
+
+        <p>Quy trình tính và chi trả lương giáo viên bản xứ:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Quản lý Hợp đồng giảng dạy:</strong> Quy định đơn giá giờ dạy (Rate/hour bằng USD hoặc VNĐ), chế độ phụ cấp soạn giáo án và thưởng chuyên cần.
+          </li>
+          <li class="step-item">
+            <strong>Tự động tổng hợp số giờ dạy:</strong> Kết nối trực tiếp với phân hệ Điểm danh để tính chính xác số buổi giáo viên đã giảng dạy trong tháng.
+          </li>
+          <li class="step-item">
+            <strong>Phê duyệt & Chi trả lương:</strong> Kế toán tính toán, trình Giám đốc duyệt (Approve) và xuất phiếu chi lương (Disburse).
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/teacher-contracts</div>
+          </div>
+          <img src="./images/accountant_02_payrolls.png" alt="Teacher Payrolls">
+          <div class="screenshot-caption">
+            <span>Bảng đối soát lương giáo viên bản xứ theo số giờ dạy thực tế</span>
+            <span>Hình 4.2</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- MODULE 17: EXECUTIVE DIRECTOR OVERVIEW -->
+      <article class="module-card" id="director-overview">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">17</div>
+              <div class="module-title"><h3>Bàn Làm Việc Giám Đốc Điều Hành (Executive Dashboard)</h3></div>
+            </div>
+            <div class="module-subtitle">Bức tranh toàn cảnh về tăng trưởng học viên, chất lượng đào tạo và tài chính</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge director">Giám Đốc</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /dashboard (Quyền Giám đốc)</div>
+
+        <p>Ban Giám Đốc theo dõi các chỉ số KPI then chốt của toàn trung tâm:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>KPI Hoạt động đào tạo:</strong> Tổng số học viên đang theo học, số lớp học đang hoạt động, tỷ lệ sĩ số lấp đầy.
+          </li>
+          <li class="step-item">
+            <strong>Phê duyệt hợp đồng giáo viên:</strong> Xem xét và phê duyệt các hợp đồng giáo viên mới hoặc gia hạn hợp đồng giảng dạy.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/dashboard</div>
+          </div>
+          <img src="./images/director_01_dashboard.png" alt="Director Dashboard">
+          <div class="screenshot-caption">
+            <span>Bàn làm việc Giám đốc: Thống kê tổng quan học viên, lớp học và phê duyệt</span>
+            <span>Hình 4.3</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- ======================================================== -->
+      <!-- PHẦN 5: IT ADMIN & BẢO MẬT HỆ THỐNG -->
+      <!-- ======================================================== -->
+
+      <!-- MODULE 18: USER MANAGEMENT & RBAC -->
+      <article class="module-card" id="admin-users">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">18</div>
+              <div class="module-title"><h3>Quản Trị Người Dùng & Phân Quyền Ma Trận 6 Roles (RBAC)</h3></div>
+            </div>
+            <div class="module-subtitle">Kiểm soát an ninh tài khoản, phân bổ vai trò và công tắc kích hoạt người dùng</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge admin">IT Admin</span>
+            <span class="tag-badge director">Giám Đốc</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /user-management</div>
+
+        <p>Quản trị tài khoản toàn hệ thống theo ma trận phân quyền nghiêm ngặt:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Ma trận 6 Roles:</strong> Admin (Quản trị IT), Director (Giám đốc), Academic (Giáo vụ), Teacher (Giáo viên bản xứ), Accountant (Kế toán), Student (Học viên).
+          </li>
+          <li class="step-item">
+            <strong>Công tắc Kích hoạt / Tạm khóa (Active / Deactive Switch):</strong>
+            <ul>
+              <li>Giám đốc: Được phép đổi trạng thái Giáo vụ, Giáo viên, Học viên.</li>
+              <li>Giáo vụ: Chỉ được phép đổi trạng thái Giáo viên và Học viên.</li>
+              <li>Admin: Toàn quyền quản trị tài khoản hệ thống.</li>
+            </ul>
+          </li>
+          <li class="step-item">
+            <strong>Bảo mật mật khẩu Bcrypt:</strong> 100% mật khẩu được băm muối công nghiệp trước khi lưu vào Cloud Firestore. Admin tuyệt đối không nhìn thấy mật khẩu dạng văn bản thô của người dùng.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/user-management</div>
+          </div>
+          <img src="./images/admin_01_user_management.png" alt="Admin User Management">
+          <div class="screenshot-caption">
+            <span>Bảng Quản trị Người Dùng: Phân vai trò, bộ lọc và công tắc Switch kích hoạt tài khoản</span>
+            <span>Hình 5.1</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- MODULE 19: MY PROFILE & SECURITY -->
+      <article class="module-card" id="admin-profile">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">19</div>
+              <div class="module-title"><h3>Hồ Sơ Cá Nhân, Đổi Mật Khẩu & Tùy Chọn Ngôn Ngữ</h3></div>
+            </div>
+            <div class="module-subtitle">Cập nhật thông tin định danh, bảo vệ tài khoản và chuyển đổi Anh - Việt</div>
+          </div>
+          <div class="role-tag-container">
+            <span class="tag-badge student">Tất Cả Roles</span>
+          </div>
+        </div>
+
+        <div class="route-spec">🌐 Đường dẫn: /my-profile</div>
+
+        <p>Mỗi người dùng có thể tự quản lý bảo mật tài khoản của mình:</p>
+        <ul class="step-list">
+          <li class="step-item">
+            <strong>Cập nhật thông tin cá nhân:</strong> Họ tên, Tên tiếng Anh, Số điện thoại liên hệ, Email cá nhân.
+          </li>
+          <li class="step-item">
+            <strong>Đổi mật khẩu an toàn:</strong> Nhập mật khẩu hiện tại và thiết lập mật khẩu mới (tối thiểu 6 ký tự). Mật khẩu mới có hiệu lực ngay lập tức.
+          </li>
+          <li class="step-item">
+            <strong>Chuyển đổi ngôn ngữ tức thì:</strong> Bấm vào lá cờ trên Header để chuyển đổi qua lại giữa Tiếng Anh 🇬🇧 và Tiếng Việt 🇻🇳 mọi lúc mọi nơi.
+          </li>
+        </ul>
+
+        <div class="screenshot-figure">
+          <div class="screenshot-toolbar">
+            <div class="toolbar-dot dot-red"></div>
+            <div class="toolbar-dot dot-yellow"></div>
+            <div class="toolbar-dot dot-green"></div>
+            <div class="toolbar-url">https://bk.lakeducation.edu.vn/my-profile</div>
+          </div>
+          <img src="./images/admin_02_my_profile.png" alt="My Profile & Security">
+          <div class="screenshot-caption">
+            <span>Hồ sơ cá nhân: Cập nhật thông tin liên hệ và biểu mẫu đổi mật khẩu an toàn</span>
+            <span>Hình 5.2</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- FAQ & SUPPORT -->
+      <article class="module-card" id="faq-support">
+        <div class="module-header">
+          <div>
+            <div class="module-badge-title">
+              <div class="module-number">20</div>
+              <div class="module-title"><h3>Câu Hỏi Thường Gặp (FAQ) & Kênh Hỗ Trợ Kỹ Thuật</h3></div>
+            </div>
+            <div class="module-subtitle">Giải đáp các thắc mắc phổ biến và thông tin liên hệ bộ phận hỗ trợ</div>
+          </div>
+        </div>
+
+        <div class="feature-grid">
+          <div class="feature-card-item">
+            <h4>❓ Tôi quên mật khẩu đăng nhập?</h4>
+            <p>Liên hệ ngay Cán bộ Giáo vụ hoặc gửi tin nhắn đến hotline Zalo <code>0898 794 116</code> để được xác thực và cấp lại mật khẩu trong 5 phút.</p>
+          </div>
+          <div class="feature-card-item">
+            <h4>❓ Tại sao nút Vào Lớp không bấm được?</h4>
+            <p>Hệ thống chỉ mở khóa phòng học trước giờ học đúng 10 phút. Vui lòng kiểm tra lại thời gian học của lớp.</p>
+          </div>
+          <div class="feature-card-item">
+            <h4>❓ Tôi có 2 con, làm sao chuyển đổi?</h4>
+            <p>Bấm vào nút <strong>"Switch Child / Đổi Hồ Sơ"</strong> trên thanh menu trên cùng để chọn con cần xem thông tin.</p>
+          </div>
+          <div class="feature-card-item">
+            <h4>❓ Giáo viên có thấy SĐT phụ huynh không?</h4>
+            <p>Không. SĐT phụ huynh được bảo mật tuyệt đối với giáo viên bản xứ. Mọi thông tin trao đổi được kết nối qua Cán bộ Giáo vụ phụ trách.</p>
+          </div>
+        </div>
+
+        <div class="callout important" style="margin-top: 24px;">
+          <div class="callout-icon">📞</div>
+          <div>
+            <strong>KÊNH HỖ TRỢ KỸ THUẬT LAK EDUCATION:</strong><br>
+            • Hotline / Zalo IT Quản trị: <strong>0898 794 116</strong> (Mr. Bảo)<br>
+            • Hotline Giáo vụ Đào tạo: <strong>0961 557 696</strong> (Ms. Thi)<br>
+            • Email Hỗ Trợ: <strong>lakvietnam@lakeducation.com</strong><br>
+            • Website chính thức: <a href="https://lakeducation.com" target="_blank" style="color:var(--primary);font-weight:700">lakeducation.com</a> | Cổng ERP: <a href="https://bk.lakeducation.edu.vn" target="_blank" style="color:var(--primary);font-weight:700">bk.lakeducation.edu.vn</a>
+          </div>
+        </div>
+      </article>
+
+    </main>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="guide-footer">
+    <div>
+      <strong>LAK EDUCATION (lakeducation.com) &copy; 2026</strong> — Hệ Thống Quản Trị Đào Tạo Toàn Diện
+    </div>
+    <div>
+      Phiên bản: <code>Version 1.2.143 • build 2026111607v</code>
+    </div>
+  </footer>
+
+  <!-- LIGHTBOX MODAL -->
+  <div class="lightbox-modal" id="lightboxModal" onclick="closeLightbox()">
+    <span class="lightbox-close">&times;</span>
+    <img id="lightboxImg" src="" alt="Phóng to ảnh">
+  </div>
+
+  <script>
+    // LIGHTBOX ZOOM FOR SCREENSHOTS
+    const modal = document.getElementById('lightboxModal');
+    const modalImg = document.getElementById('lightboxImg');
+
+    document.querySelectorAll('.screenshot-figure img').forEach(img => {
+      img.addEventListener('click', (e) => {
+        e.stopPropagation();
+        modal.classList.add('open');
+        modalImg.src = img.src;
+      });
+    });
+
+    function closeLightbox() {
+      modal.classList.remove('open');
+    }
+
+    // SEARCH FILTER
+    const searchInput = document.getElementById('guideSearchInput');
+    const articles = document.querySelectorAll('.module-card');
+
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      articles.forEach(article => {
+        const text = article.innerText.toLowerCase();
+        if (text.includes(query)) {
+          article.style.display = 'block';
+        } else {
+          article.style.display = 'none';
+        }
+      });
+    });
+
+    // ACTIVE NAV HIGHLIGHT ON SCROLL
+    window.addEventListener('scroll', () => {
+      let current = '';
+      articles.forEach(article => {
+        const top = article.offsetTop - 120;
+        if (pageYOffset >= top) {
+          current = article.getAttribute('id');
+        }
+      });
+
+      document.querySelectorAll('.guide-sidebar .nav-link').forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === `#${current}`) {
+          link.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
