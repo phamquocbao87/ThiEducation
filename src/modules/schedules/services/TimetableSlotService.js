@@ -133,11 +133,12 @@ export class TimetableSlotService extends BaseModuleService {
   }
 
   /**
-   * Tính toán trạng thái thời gian và kiểm soát khóa 15 phút vào Meet / Điểm danh
+   * Tính toán trạng thái thời gian và kiểm soát khóa vào Meet / Điểm danh
+   * leadMinutes: Số phút mở trước giờ học (mặc định 15p cho giáo viên, 10p cho học viên)
    */
-  static getSessionTimingState(dateObj, startTimeStr, endTimeStr, now = new Date()) {
+  static getSessionTimingState(dateObj, startTimeStr, endTimeStr, now = new Date(), leadMinutes = 15) {
     if (!dateObj) {
-      return { state: 'UPCOMING', canAccess: false, unlockTimeStr: '--:--' };
+      return { state: 'UPCOMING', canAccess: false, unlockTimeStr: '--:--', leadMinutes };
     }
     const [startH, startM] = (startTimeStr || '18:00').split(':').map(Number);
     const [endH, endM] = (endTimeStr || '19:30').split(':').map(Number);
@@ -148,8 +149,8 @@ export class TimetableSlotService extends BaseModuleService {
     const end = new Date(dateObj);
     end.setHours(endH, endM, 0, 0);
 
-    // Mở trước 15 phút
-    const unlock = new Date(start.getTime() - 15 * 60 * 1000);
+    // Mở trước leadMinutes phút (học viên 10 phút, giáo viên/cán bộ 15 phút)
+    const unlock = new Date(start.getTime() - leadMinutes * 60 * 1000);
 
     const nowMs = now.getTime();
     const startMs = start.getTime();
@@ -169,6 +170,7 @@ export class TimetableSlotService extends BaseModuleService {
         diffMins,
         startMs,
         endMs,
+        leadMinutes,
       };
     } else if (nowMs >= unlockMs && nowMs < startMs) {
       const startsInMins = Math.ceil((startMs - nowMs) / 60000);
@@ -179,6 +181,7 @@ export class TimetableSlotService extends BaseModuleService {
         unlockTimeStr,
         startMs,
         endMs,
+        leadMinutes,
       };
     } else if (nowMs >= startMs && nowMs <= endMs) {
       const remainingMins = Math.ceil((endMs - nowMs) / 60000);
@@ -188,6 +191,7 @@ export class TimetableSlotService extends BaseModuleService {
         remainingMins,
         startMs,
         endMs,
+        leadMinutes,
       };
     } else {
       return {
@@ -195,6 +199,7 @@ export class TimetableSlotService extends BaseModuleService {
         canAccess: false,
         startMs,
         endMs,
+        leadMinutes,
       };
     }
   }

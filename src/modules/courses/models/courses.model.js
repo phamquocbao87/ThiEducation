@@ -3,6 +3,13 @@
  * Lak Education ERP
  */
 
+/**
+ * CỜ BẬT / TẮT CHỨC NĂNG HỌC VIÊN TỰ ĐĂNG KÝ LỚP HỌC TRỰC TUYẾN
+ * - true: Cho phép học viên tự nhấn đăng ký vào các lớp học còn chỗ
+ * - false: Tạm thời đóng tính năng tự đăng ký trực tuyến, học viên liên hệ Giáo vụ để được xếp lớp
+ */
+export const IS_STUDENT_ENROLLMENT_ENABLED = false;
+
 export const COURSE_LEVELS = {
   GK: 'GK (Kindergarten)',
   G1: 'Grade 1 (Primary)',

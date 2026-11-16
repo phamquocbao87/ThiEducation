@@ -15,6 +15,7 @@ import {
   Typography,
 } from 'antd';
 import { GlobalOutlined, UserOutlined, PlayCircleOutlined, CheckOutlined } from '@ant-design/icons';
+import { useLanguage } from '../../../core/context/LanguageContext';
 
 const { Text } = Typography;
 
@@ -26,6 +27,7 @@ export const SessionEvaluationModal = ({
   onCancel,
   onSubmit,
 }) => {
+  const { isEnglish } = useLanguage();
   const [form] = Form.useForm();
 
   const handleFinish = (values) => {
@@ -39,7 +41,7 @@ export const SessionEvaluationModal = ({
         <Space>
           <GlobalOutlined style={{ color: '#1890ff' }} />
           <Text strong style={{ color: '#1890ff' }}>
-            Điểm Danh & Đánh Giá Buổi Học (Session Attendance & Evaluation)
+            {isEnglish ? 'Session Attendance & Evaluation' : 'Điểm Danh & Đánh Giá Buổi Học'}
           </Text>
         </Space>
       }
@@ -49,8 +51,12 @@ export const SessionEvaluationModal = ({
       width={650}
     >
       <Alert
-        message={`Lớp đang điểm danh: ${selectedClass?.name || ''}`}
-        description="Kiểm tra sĩ số học viên trong phòng học trực tuyến, chấm điểm 4 kỹ năng tiếng Anh và nhập nhận xét buổi học."
+        message={`${isEnglish ? 'Active Class:' : 'Lớp đang điểm danh:'} ${selectedClass?.name || ''}`}
+        description={
+          isEnglish
+            ? 'Verify attendance in online classroom, evaluate 4 English skills and provide session feedback.'
+            : 'Kiểm tra sĩ số học viên trong phòng học trực tuyến, chấm điểm 4 kỹ năng tiếng Anh và nhập nhận xét buổi học.'
+        }
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
@@ -69,7 +75,7 @@ export const SessionEvaluationModal = ({
         }}
       >
         <Text strong style={{ display: 'block', marginBottom: 8 }}>
-          1. Điểm danh từng học viên trong lớp:
+          {isEnglish ? '1. Student Attendance Roster:' : '1. Điểm danh từng học viên trong lớp:'}
         </Text>
         <div
           style={{
@@ -139,23 +145,29 @@ export const SessionEvaluationModal = ({
           </Col>
         </Row>
 
-        <Form.Item name="recordingUrl" label="📹 Link Video Ghi Hình Lớp Zoom (Cloud/Drive)">
-          <Input prefix={<PlayCircleOutlined style={{ color: '#1890ff' }} />} />
+        <Form.Item
+          name="recordingUrl"
+          label={isEnglish ? '📹 Session Recording Video Link (Cloud / Google Drive)' : '📹 Link Video Ghi Hình Lớp Zoom (Cloud/Drive)'}
+        >
+          <Input prefix={<PlayCircleOutlined style={{ color: '#1890ff' }} />} placeholder="https://..." />
         </Form.Item>
 
         <Form.Item
           name="teacherFeedback"
-          label="💬 Nhận xét chi tiết của Giáo viên (English Feedback)"
-          rules={[{ required: true, message: 'Vui lòng nhập nhận xét buổi học' }]}
+          label={isEnglish ? "💬 Teacher's Feedback" : '💬 Nhận xét chi tiết của Giáo viên (English Feedback)'}
+          rules={[{ required: true, message: isEnglish ? 'Please provide feedback for this session' : 'Vui lòng nhập nhận xét buổi học' }]}
         >
-          <Input.TextArea rows={3} placeholder="Nhập nhận xét chi tiết cho buổi học hôm nay..." />
+          <Input.TextArea
+            rows={3}
+            placeholder={isEnglish ? "Enter detailed feedback for today's session..." : 'Nhập nhận xét chi tiết cho buổi học hôm nay...'}
+          />
         </Form.Item>
 
         <Form.Item>
           <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-            <Button onClick={onCancel}>Hủy</Button>
+            <Button onClick={onCancel}>{isEnglish ? 'Cancel' : 'Hủy'}</Button>
             <Button type="primary" htmlType="submit" icon={<CheckOutlined />}>
-              Lưu Điểm Danh & Đánh Giá
+              {isEnglish ? 'Save Attendance & Evaluation' : 'Lưu Điểm Danh & Đánh Giá'}
             </Button>
           </Space>
         </Form.Item>

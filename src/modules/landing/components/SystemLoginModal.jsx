@@ -13,6 +13,7 @@ import {
   Tag,
   Space,
   Spin,
+  Segmented,
 } from 'antd';
 import {
   MailOutlined,
@@ -23,6 +24,8 @@ import {
   ArrowLeftOutlined,
   RightOutlined,
   UserOutlined,
+  GlobalOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { LANDING_ASSETS } from '../models/landing.model';
 import { useAuth } from '../../../core/context/AuthContext';
@@ -36,27 +39,6 @@ import { DriveStorageService } from '../../../core/services/DriveStorageService'
 
 const { Title, Text } = Typography;
 
-const GoogleColorIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 48 48" style={{ marginRight: 8, verticalAlign: 'middle' }}>
-    <path
-      fill="#FFC107"
-      d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"
-    />
-    <path
-      fill="#FF3D00"
-      d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"
-    />
-    <path
-      fill="#4CAF50"
-      d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"
-    />
-    <path
-      fill="#1976D2"
-      d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"
-    />
-  </svg>
-);
-
 export const SystemLoginModal = ({
   open,
   language,
@@ -65,6 +47,7 @@ export const SystemLoginModal = ({
 }) => {
   const [form] = Form.useForm();
   const { loginWithGoogle, loginWithEmail } = useAuth();
+  const [loginMethod, setLoginMethod] = useState('lak_account'); // 'lak_account' | 'google_workspace'
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingEmail, setLoadingEmail] = useState(false);
   const [authError, setAuthError] = useState('');
@@ -313,158 +296,203 @@ export const SystemLoginModal = ({
         />
       )}
 
-      {/* 1. Đăng nhập bằng Google */}
-      <Button
-        size="large"
+      {/* Bộ chọn phương thức đăng nhập độc lập - Triệt tiêu nguy cơ Phishing */}
+      <Segmented
         block
-        loading={loadingGoogle}
-        onClick={handleGoogleSignIn}
-        style={{
-          height: 46,
-          borderRadius: 10,
-          fontWeight: 600,
-          fontSize: 15,
-          color: '#1f2937',
-          borderColor: '#d1d5db',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-        }}
-      >
-        <GoogleColorIcon />
-        <span>
-          {language === 'en' ? 'Continue with Google' : 'Đăng nhập bằng Google'}
-        </span>
-      </Button>
+        value={loginMethod}
+        onChange={setLoginMethod}
+        options={[
+          {
+            value: 'lak_account',
+            label: language === 'en' ? 'LAK Account' : 'Tài Khoản LAK',
+            icon: <IdcardOutlined />,
+          },
+          {
+            value: 'google_workspace',
+            label: language === 'en' ? 'Google Workspace' : 'Google Cán Bộ',
+            icon: <GlobalOutlined />,
+          },
+        ]}
+        style={{ marginBottom: 18, fontWeight: 600 }}
+      />
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0' }}>
-        <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
-        <Text
-          type="secondary"
-          style={{ fontSize: 11.5, fontWeight: 600, textTransform: 'uppercase', whiteSpace: 'nowrap' }}
-        >
-          {language === 'en' ? 'or sign in with email / phone' : 'hoặc đăng nhập bằng email / số điện thoại'}
-        </Text>
-        <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
-      </div>
-
-      {/* 2. Đăng nhập bằng Email / Số điện thoại & Mật khẩu */}
-      <Form
-        form={form}
-        layout="vertical"
-        initialValues={{
-          remember: true,
-        }}
-        onFinish={handleEmailSignIn}
-        requiredMark={false}
-      >
-        <Form.Item
-          name="identifier"
-          label={
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-              <Text strong>
-                {language === 'en' ? 'Email or Phone Number' : 'Email hoặc Số điện thoại'}
-              </Text>
-              {detectedType === 'phone' && (
-                <span style={{ fontSize: 11, color: '#0891b2', fontWeight: 600 }}>
-                  📱 {language === 'en' ? 'Student Phone' : 'Số điện thoại'}
-                </span>
-              )}
-              {detectedType === 'email' && (
-                <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 600 }}>
-                  ✉️ {language === 'en' ? 'Email Account' : 'Tài khoản Email'}
-                </span>
-              )}
-              {detectedType === 'code' && (
-                <span style={{ fontSize: 11, color: '#7c3aed', fontWeight: 600 }}>
-                  🪪 {language === 'en' ? 'User ID' : 'Mã tài khoản'}
-                </span>
-              )}
-            </div>
-          }
-          rules={[
-            {
-              required: true,
-              message: language === 'en' ? 'Please enter your email or phone number' : 'Vui lòng nhập email hoặc số điện thoại',
-            },
-          ]}
-          style={{ marginBottom: 16 }}
-        >
-          <Input
-            size="large"
-            prefix={
-              detectedType === 'phone' ? (
-                <PhoneOutlined style={{ color: '#0891b2' }} />
-              ) : detectedType === 'code' ? (
-                <IdcardOutlined style={{ color: '#7c3aed' }} />
-              ) : (
-                <MailOutlined style={{ color: '#9ca3af' }} />
-              )
-            }
-            placeholder={
-              language === 'en'
-                ? 'email@lakeducation.com or 0909xxxxxx'
-                : 'email@lakeducation.com hoặc 0909xxxxxx'
-            }
-            style={{ borderRadius: 10 }}
-          />
-        </Form.Item>
-
-        <Form.Item
-          name="password"
-          label={<Text strong>{language === 'en' ? 'Password' : 'Mật khẩu'}</Text>}
-          rules={[
-            {
-              required: true,
-              message: language === 'en' ? 'Please enter your password' : 'Vui lòng nhập mật khẩu',
-            },
-          ]}
-          style={{ marginBottom: 14 }}
-        >
-          <Input.Password
-            size="large"
-            prefix={<LockOutlined style={{ color: '#9ca3af' }} />}
-            placeholder="••••••••"
-            style={{ borderRadius: 10 }}
-          />
-        </Form.Item>
-
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 20,
+      {loginMethod === 'lak_account' ? (
+        /* 1. Đăng nhập bằng Tài khoản LAK Education (SĐT / Mã ID / Email + Mật khẩu LAK) - Hoàn toàn không dính logo Google */
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{
+            remember: true,
           }}
+          onFinish={handleEmailSignIn}
+          requiredMark={false}
         >
-          <Form.Item name="remember" valuePropName="checked" noStyle>
-            <Checkbox>{language === 'en' ? 'Remember me' : 'Ghi nhớ đăng nhập'}</Checkbox>
+          <Form.Item
+            name="identifier"
+            label={
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <Text strong>
+                  {language === 'en' ? 'Email or Phone Number' : 'Email hoặc Số điện thoại'}
+                </Text>
+                {detectedType === 'phone' && (
+                  <span style={{ fontSize: 11, color: '#0891b2', fontWeight: 600 }}>
+                    📱 {language === 'en' ? 'Student Phone' : 'Số điện thoại'}
+                  </span>
+                )}
+                {detectedType === 'email' && (
+                  <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 600 }}>
+                    ✉️ {language === 'en' ? 'Email Account' : 'Tài khoản Email'}
+                  </span>
+                )}
+                {detectedType === 'code' && (
+                  <span style={{ fontSize: 11, color: '#7c3aed', fontWeight: 600 }}>
+                    🪪 {language === 'en' ? 'User ID' : 'Mã tài khoản'}
+                  </span>
+                )}
+              </div>
+            }
+            rules={[
+              {
+                required: true,
+                message: language === 'en' ? 'Please enter your email or phone number' : 'Vui lòng nhập email hoặc số điện thoại',
+              },
+            ]}
+            style={{ marginBottom: 14 }}
+          >
+            <Input
+              size="large"
+              prefix={
+                detectedType === 'phone' ? (
+                  <PhoneOutlined style={{ color: '#0891b2' }} />
+                ) : detectedType === 'code' ? (
+                  <IdcardOutlined style={{ color: '#7c3aed' }} />
+                ) : (
+                  <MailOutlined style={{ color: '#9ca3af' }} />
+                )
+              }
+              placeholder={
+                language === 'en'
+                  ? 'Phone number (0909xxxxxx) or Account ID'
+                  : 'Số điện thoại (0909xxxxxx) hoặc Mã ID'
+              }
+              style={{ borderRadius: 10 }}
+            />
           </Form.Item>
-          <Button type="link" size="small" style={{ padding: 0 }}>
-            {language === 'en' ? 'Forgot password?' : 'Quên mật khẩu?'}
-          </Button>
-        </div>
 
-        <Button
-          type="primary"
-          htmlType="submit"
-          size="large"
-          block
-          loading={loadingEmail}
-          icon={<LoginOutlined />}
-          style={{
-            height: 46,
-            fontWeight: 700,
-            fontSize: 15,
-            borderRadius: 10,
-            background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
-            boxShadow: '0 6px 16px rgba(24, 144, 255, 0.35)',
-          }}
-        >
-          {language === 'en' ? 'Sign In' : 'Đăng Nhập'}
-        </Button>
-      </Form>
+          <Form.Item
+            name="password"
+            label={<Text strong>{language === 'en' ? 'LAK Account Password' : 'Mật khẩu tài khoản LAK'}</Text>}
+            rules={[
+              {
+                required: true,
+                message: language === 'en' ? 'Please enter your password' : 'Vui lòng nhập mật khẩu',
+              },
+            ]}
+            style={{ marginBottom: 14 }}
+          >
+            <Input.Password
+              size="large"
+              prefix={<LockOutlined style={{ color: '#9ca3af' }} />}
+              placeholder="••••••••"
+              style={{ borderRadius: 10 }}
+            />
+          </Form.Item>
+
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 18,
+            }}
+          >
+            <Form.Item name="remember" valuePropName="checked" noStyle>
+              <Checkbox>{language === 'en' ? 'Remember me' : 'Ghi nhớ đăng nhập'}</Checkbox>
+            </Form.Item>
+            <Button type="link" size="small" style={{ padding: 0 }}>
+              {language === 'en' ? 'Forgot password?' : 'Quên mật khẩu?'}
+            </Button>
+          </div>
+
+          <Button
+            type="primary"
+            htmlType="submit"
+            size="large"
+            block
+            loading={loadingEmail}
+            icon={<LoginOutlined />}
+            style={{
+              height: 46,
+              fontWeight: 700,
+              fontSize: 15,
+              borderRadius: 10,
+              background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
+              boxShadow: '0 6px 16px rgba(24, 144, 255, 0.35)',
+            }}
+          >
+            {language === 'en' ? 'Sign In to System' : 'Đăng Nhập Vào Hệ Thống'}
+          </Button>
+        </Form>
+      ) : (
+        /* 2. Đăng nhập Google Workspace Cán bộ - Khối riêng biệt tuân thủ Google Identity Guidelines */
+        <div style={{ padding: '8px 0' }}>
+          <div
+            style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: 12,
+              padding: '16px 14px',
+              marginBottom: 16,
+              textAlign: 'center',
+            }}
+          >
+            <SafetyCertificateOutlined style={{ fontSize: 28, color: '#0284c7', marginBottom: 8 }} />
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginBottom: 4 }}>
+              {language === 'en' ? 'Google Workspace Single Sign-On' : 'Xác Thực Google Workspace Cán Bộ'}
+            </div>
+            <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.5, display: 'block' }}>
+              {language === 'en'
+                ? 'Dedicated to School Administrators & Staff authorized with @lakeducation.com accounts.'
+                : 'Dành riêng cho Ban Giám Hiệu, Giáo Vụ và Cán Bộ được phân quyền tài khoản @lakeducation.com.'}
+            </Text>
+          </div>
+
+          <Button
+            size="large"
+            block
+            type="default"
+            loading={loadingGoogle}
+            onClick={handleGoogleSignIn}
+            icon={<GlobalOutlined style={{ color: '#0284c7', fontSize: 17 }} />}
+            style={{
+              height: 48,
+              borderRadius: 10,
+              fontWeight: 700,
+              fontSize: 15,
+              color: '#0f172a',
+              borderColor: '#cbd5e1',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+              marginBottom: 12,
+            }}
+          >
+            {language === 'en' ? 'Continue with Google Workspace' : 'Tiếp Tục Với Google Workspace'}
+          </Button>
+
+          <Text type="secondary" style={{ fontSize: 11, textAlign: 'center', display: 'block', color: '#64748b' }}>
+            🔒 {language === 'en'
+              ? 'Secure SSO: You will be redirected to accounts.google.com to sign in.'
+              : 'Xác thực an toàn: Bạn sẽ được chuyển hướng tới accounts.google.com để xác nhận.'}
+          </Text>
+        </div>
+      )}
+
+      <div style={{ textAlign: 'center', marginTop: 18, paddingTop: 10, borderTop: '1px solid #f1f5f9' }}>
+        <Text type="secondary" style={{ fontSize: 11, color: '#94a3b8' }}>
+          {language === 'en'
+            ? 'Official Educational Portal • LAK EDUCATION JSC'
+            : 'Cổng Quản Lý Đào Tạo Chính Thức — CÔNG TY CỔ PHẦN LAK EDUCATION'}
+        </Text>
+      </div>
         </>
       )}
     </Modal>

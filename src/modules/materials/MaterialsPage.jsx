@@ -10,12 +10,15 @@ import { useAuth } from '../../core/context/AuthContext';
 import { useLanguage } from '../../core/context/LanguageContext';
 import { PermissionService } from '../../core/services/PermissionService';
 import { CourseService } from '../courses/services/CourseService';
+import { ClassService } from '../courses/services/ClassService';
+import { UserService } from '../users/services/UserService';
 import { MaterialService } from './services/MaterialService';
 import { MaterialStatsCard } from './components/MaterialStatsCard';
 import { MaterialFilterToolbar } from './components/MaterialFilterToolbar';
 import { MaterialTableView } from './components/MaterialTableView';
 import { MaterialUploadModal } from './components/MaterialUploadModal';
 import { MaterialPreviewModal } from './components/MaterialPreviewModal';
+import { MaterialShareDrawer } from './components/MaterialShareDrawer';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -25,6 +28,8 @@ export const MaterialsPage = () => {
 
   const [materials, setMaterials] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -42,6 +47,10 @@ export const MaterialsPage = () => {
   const [previewItem, setPreviewItem] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  // Share Management Drawer State
+  const [shareDrawerOpen, setShareDrawerOpen] = useState(false);
+  const [sharingMaterial, setSharingMaterial] = useState(null);
+
   const canManage = useMemo(() => {
     return ['admin', 'director', 'academic'].includes(currentUser?.role);
   }, [currentUser?.role]);
@@ -49,12 +58,16 @@ export const MaterialsPage = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [allMats, allCourses] = await Promise.all([
+      const [allMats, allCourses, allClasses, allStudents] = await Promise.all([
         MaterialService.getAllMaterials(),
         CourseService.getAllCourses(),
+        ClassService.getAllClasses(),
+        UserService.getUsersByRole('student'),
       ]);
-      setMaterials(allMats);
-      setCourses(allCourses);
+      setMaterials(allMats || []);
+      setCourses(allCourses || []);
+      setClasses(allClasses || []);
+      setStudents(allStudents || []);
     } catch (err) {
       console.error('Failed to load materials data:', err);
       message.error(isEnglish ? 'Failed to load materials' : 'Không tải được danh sách tài liệu');
@@ -67,21 +80,42 @@ export const MaterialsPage = () => {
     loadData();
   }, [loadData]);
 
-  // Bộ lọc dữ liệu
+  // Bộ lọc dữ liệu bảo đảm đúng phân quyền Invariant
   const filteredMaterials = useMemo(() => {
     return MaterialService.filterMaterials(materials, {
       searchTerm,
       courseId: selectedCourseId,
       type: selectedType,
+      user: currentUser,
       userRole: currentUser?.role,
+      userClasses: classes,
     });
-  }, [materials, searchTerm, selectedCourseId, selectedType, currentUser?.role]);
+  }, [materials, searchTerm, selectedCourseId, selectedType, currentUser, classes]);
 
   // Handlers
   const handleOpenUpload = () => {
     setDroppedFiles([]);
     setEditingItem(null);
     setModalOpen(true);
+  };
+
+  const handleOpenShare = (item) => {
+    setSharingMaterial(item);
+    setShareDrawerOpen(true);
+  };
+
+  const handleShareTargets = async (materialId, targets) => {
+    const updated = await MaterialService.shareMaterialToTargets(materialId, targets, currentUser);
+    setMaterials((prev) => prev.map((m) => (m.id === materialId ? updated : m)));
+    setSharingMaterial(updated);
+    return updated;
+  };
+
+  const handleRevokeAccess = async (materialId, targetType, targetId) => {
+    const updated = await MaterialService.revokeMaterialAccess(materialId, targetType, targetId, currentUser);
+    setMaterials((prev) => prev.map((m) => (m.id === materialId ? updated : m)));
+    setSharingMaterial(updated);
+    return updated;
   };
 
   const handleEdit = (item) => {
@@ -287,6 +321,7 @@ export const MaterialsPage = () => {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onPreview={handlePreview}
+        onOpenShare={handleOpenShare}
       />
 
       {/* Upload & Edit Modal */}
@@ -295,6 +330,8 @@ export const MaterialsPage = () => {
         files={droppedFiles}
         editingItem={editingItem}
         courses={courses}
+        classes={classes}
+        students={students}
         loading={saving}
         onSave={handleSave}
         onSaveBatch={handleSaveBatch}
@@ -313,6 +350,21 @@ export const MaterialsPage = () => {
           setPreviewOpen(false);
           setPreviewItem(null);
         }}
+      />
+
+      {/* Drawer Quản Lý Chia Sẻ & Phân Quyền Đa Đối Tượng */}
+      <MaterialShareDrawer
+        open={shareDrawerOpen}
+        material={sharingMaterial}
+        courses={courses}
+        classes={classes}
+        students={students}
+        onClose={() => {
+          setShareDrawerOpen(false);
+          setSharingMaterial(null);
+        }}
+        onShareTargets={handleShareTargets}
+        onRevokeAccess={handleRevokeAccess}
       />
     </div>
   );

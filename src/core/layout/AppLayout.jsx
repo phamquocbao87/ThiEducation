@@ -41,7 +41,7 @@ import {
 import { useAuth, CORE_ROLE_USERS } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { PermissionService } from '../services/PermissionService';
-import { isProductionErpDomain, SITE_DOMAINS, APP_BUILD_VERSION_LABEL } from '../config/siteConfig';
+import { isProductionErpDomain, isBackupErpDomain, SITE_DOMAINS, APP_BUILD_VERSION_LABEL } from '../config/siteConfig';
 import { DriveStorageService } from '../services/DriveStorageService';
 import { AdminUserImpersonationModal } from '../../shared/components/modals/AdminUserImpersonationModal';
 import { matchesMultiFields } from '../../shared/utils/searchUtils';
@@ -108,7 +108,7 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
       {
         key: 'exercises',
         icon: <FormOutlined />,
-        label: t('menus.exercises', isEnglish ? 'English Exercises' : 'Bài Tập Tiếng Anh') || (isEnglish ? 'English Exercises' : 'Bài Tập Tiếng Anh'),
+        label: t('menus.exercises', isEnglish ? 'Exercises' : 'Bài Tập') || (isEnglish ? 'Exercises' : 'Bài Tập'),
       },
       {
         key: 'schedules',
@@ -230,6 +230,8 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
             onClick={() => {
               if (isProductionErpDomain()) {
                 window.location.href = SITE_DOMAINS.LANDING_PRODUCTION;
+              } else if (isBackupErpDomain()) {
+                window.location.href = SITE_DOMAINS.LANDING_BACKUP;
               } else {
                 navigate('/');
               }

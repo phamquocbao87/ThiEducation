@@ -86,6 +86,15 @@ export class UserService extends BaseModuleService {
   }
 
   /**
+   * Lấy danh sách người dùng theo vai trò (Role), loại trừ các tài khoản đã xóa mềm
+   */
+  static async getUsersByRole(role) {
+    if (!role) return [];
+    const all = await this.getAllUsers();
+    return all.filter((u) => u.role === role && !u.isDeleted && u.status !== USER_STATUS.DELETED && u.status !== 'deleted');
+  }
+
+  /**
    * Lấy chi tiết thông tin của một người dùng theo ID / Mã Code
    */
   static async getUserById(userId) {
@@ -583,11 +592,22 @@ export class UserService extends BaseModuleService {
       updatedAt: now,
     };
 
+    if (targetUser.role === 'student') {
+      softDeletePayload.enrolledClassIds = [];
+      softDeletePayload.classesEnrolled = [];
+      softDeletePayload.className = '';
+    }
+
     // 1. Cập nhật cờ xóa mềm (Soft-delete flag) trên Cloud Firestore lakeducationdb
     if (IS_FIREBASE_ENABLED && db) {
       try {
         const docRef = doc(db, this.COLLECTION_NAME, targetDocId);
         await updateDoc(docRef, softDeletePayload);
+
+        // [BIDIRECTIONAL CONSISTENCY]: Gỡ học viên đã xóa khỏi tất cả danh sách studentIds của các lớp
+        if (targetUser.role === 'student') {
+          await this.syncStudentClasses(targetDocId, []);
+        }
       } catch (err) {
         console.error('[UserService.deleteUser] Lỗi cập nhật cờ xóa Firestore:', err.message);
         throw new Error(`Lỗi cập nhật Firestore: ${err.message}`);

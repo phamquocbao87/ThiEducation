@@ -34,6 +34,7 @@ export const CourseCatalogTab = ({
 }) => {
   const { isEnglish, t } = useLanguage();
   const { currentUser } = useAuth();
+  const isTeacher = currentUser?.role === 'teacher';
 
   return (
     <div>
@@ -258,15 +259,17 @@ export const CourseCatalogTab = ({
                       {isEnglish ? 'students' : 'HV'})
                     </Text>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>
-                    <Space size={6}>
-                      <DollarOutlined style={{ color: '#722ed1' }} />
-                      <Text type="secondary">{isEnglish ? 'Fee:' : 'Học phí:'}</Text>
-                    </Space>
-                    <Text strong style={{ color: '#722ed1', whiteSpace: 'nowrap' }}>
-                      {formatCurrency(course.feePerMonth)}/{isEnglish ? 'mo' : 'tháng'}
-                    </Text>
-                  </div>
+                  {!isTeacher && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>
+                      <Space size={6}>
+                        <DollarOutlined style={{ color: '#722ed1' }} />
+                        <Text type="secondary">{isEnglish ? 'Fee:' : 'Học phí:'}</Text>
+                      </Space>
+                      <Text strong style={{ color: '#722ed1', whiteSpace: 'nowrap' }}>
+                        {formatCurrency(course.feePerMonth)}/{isEnglish ? 'mo' : 'tháng'}
+                      </Text>
+                    </div>
+                  )}
                 </div>
 
                 {course.description && (

@@ -11,12 +11,17 @@ import {
   EyeOutlined,
   FilePdfOutlined,
   FolderOpenOutlined,
+  GlobalOutlined,
   LinkOutlined,
+  LockOutlined,
   SafetyCertificateOutlined,
+  ShareAltOutlined,
+  TeamOutlined,
+  UserOutlined,
   VideoCameraOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
-import { MATERIAL_TYPES, VISIBILITY_TYPES } from '../models/material.model';
+import { MATERIAL_TYPES, SHARE_SCOPES, VISIBILITY_TYPES } from '../models/material.model';
 
 const { Text } = Typography;
 
@@ -27,6 +32,7 @@ export const MaterialTableView = ({
   onEdit,
   onDelete,
   onPreview,
+  onOpenShare,
 }) => {
   const { isEnglish } = useLanguage();
 
@@ -107,19 +113,47 @@ export const MaterialTableView = ({
       ),
     },
     {
-      title: isEnglish ? 'Visibility' : 'Quyền Truy Cập',
-      key: 'visibility',
-      width: 170,
+      title: isEnglish ? 'Sharing & Scope' : 'Phạm Vi & Chia Sẻ',
+      key: 'sharingScope',
+      width: 220,
       render: (_, record) => {
-        const isTeachersOnly = record.visibility === VISIBILITY_TYPES.TEACHERS_ONLY.key;
+        const isStaffOnly = record.shareScope === SHARE_SCOPES.STAFF_ONLY.key || record.visibility === VISIBILITY_TYPES.TEACHERS_ONLY.key;
+        const isCustom = record.shareScope === SHARE_SCOPES.CUSTOM.key || (Array.isArray(record.shares) && record.shares.length > 0);
+        const sharesCount = (record.shares || []).length;
+        const studentCount = (record.sharedStudentIds || []).length;
+        const classCount = (record.sharedClassIds || []).length;
+
+        if (isStaffOnly) {
+          return (
+            <Tag color="volcano" icon={<LockOutlined />} style={{ borderRadius: 6, fontWeight: 500 }}>
+              {isEnglish ? '🔒 Staff Only' : '🔒 Nội bộ Giáo Viên'}
+            </Tag>
+          );
+        }
+
+        if (isCustom && (sharesCount > 0 || studentCount > 0 || classCount > 0)) {
+          return (
+            <Space size={4} wrap>
+              <Tag color="purple" icon={<ShareAltOutlined />} style={{ borderRadius: 6, fontWeight: 600 }}>
+                {isEnglish ? 'Custom' : 'Chọn lọc'}
+              </Tag>
+              {classCount > 0 && (
+                <Tag color="blue" style={{ borderRadius: 4, fontSize: 11 }}>
+                  🏫 {classCount} {isEnglish ? (classCount > 1 ? 'classes' : 'class') : 'lớp'}
+                </Tag>
+              )}
+              {studentCount > 0 && (
+                <Tag color="cyan" style={{ borderRadius: 4, fontSize: 11 }}>
+                  🎒 {studentCount} {isEnglish ? (studentCount > 1 ? 'students' : 'student') : 'HV'}
+                </Tag>
+              )}
+            </Space>
+          );
+        }
+
         return (
-          <Tag
-            color={isTeachersOnly ? 'volcano' : 'green'}
-            style={{ borderRadius: 6, fontWeight: 500 }}
-          >
-            {isTeachersOnly
-              ? (isEnglish ? '🔒 Teacher Only' : '🔒 Nội bộ Giáo Viên')
-              : (isEnglish ? '🟢 Public (HV & GV)' : '🟢 Công Khai')}
+          <Tag color="green" icon={<GlobalOutlined />} style={{ borderRadius: 6, fontWeight: 500 }}>
+            {isEnglish ? '🟢 Public (All)' : '🟢 Công Khai Toàn Trường'}
           </Tag>
         );
       },
@@ -166,9 +200,18 @@ export const MaterialTableView = ({
           {
             title: isEnglish ? 'Actions' : 'Thao Tác',
             key: 'actions',
-            width: 110,
+            width: 140,
             render: (_, record) => (
               <Space size={6}>
+                <Tooltip title={isEnglish ? 'Manage Sharing & Access' : 'Phân Quyền & Chia Sẻ'}>
+                  <Button
+                    size="small"
+                    icon={<ShareAltOutlined style={{ color: '#722ed1' }} />}
+                    onClick={() => onOpenShare?.(record)}
+                    data-testid={`btn-share-material-${record.id}`}
+                    style={{ borderRadius: 6, borderColor: '#d8b4fe' }}
+                  />
+                </Tooltip>
                 <Tooltip title={isEnglish ? 'Edit' : 'Chỉnh sửa'}>
                   <Button
                     size="small"

@@ -46,6 +46,7 @@ export class ClassService extends BaseModuleService {
    * Lưu hoặc cập nhật Lớp học vào Cloud Firestore
    * Đảm bảo luôn ghi rõ isDeleted: false & status: 'Active' khi tạo/cập nhật lớp đang hoạt động
    * để tránh lỗi { merge: true } giữ lại cờ isDeleted: true của bản ghi cũ đã xóa mềm.
+   * Đồng thời đồng bộ hai chiều (Bidirectional Sync) với hồ sơ học viên users.enrolledClassIds.
    */
   static async saveClass(classData) {
     if (IS_FIREBASE_ENABLED && db && classData?.id) {
@@ -58,6 +59,43 @@ export class ClassService extends BaseModuleService {
           deletedAt: classData.isDeleted ? classData.deletedAt || new Date().toISOString() : null,
         };
         await setDoc(docRef, sanitizedPayload, { merge: true });
+
+        // [BIDIRECTIONAL CONSISTENCY]: Đồng bộ hai chiều với hồ sơ học viên trong Firestore users
+        if (Array.isArray(classData.studentIds)) {
+          const targetStudentIds = classData.studentIds.map(String);
+          const usersCol = collection(db, 'users');
+          const usersSnap = await getDocs(usersCol);
+          if (!usersSnap.empty) {
+            for (const uDoc of usersSnap.docs) {
+              const uData = uDoc.data();
+              if (uData.role !== 'student' || uData.isDeleted || uData.status === 'deleted') continue;
+              const uId = String(uDoc.id);
+              const uCode = String(uData.code || uData.id);
+              const isAssigned = targetStudentIds.includes(uId) || targetStudentIds.includes(uCode);
+
+              const currentEnrolled = Array.isArray(uData.enrolledClassIds) ? [...uData.enrolledClassIds] : [];
+              const enrolledSet = new Set(currentEnrolled);
+              let changed = false;
+
+              if (isAssigned && !enrolledSet.has(classData.id)) {
+                enrolledSet.add(classData.id);
+                changed = true;
+              } else if (!isAssigned && enrolledSet.has(classData.id)) {
+                enrolledSet.delete(classData.id);
+                changed = true;
+              }
+
+              if (changed) {
+                const nextEnrolled = Array.from(enrolledSet);
+                await setDoc(doc(db, 'users', uDoc.id), {
+                  enrolledClassIds: nextEnrolled,
+                  classesEnrolled: nextEnrolled,
+                  updatedAt: new Date().toISOString(),
+                }, { merge: true });
+              }
+            }
+          }
+        }
       } catch (err) {
         console.error('[ClassService] Lỗi lưu lớp học vào Firestore:', err.message);
         throw err;
@@ -121,6 +159,7 @@ export class ClassService extends BaseModuleService {
 
   /**
    * Xóa mềm (Soft delete) Lớp học trên Cloud Firestore
+   * Đồng thời tự động gỡ lớp đã xóa khỏi enrolledClassIds của tất cả học viên (Bidirectional Cleanup).
    */
   static async deleteClass(classId) {
     if (IS_FIREBASE_ENABLED && db && classId) {
@@ -135,6 +174,24 @@ export class ClassService extends BaseModuleService {
           },
           { merge: true }
         );
+
+        // [BIDIRECTIONAL CONSISTENCY]: Gỡ lớp đã xóa khỏi enrolledClassIds của tất cả học viên
+        const usersCol = collection(db, 'users');
+        const usersSnap = await getDocs(usersCol);
+        if (!usersSnap.empty) {
+          for (const uDoc of usersSnap.docs) {
+            const uData = uDoc.data();
+            const currentEnrolled = Array.isArray(uData.enrolledClassIds) ? [...uData.enrolledClassIds] : [];
+            if (currentEnrolled.includes(classId)) {
+              const nextEnrolled = currentEnrolled.filter((c) => c !== classId);
+              await setDoc(doc(db, 'users', uDoc.id), {
+                enrolledClassIds: nextEnrolled,
+                classesEnrolled: nextEnrolled,
+                updatedAt: new Date().toISOString(),
+              }, { merge: true });
+            }
+          }
+        }
       } catch (err) {
         console.error('[ClassService] Lỗi xóa lớp học trên Firestore:', err.message);
         throw err;
@@ -489,6 +546,61 @@ export class ClassService extends BaseModuleService {
         ),
       };
     });
+  }
+
+  /**
+   * Giáo vụ / Admin gỡ Học viên khỏi danh sách lớp học (Đồng bộ 2 chiều: classes & users)
+   */
+  static async removeStudentFromClass(classId, studentId, existingClasses = []) {
+    if (!classId || !studentId) return { updatedClasses: existingClasses, removed: false };
+    const targetSid = String(studentId).trim();
+
+    // 1. Cập nhật State danh sách lớp
+    const updatedClasses = existingClasses.map((cls) => {
+      if (cls.id !== classId) return cls;
+      const currentStudents = Array.isArray(cls.studentIds) ? cls.studentIds : [];
+      const nextStudents = currentStudents.filter((id) => String(id).trim() !== targetSid);
+
+      return {
+        ...cls,
+        studentIds: nextStudents,
+        totalStudents: nextStudents.length,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+
+    // 2. Đồng bộ Firestore classes & users
+    if (IS_FIREBASE_ENABLED && db) {
+      try {
+        const clsRef = doc(db, 'classes', classId);
+        const clsSnap = await getDoc(clsRef);
+        if (clsSnap.exists()) {
+          const currentList = Array.isArray(clsSnap.data().studentIds) ? clsSnap.data().studentIds : [];
+          const nextList = currentList.filter((id) => String(id).trim() !== targetSid);
+          await setDoc(clsRef, {
+            studentIds: nextList,
+            totalStudents: nextList.length,
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+        }
+
+        const userRef = doc(db, 'users', targetSid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const uData = userSnap.data();
+          const enrolled = Array.isArray(uData.enrolledClassIds) ? uData.enrolledClassIds : [];
+          const nextEnrolled = enrolled.filter((cid) => cid !== classId);
+          await setDoc(userRef, {
+            enrolledClassIds: nextEnrolled,
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+        }
+      } catch (err) {
+        console.warn('[ClassService.removeStudentFromClass] Firestore sync error:', err.message);
+      }
+    }
+
+    return { updatedClasses, removed: true };
   }
 
   static getStudentsInClass(classOrId, allStudents = []) {

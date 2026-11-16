@@ -67,6 +67,7 @@ export const CoursesPage = () => {
     handleRequestEnrollClass,
     handleApproveStudentRequest,
     handleRejectStudentRequest,
+    handleRemoveStudentFromClass,
     handleDeleteCourse,
     handleDeleteClass,
     handleClearAllData,
@@ -354,6 +355,7 @@ export const CoursesPage = () => {
         onRequestEnrollClass={handleRequestEnrollClass}
         onApproveStudentRequest={handleApproveStudentRequest}
         onRejectStudentRequest={handleRejectStudentRequest}
+        onRemoveStudent={handleRemoveStudentFromClass}
       />
 
       <ClassFormDrawer

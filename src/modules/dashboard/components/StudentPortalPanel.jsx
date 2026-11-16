@@ -78,7 +78,7 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
         const [hwList, evalList, matList] = await Promise.all([
           StudentDashboardService.getStudentHomeworkTasks(currentUser, myClasses),
           StudentDashboardService.getStudentRecentEvaluations(currentUser, myClasses),
-          StudentDashboardService.getStudentClassMaterials(myClasses),
+          StudentDashboardService.getStudentClassMaterials(myClasses, currentUser),
         ]);
         if (isMounted) {
           setHomeworks(hwList || []);
@@ -121,7 +121,7 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
   const upcomingSession = useMemo(() => (upcomingClass ? findClassSession(upcomingClass, now) : null), [upcomingClass, now]);
   const upcomingTimer = useMemo(() => (upcomingSession ? getSessionTimer(upcomingSession, now) : null), [upcomingSession, now]);
   const isUpcomingRoomOpen = Boolean(
-    upcomingTimer && (upcomingTimer.state === 'live' || (upcomingTimer.state === 'upcoming' && upcomingTimer.startsIn <= 900))
+    upcomingTimer && (upcomingTimer.state === 'live' || (upcomingTimer.state === 'upcoming' && upcomingTimer.startsIn <= 600))
   );
 
   // Bộ chọn lớp học chủ động (Class Switcher / Tabs)
@@ -229,7 +229,9 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
             <Space size={10} style={{ flexWrap: 'wrap' }}>
               <div style={{ padding: '6px 12px', borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)', textAlign: 'center' }}>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{isEnglish ? 'Classes' : 'Lớp Đang Học'}</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#38bdf8' }}>{enrolledClassesCount} {isEnglish ? 'class' : 'lớp'}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#38bdf8' }}>
+                  {enrolledClassesCount} {isEnglish ? (enrolledClassesCount > 1 ? 'classes' : 'class') : 'lớp'}
+                </div>
               </div>
               <div style={{ padding: '6px 12px', borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)', textAlign: 'center' }}>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{isEnglish ? 'Tuition' : 'Học Phí'}</div>
@@ -328,8 +330,8 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                       data-testid="btn-join-live-meeting-locked"
                     >
                       {isEnglish
-                        ? `${getPlatformDisplayName(upcomingPlatform, isEnglish)} Opens 15m Before`
-                        : `Phòng ${getPlatformDisplayName(upcomingPlatform, isEnglish)} Mở Trước 15 Phút`}
+                        ? `${getPlatformDisplayName(upcomingPlatform, isEnglish)} Opens 10m Before`
+                        : `Phòng ${getPlatformDisplayName(upcomingPlatform, isEnglish)} Mở Trước 10 Phút`}
                     </Button>
                   )
                 ) : (
@@ -355,7 +357,7 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                     onClick={() => window.open(upcomingClass.zaloGroupLink, '_blank')}
                     title={isEnglish ? 'Join Class Zalo Group' : 'Tham gia nhóm Zalo trao đổi của lớp học'}
                   >
-                    Zalo Lớp
+                    {isEnglish ? 'Class Zalo Group' : 'Zalo Lớp'}
                   </Button>
                 )}
               </div>
@@ -464,7 +466,7 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                       const clsSession = findClassSession(cls, now);
                       const clsTimer = getSessionTimer(clsSession, now);
                       const isClsOpen = Boolean(
-                        clsTimer && (clsTimer.state === 'live' || (clsTimer.state === 'upcoming' && clsTimer.startsIn <= 900))
+                        clsTimer && (clsTimer.state === 'live' || (clsTimer.state === 'upcoming' && clsTimer.startsIn <= 600))
                       );
 
                       if (isClsOpen) {
@@ -495,11 +497,11 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                           style={{ borderRadius: 6, fontSize: 11, color: '#64748b' }}
                           title={
                             isEnglish
-                              ? `Online classroom on ${clsPlatformName} will automatically open 15 minutes before class starts`
-                              : `Phòng học trực tuyến trên ${clsPlatformName} sẽ tự động mở trước giờ học 15 phút`
+                              ? `Online classroom on ${clsPlatformName} will automatically open 10 minutes before class starts`
+                              : `Phòng học trực tuyến trên ${clsPlatformName} sẽ tự động mở trước giờ học 10 phút`
                           }
                         >
-                          {isEnglish ? 'Opens 15m Before' : 'Phòng Mở Trước 15 Phút'}
+                          {isEnglish ? 'Opens 10m Before' : 'Phòng Mở Trước 10 Phút'}
                         </Button>
                       );
                     })()}

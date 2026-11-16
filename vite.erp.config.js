@@ -24,7 +24,27 @@ export default defineConfig({
             .replace('/src/main.jsx', '/src/main.erp.jsx')
             .replace(
               /<title>.*?<\/title>/,
-              '<title>LAK EDUCATION ERP Portal (erp.lakeducation.edu.vn)</title>\n    <meta name="robots" content="noindex, nofollow" />'
+              `<title>LAK EDUCATION ERP Portal (erp.lakeducation.edu.vn)</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="author" content="CÔNG TY CỔ PHẦN LAK EDUCATION" />
+    <meta name="description" content="Hệ thống Quản lý Đào tạo và Khảo thí Nội bộ — LAK EDUCATION Management ERP Portal" />
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "EducationalOrganization",
+      "name": "CÔNG TY CỔ PHẦN LAK EDUCATION",
+      "url": "https://erp.lakeducation.edu.vn",
+      "sameAs": "https://lakeducation.edu.vn"
+    }
+    </script>
+    <script>
+      (function() {
+        var h = window.location.hostname;
+        if (h === 'lakeducation-erp-portal.web.app' || h === 'lakeducation-erp-portal.firebaseapp.com') {
+          window.location.replace('https://erp.lakeducation.edu.vn' + window.location.pathname + window.location.search + window.location.hash);
+        }
+      })();
+    </script>`
             );
         },
       },

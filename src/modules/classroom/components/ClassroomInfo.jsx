@@ -1,16 +1,23 @@
 import { Button, Descriptions, Space } from 'antd';
-import { VideoCameraOutlined } from '@ant-design/icons';
+import { VideoCameraOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { formatTimerDuration, getSessionTimer } from '../../../shared/utils/classSessionUtils';
 
-export const ClassroomInfo = ({ cls, session, now, onOpenRoom }) => {
+export const ClassroomInfo = ({ cls, session, now, onOpenRoom, currentUser }) => {
   const { t, language } = useLanguage();
   const timer = getSessionTimer(session, now);
   const date = session ? new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'vi-VN', {
     dateStyle: 'medium', timeStyle: 'short',
   }).format(session.start) : t('classroom.noSession');
-  const url = cls.zoomHostLink || cls.zoomStudentLink || cls.meetingLink;
+  const rawUrl = cls.zoomHostLink || cls.zoomStudentLink || cls.meetingLink;
+  const url = (rawUrl || '').replace(/^:\s*/, '').trim();
   const safeUrl = /^https?:\/\//i.test(url || '') ? url : null;
+
+  const isStudentRole = currentUser?.role === 'student' || (!currentUser?.role && currentUser?.id?.startsWith('HV'));
+  const isRoomOpen = !isStudentRole || Boolean(
+    timer && (timer.state === 'live' || (timer.state === 'upcoming' && timer.startsIn <= 600))
+  );
+
   return <>
     <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
       <Descriptions.Item label={t('classroom.className')}>{cls.name}</Descriptions.Item>
@@ -25,16 +32,32 @@ export const ClassroomInfo = ({ cls, session, now, onOpenRoom }) => {
         ? t('dashboard.classTimer.remaining', { duration: formatTimerDuration(timer.remaining, t) })
         : t('dashboard.classTimer.startsIn', { duration: formatTimerDuration(timer.startsIn, t) })}</span>}
       {safeUrl && (
-        <Button
-          href={safeUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          icon={<VideoCameraOutlined />}
-          onClick={() => onOpenRoom?.()}
-          data-testid="open-room-btn"
-        >
-          {t('classroom.openRoom')}
-        </Button>
+        isRoomOpen ? (
+          <Button
+            href={safeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            icon={<VideoCameraOutlined />}
+            onClick={() => onOpenRoom?.()}
+            data-testid="open-room-btn"
+          >
+            {t('classroom.openRoom')}
+          </Button>
+        ) : (
+          <Button
+            disabled
+            icon={<ClockCircleOutlined />}
+            data-testid="open-room-btn"
+            style={{ borderRadius: 6, color: '#64748b' }}
+            title={
+              language === 'en'
+                ? 'Online classroom will automatically open 10 minutes before class starts'
+                : 'Phòng học trực tuyến sẽ tự động mở trước giờ học 10 phút'
+            }
+          >
+            {language === 'en' ? '⏰ Opens 10m Before' : '⏰ Phòng Mở Trước 10 Phút'}
+          </Button>
+        )
       )}
     </Space>
   </>;

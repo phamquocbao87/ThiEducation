@@ -35,7 +35,7 @@ import {
   WarningOutlined,
   DesktopOutlined,
 } from '@ant-design/icons';
-import { CLASS_STATUS_COLORS } from '../models/courses.model';
+import { CLASS_STATUS_COLORS, IS_STUDENT_ENROLLMENT_ENABLED } from '../models/courses.model';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { AdminAuditInfo } from '../../../shared/components/AdminAuditInfo';
 import {
@@ -44,6 +44,7 @@ import {
   formatScheduleForViewer,
 } from '../../../shared/utils/scheduleUtils';
 import { MeetingPlatformBadge, detectMeetingPlatform } from '../../../shared/utils/meetingPlatformUtils';
+import { findClassSession, getSessionTimer } from '../../../shared/utils/classSessionUtils';
 import { TeacherMeetingRoomModal } from './TeacherMeetingRoomModal';
 import { resolveEffectiveClassStatus } from '../../dashboard/utils/classTimeUtils';
 
@@ -198,7 +199,9 @@ export const ClassManagementTab = ({
             const maxClassSize = Number(foundCourse?.maxClassSize) || 18;
             const isUnassignedTeacher =
               !record.teacherId || record.teacherName === 'Chưa phân công';
-            const studentCount = record.totalStudents || record.studentIds?.length || 0;
+            const officialCount = (record.studentIds || []).length;
+            const trialCount = Array.isArray(record.trialStudents) ? record.trialStudents.length : 0;
+            const studentCount = record.totalStudents || (officialCount + trialCount);
             const isClassFull = studentCount >= maxClassSize;
             const effectiveStatus = resolveEffectiveClassStatus(record);
             const statusColor = CLASS_STATUS_COLORS[effectiveStatus] || (effectiveStatus === 'Chuẩn bị khai giảng' ? 'blue' : 'green');
@@ -244,10 +247,27 @@ export const ClassManagementTab = ({
             // - Học viên (isStudentRole): CHỈ ĐƯỢC XEM KHI ĐÃ ĐƯỢC DUYỆT VÀO LỚP (isAlreadyEnrolled === true)
             const canViewClassRoomLinks = !isStudentRole || isAlreadyEnrolled;
 
-            const zoomUrlToOpen =
+            const rawZoomUrl =
               canManage || isTeacherRole
                 ? record.zoomHostLink || record.meetingLink
                 : record.zoomStudentLink || record.meetingLink;
+            const zoomUrlToOpen = (rawZoomUrl || '').replace(/^:\s*/, '').trim();
+            const platformInfo = detectMeetingPlatform(zoomUrlToOpen);
+
+            // Kiểm tra khung giờ buổi học (Schedule Lead Window Guard):
+            // - Học viên: Chỉ mở trước giờ học 10 phút (leadSeconds = 600) hoặc khi đang học
+            // - Giáo viên: Mở trước 15 phút (leadSeconds = 900)
+            // - Cán bộ quản lý (canManage): Luôn mở để test / cấu hình
+            const classSession = findClassSession(record, Date.now());
+            const classTimer = classSession ? getSessionTimer(classSession, Date.now()) : null;
+            const leadSeconds = isStudentRole ? 600 : 900;
+            const isRoomTimeOpen = Boolean(
+              classTimer && (
+                classTimer.state === 'live' ||
+                (classTimer.state === 'upcoming' && classTimer.startsIn <= leadSeconds)
+              )
+            );
+            const canJoinRoom = canManage || (isStudentRole ? (isAlreadyEnrolled && isRoomTimeOpen) : true);
 
             return (
               <Col xs={24} sm={12} md={12} lg={12} xl={8} key={record.id}>
@@ -443,9 +463,16 @@ export const ClassManagementTab = ({
                         <TeamOutlined style={{ color: '#52c41a' }} />
                         <Text type="secondary">{t('courses.classes.rosterLabel')}</Text>
                       </Space>
-                      <Text strong style={{ color: '#16a34a', whiteSpace: 'nowrap' }}>
-                        {studentCount} {t('courses.classes.studentsCount')}
-                      </Text>
+                      <Space size={4}>
+                        <Text strong style={{ color: '#16a34a', whiteSpace: 'nowrap' }}>
+                          {studentCount} / {maxClassSize} {t('courses.classes.studentsCount')}
+                        </Text>
+                        {trialCount > 0 && (
+                          <Tag color="orange" style={{ margin: 0, fontSize: 10, borderRadius: 4 }}>
+                            {isEnglish ? `+${trialCount} trial` : `+${trialCount} học thử`}
+                          </Tag>
+                        )}
+                      </Space>
                     </div>
 
                     {/* Ngày bắt đầu lớp học */}
@@ -552,29 +579,41 @@ export const ClassManagementTab = ({
                       }}
                     >
                       <Space size={6}>
-                        {detectMeetingPlatform(zoomUrlToOpen).icon}
+                        {platformInfo.icon}
                         <Text type="secondary">{isEnglish ? 'Meeting Room:' : 'Phòng Học:'}</Text>
                       </Space>
                       {canViewClassRoomLinks ? (
                         <Space size={4}>
                           <Tag
-                            color="purple"
+                            color={platformInfo.type === 'google_meet' ? 'green' : 'purple'}
                             onClick={(e) => {
                               e.stopPropagation();
+                              if (isStudentRole && !isRoomTimeOpen) return;
                               zoomUrlToOpen && window.open(zoomUrlToOpen, '_blank');
                             }}
                             style={{
                               margin: 0,
-                              cursor: 'pointer',
+                              cursor: (isStudentRole && !isRoomTimeOpen) ? 'not-allowed' : 'pointer',
                               fontWeight: 600,
                               borderRadius: 6,
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: 4,
                             }}
+                            title={
+                              isStudentRole && !isRoomTimeOpen
+                                ? (isEnglish ? 'Online classroom will automatically open 10 minutes before class starts' : 'Phòng học trực tuyến sẽ tự động mở trước giờ học 10 phút')
+                                : undefined
+                            }
                           >
-                            <LinkOutlined />
-                            {record.meetingId || (isEnglish ? 'Join Link' : 'Link Tham Gia')}
+                            {isStudentRole && !isRoomTimeOpen ? (
+                              <span style={{ color: '#64748b' }}>🔒 {isEnglish ? 'Opens 10m Before' : 'Mở Trước 10 Phút'}</span>
+                            ) : (
+                              <>
+                                <LinkOutlined />
+                                <span>{record.meetingId && record.meetingId !== 'none' ? record.meetingId : platformInfo.label}</span>
+                              </>
+                            )}
                           </Tag>
                           {isTeacherRole && (record.teacherId === currentUser?.id || record.teacherId === currentUser?.code) && (
                             <Tooltip title={isEnglish ? 'Edit meeting links' : 'Sửa link phòng học'}>
@@ -744,27 +783,57 @@ export const ClassManagementTab = ({
                               ? 'Enrolled — Approved to Join Class'
                               : 'Đã duyệt đăng ký — Đã tham gia lớp học'}
                           </Tag>
-                          <Button
-                            type="primary"
-                            block
-                            icon={<VideoCameraOutlined />}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              zoomUrlToOpen && window.open(zoomUrlToOpen, '_blank');
-                            }}
-                            style={{
-                              height: 36,
-                              borderRadius: 8,
-                              background: '#722ed1',
-                              borderColor: '#722ed1',
-                              fontWeight: 600,
-                              fontSize: 12,
-                            }}
-                          >
-                            {isEnglish
-                              ? `Join Zoom Class (${record.meetingId || '888 999 111'})`
-                              : `Vào Phòng Học Zoom (${record.meetingId || '888 999 111'})`}
-                          </Button>
+                          {isRoomTimeOpen ? (
+                            <Button
+                              type="primary"
+                              block
+                              icon={platformInfo.iconSmall || platformInfo.icon || <VideoCameraOutlined />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                zoomUrlToOpen && window.open(zoomUrlToOpen, '_blank');
+                              }}
+                              style={{
+                                height: 36,
+                                borderRadius: 8,
+                                background: platformInfo.type === 'google_meet' ? '#16a34a' : '#722ed1',
+                                borderColor: platformInfo.type === 'google_meet' ? '#16a34a' : '#722ed1',
+                                fontWeight: 600,
+                                fontSize: 12,
+                              }}
+                            >
+                              {classTimer?.state === 'live'
+                                ? (isEnglish ? `🔴 Join Live ${platformInfo.label}` : `🔴 Vào ${platformInfo.label} (Đang Học)`)
+                                : (isEnglish
+                                    ? `Join ${platformInfo.label}${record.meetingId && record.meetingId !== 'none' ? ` (${record.meetingId})` : ''}`
+                                    : `Vào Phòng Học ${platformInfo.label}${record.meetingId && record.meetingId !== 'none' ? ` (${record.meetingId})` : ''}`)}
+                            </Button>
+                          ) : (
+                            <Tooltip
+                              title={
+                                isEnglish
+                                  ? 'Online classroom will automatically open 10 minutes before class starts'
+                                  : 'Phòng học trực tuyến sẽ tự động mở trước giờ học 10 phút'
+                              }
+                            >
+                              <Button
+                                disabled
+                                block
+                                icon={<ClockCircleOutlined />}
+                                style={{
+                                  height: 36,
+                                  borderRadius: 8,
+                                  background: '#f8fafc',
+                                  borderColor: '#e2e8f0',
+                                  color: '#64748b',
+                                  fontWeight: 600,
+                                  fontSize: 12,
+                                  cursor: 'not-allowed',
+                                }}
+                              >
+                                {isEnglish ? '⏰ Opens 10m Before' : '⏰ Phòng Mở Trước 10 Phút'}
+                              </Button>
+                            </Tooltip>
+                          )}
                         </div>
                       ) : myStudentPending ? (
                         <Button
@@ -832,6 +901,36 @@ export const ClassManagementTab = ({
                             {isEnglish
                               ? `Conflict with ${myStudentConflicts[0].id}`
                               : `Trùng TKB lớp ${myStudentConflicts[0].id}`}
+                          </Button>
+                        </Tooltip>
+                      ) : !IS_STUDENT_ENROLLMENT_ENABLED ? (
+                        <Tooltip
+                          title={t(
+                            'courses.classes.enrollmentClosedTooltip',
+                            isEnglish
+                              ? 'Online class enrollment is temporarily closed. Please contact Academic staff for class placement.'
+                              : 'Chức năng tự đăng ký lớp học trực tuyến tạm thời đóng. Vui lòng liên hệ Giáo vụ để được xếp lớp.'
+                          )}
+                        >
+                          <Button
+                            disabled
+                            block
+                            icon={<UserAddOutlined />}
+                            style={{
+                              height: 36,
+                              borderRadius: 8,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              background: '#f5f5f5',
+                              borderColor: '#d9d9d9',
+                              color: '#8c8c8c',
+                              cursor: 'not-allowed',
+                            }}
+                          >
+                            {t(
+                              'courses.classes.enrollmentTemporarilyClosed',
+                              isEnglish ? 'Enrollment Temporarily Closed' : 'Tạm Đóng Đăng Ký Lớp Học'
+                            )}
                           </Button>
                         </Tooltip>
                       ) : (

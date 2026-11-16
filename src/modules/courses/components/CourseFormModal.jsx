@@ -14,6 +14,7 @@ import {
   Tag,
   Card,
   Divider,
+  Tooltip,
 } from 'antd';
 import {
   BookOutlined,
@@ -30,7 +31,7 @@ import {
   VideoCameraOutlined,
   LinkOutlined,
 } from '@ant-design/icons';
-import { COURSE_LEVEL_OPTIONS } from '../models/courses.model';
+import { COURSE_LEVEL_OPTIONS, IS_STUDENT_ENROLLMENT_ENABLED } from '../models/courses.model';
 import { CurriculumLevelService } from '../../curriculum/services/CurriculumLevelService';
 import { BaseRangeSelector } from '../../../shared/components/controls';
 import { formatCurrency } from '../../../shared/utils/formatter';
@@ -58,6 +59,7 @@ export const CourseDetailDrawer = ({
   const { isEnglish } = useLanguage();
   const { currentUser } = useAuth();
   const isStudentRole = currentUser?.role === 'student';
+  const isTeacherRole = currentUser?.role === 'teacher';
   const currentUid = currentUser?.id || currentUser?.code;
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 768
@@ -152,7 +154,7 @@ export const CourseDetailDrawer = ({
 
       {/* 2. Thẻ Chỉ Số Tóm Tắt (Metric Highlight Cards) */}
       <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={isTeacherRole ? 12 : 8}>
           <Card size="small" style={{ borderRadius: 10, background: '#f0f7ff', borderColor: '#bae0ff' }}>
             <Space>
               <ClockCircleOutlined style={{ fontSize: 20, color: '#1890ff' }} />
@@ -168,7 +170,7 @@ export const CourseDetailDrawer = ({
             </Space>
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={isTeacherRole ? 12 : 8}>
           <Card size="small" style={{ borderRadius: 10, background: '#f6ffed', borderColor: '#b7eb8f' }}>
             <Space>
               <TeamOutlined style={{ fontSize: 20, color: '#52c41a' }} />
@@ -183,36 +185,40 @@ export const CourseDetailDrawer = ({
             </Space>
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
-          <Card size="small" style={{ borderRadius: 10, background: '#f9f0ff', borderColor: '#d3adf7' }}>
-            <Space>
-              <DollarOutlined style={{ fontSize: 20, color: '#722ed1' }} />
-              <div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>
-                  {isEnglish ? 'Monthly Fee' : 'Học phí niêm yết'}
+        {!isTeacherRole && (
+          <Col xs={24} sm={8}>
+            <Card size="small" style={{ borderRadius: 10, background: '#f9f0ff', borderColor: '#d3adf7' }}>
+              <Space>
+                <DollarOutlined style={{ fontSize: 20, color: '#722ed1' }} />
+                <div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>
+                    {isEnglish ? 'Monthly Fee' : 'Học phí niêm yết'}
+                  </div>
+                  <Text strong style={{ fontSize: 15, color: '#722ed1', whiteSpace: 'nowrap' }}>
+                    {formatCurrency(course.feePerMonth)}/{isEnglish ? 'mo' : 'tháng'}
+                  </Text>
                 </div>
-                <Text strong style={{ fontSize: 15, color: '#722ed1', whiteSpace: 'nowrap' }}>
-                  {formatCurrency(course.feePerMonth)}/{isEnglish ? 'mo' : 'tháng'}
-                </Text>
-              </div>
-            </Space>
-          </Card>
-        </Col>
+              </Space>
+            </Card>
+          </Col>
+        )}
       </Row>
 
       {/* 3. Bảng Thông Tin Chi Tiết Chuẩn Enterprise */}
       <Descriptions bordered size="small" column={{ xs: 1, sm: 2 }} style={{ marginBottom: 20 }}>
-        <Descriptions.Item label={isEnglish ? 'Study Frequency' : 'Tần suất học'}>
+        <Descriptions.Item label={isEnglish ? 'Study Frequency' : 'Tần suất học'} span={isTeacherRole ? 2 : 1}>
           {course.sessionsPerWeek || 2} {isEnglish ? 'sessions/week' : 'buổi/tuần'} (
           {course.totalSessions || 24} {isEnglish ? 'total sessions' : 'buổi toàn khóa'})
         </Descriptions.Item>
-        <Descriptions.Item label={isEnglish ? 'Full Course Tuition' : 'Tổng học phí toàn khóa'}>
-          <Text strong style={{ color: '#0f172a' }}>
-            {formatCurrency(
-              course.totalCourseFee || (course.feePerMonth || 2500000) * (course.durationMonths || 3)
-            )}
-          </Text>
-        </Descriptions.Item>
+        {!isTeacherRole && (
+          <Descriptions.Item label={isEnglish ? 'Full Course Tuition' : 'Tổng học phí toàn khóa'}>
+            <Text strong style={{ color: '#0f172a' }}>
+              {formatCurrency(
+                course.totalCourseFee || (course.feePerMonth || 2500000) * (course.durationMonths || 3)
+              )}
+            </Text>
+          </Descriptions.Item>
+        )}
         <Descriptions.Item label={isEnglish ? 'Learning Format' : 'Hình thức đào tạo'} span={2}>
           {course.format || '100% Native English Teacher (Zoom Cloud Meeting)'}
         </Descriptions.Item>
@@ -360,6 +366,31 @@ export const CourseDetailDrawer = ({
                               ? 'Registered — Waiting for Approval'
                               : 'Đã đăng ký — Chờ phê duyệt'}
                           </Button>
+                        ) : !IS_STUDENT_ENROLLMENT_ENABLED ? (
+                          <Tooltip
+                            title={
+                              isEnglish
+                                ? 'Online class enrollment is temporarily closed. Please contact Academic staff for class placement.'
+                                : 'Chức năng tự đăng ký lớp học trực tuyến tạm thời đóng. Vui lòng liên hệ Giáo vụ để được xếp lớp.'
+                            }
+                          >
+                            <Button
+                              size="small"
+                              disabled
+                              block
+                              icon={<UserAddOutlined />}
+                              style={{
+                                borderRadius: 6,
+                                background: '#f5f5f5',
+                                borderColor: '#d9d9d9',
+                                color: '#8c8c8c',
+                                fontWeight: 600,
+                                cursor: 'not-allowed',
+                              }}
+                            >
+                              {isEnglish ? 'Enrollment Closed' : 'Tạm Đóng Đăng Ký'}
+                            </Button>
+                          </Tooltip>
                         ) : (
                           <Button
                             size="small"

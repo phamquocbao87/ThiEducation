@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -33,10 +33,14 @@ import {
   HomeOutlined,
   DollarOutlined,
   UserOutlined,
+  SendOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { PermissionService } from '../../../core/services/PermissionService';
 import { matchesMultiFields } from '../../../shared/utils/searchUtils';
+import { TeacherContactAcademicModal } from '../../students/components/TeacherContactAcademicModal';
+import { AcademicStudentNotesDrawer } from '../../students/components/AcademicStudentNotesDrawer';
+import { StudentNoteService } from '../../students/services/StudentNoteService';
 
 const { Text, Title } = Typography;
 
@@ -59,6 +63,26 @@ export const StudentCardGrid = ({
   const [selectedClassFilter, setSelectedClassFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [statusOverrides, setStatusOverrides] = useState({});
+
+  // Phân quyền bảo mật SĐT học viên & nhắn tin giáo vụ
+  const isTeacherRole = (currentUser?.role || '').toLowerCase() === 'teacher';
+  const canManageNotes = ['admin', 'director', 'academic'].includes((currentUser?.role || '').toLowerCase());
+  const [activeContactStudent, setActiveContactStudent] = useState(null);
+  const [activeNotesStudent, setActiveNotesStudent] = useState(null);
+  const [notesList, setNotesList] = useState([]);
+
+  const loadNotesStats = async () => {
+    try {
+      const all = await StudentNoteService.getAllNotes();
+      setNotesList(all || []);
+    } catch (e) {
+      console.warn('[StudentCardGrid] Lỗi đọc danh sách notes:', e);
+    }
+  };
+
+  useEffect(() => {
+    loadNotesStats();
+  }, []);
 
   const handleToggle = async (student, checked) => {
     const studentCode = student.code || student.id;
@@ -140,15 +164,14 @@ export const StudentCardGrid = ({
         if (!studentClassIds.has(selectedClassFilter)) return false;
       }
 
-      // 3. Tìm kiếm thông minh 2 chiều tiếng Việt
+      // 3. Tìm kiếm thông minh 2 chiều tiếng Việt (Giáo viên không tìm theo SĐT)
       if (searchText.trim()) {
         const searchFields = [
           s.name,
           s.englishName,
           s.code,
           s.id,
-          s.phone,
-          s.phone2,
+          ...(isTeacherRole ? [] : [s.phone, s.phone2, s.phoneNumber, s.parentPhone]),
           s.parentName,
           s.email,
         ];
@@ -241,7 +264,11 @@ export const StudentCardGrid = ({
           <Col xs={24} md={10}>
             <Input
               prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-              placeholder={isEnglish ? 'Search by Vietnamese/English name, student code, phone...' : 'Tìm theo tên tiếng Việt/Anh, mã học viên, SĐT phụ huynh...'}
+              placeholder={
+                isEnglish
+                  ? (isTeacherRole ? 'Search by name, student code, class...' : 'Search by name, student code, phone...')
+                  : (isTeacherRole ? 'Tìm theo tên tiếng Việt/Anh, mã học viên, lớp học...' : 'Tìm theo tên tiếng Việt/Anh, mã học viên, SĐT phụ huynh...')
+              }
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               allowClear
@@ -343,6 +370,14 @@ export const StudentCardGrid = ({
             // Số điện thoại phụ huynh sạch
             const cleanPhone = (student.phone || student.phoneNumber || '').replace(/[^0-9]/g, '');
             const canChangeStatus = PermissionService.canChangeUserStatus(currentUser, student);
+
+            // Danh sách tin nhắn giáo viên về học viên này
+            const studentNotes = (notesList || []).filter(
+              (n) =>
+                String(n.studentId || '').toUpperCase() === String(studentCode).toUpperCase() ||
+                String(n.studentCode || '').toUpperCase() === String(studentCode).toUpperCase()
+            );
+            const pendingNotesCount = studentNotes.filter((n) => n.status === 'PENDING').length;
 
             return (
               <Col xs={24} sm={12} lg={8} key={student.id || studentCode}>
@@ -446,39 +481,112 @@ export const StudentCardGrid = ({
                           📞 {isEnglish ? 'Parent Phone:' : 'SĐT Phụ Huynh:'}
                         </span>
                         <Space size={6}>
-                          <span style={{ fontWeight: 600, color: '#1e293b' }}>
-                            {student.phone || student.phoneNumber || (isEnglish ? 'Not updated' : 'Chưa cập nhật')}
-                          </span>
-                          {cleanPhone && (
+                          {isTeacherRole ? (
                             <>
-                              <Tooltip title={isEnglish ? 'Open Zalo Chat' : 'Nhắn tin qua Zalo'}>
-                                <Button
-                                  type="text"
-                                  size="small"
-                                  icon={<MessageOutlined style={{ color: '#0284c7' }} />}
-                                  href={`https://zalo.me/${cleanPhone}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  data-testid={`btn-zalo-student-${studentCode}`}
-                                  style={{ padding: '0 4px', height: 24 }}
-                                />
-                              </Tooltip>
-                              <Tooltip title={isEnglish ? 'Call Parent' : 'Gọi điện cho phụ huynh'}>
-                                <Button
-                                  type="text"
-                                  size="small"
-                                  icon={<PhoneOutlined style={{ color: '#16a34a' }} />}
-                                  href={`tel:${cleanPhone}`}
-                                  data-testid={`btn-call-student-${studentCode}`}
-                                  style={{ padding: '0 4px', height: 24 }}
-                                />
-                              </Tooltip>
+                              <span style={{ fontWeight: 600, color: '#1e293b' }}>
+                                {cleanPhone ? `***${cleanPhone.slice(-3)}` : (isEnglish ? 'Not updated' : 'Chưa cập nhật')}
+                              </span>
+                              <Button
+                                type="primary"
+                                size="small"
+                                icon={<MessageOutlined />}
+                                onClick={() => setActiveContactStudent(student)}
+                                data-testid={`btn-message-academic-${studentCode}`}
+                                style={{
+                                  borderRadius: 6,
+                                  height: 24,
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  backgroundColor: '#0958d9',
+                                }}
+                              >
+                                {isEnglish ? 'Message' : 'Nhắn Tin'}
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <span style={{ fontWeight: 600, color: '#1e293b' }}>
+                                {student.phone || student.phoneNumber || (isEnglish ? 'Not updated' : 'Chưa cập nhật')}
+                              </span>
+                              {cleanPhone && (
+                                <>
+                                  <Tooltip title={isEnglish ? 'Open Zalo Chat' : 'Nhắn tin qua Zalo'}>
+                                    <Button
+                                      type="text"
+                                      size="small"
+                                      icon={<MessageOutlined style={{ color: '#0284c7' }} />}
+                                      href={`https://zalo.me/${cleanPhone}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      data-testid={`btn-zalo-student-${studentCode}`}
+                                      style={{ padding: '0 4px', height: 24 }}
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title={isEnglish ? 'Call Parent' : 'Gọi điện cho phụ huynh'}>
+                                    <Button
+                                      type="text"
+                                      size="small"
+                                      icon={<PhoneOutlined style={{ color: '#16a34a' }} />}
+                                      href={`tel:${cleanPhone}`}
+                                      data-testid={`btn-call-student-${studentCode}`}
+                                      style={{ padding: '0 4px', height: 24 }}
+                                    />
+                                  </Tooltip>
+                                </>
+                              )}
                             </>
                           )}
                         </Space>
                       </div>
 
-                      {student.familyId && (
+                      {/* Ngày sinh & Giới tính học viên */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#64748b' }}>🎂 {isEnglish ? 'Date of Birth:' : 'Ngày Sinh:'}</span>
+                        <span style={{ fontWeight: 500, color: '#334155' }}>
+                          {student.dob || student.dateOfBirth || (isEnglish ? 'Not updated' : 'Chưa cập nhật')}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#64748b' }}>🚻 {isEnglish ? 'Gender:' : 'Giới Tính:'}</span>
+                        <Tag
+                          color={student.gender === 'Nữ' || student.gender === 'Female' ? 'magenta' : 'blue'}
+                          style={{ borderRadius: 4, fontSize: 11, margin: 0 }}
+                        >
+                          {student.gender || (isEnglish ? 'Not updated' : 'Chưa rõ')}
+                        </Tag>
+                      </div>
+
+                      {/* Hiển thị mục Tin Nhắn Từ Giáo Viên dành cho Giáo vụ / Ban giám đốc / Admin */}
+                      {canManageNotes && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2 }}>
+                          <span style={{ color: '#64748b' }}>
+                            📬 {isEnglish ? 'Teacher Notes:' : 'Tin nhắn từ GV:'}
+                          </span>
+                          <Button
+                            type={pendingNotesCount > 0 ? 'primary' : 'default'}
+                            danger={pendingNotesCount > 0}
+                            size="small"
+                            icon={<MessageOutlined />}
+                            onClick={() => setActiveNotesStudent(student)}
+                            data-testid={`btn-view-teacher-notes-${studentCode}`}
+                            style={{
+                              borderRadius: 6,
+                              height: 24,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              borderColor: pendingNotesCount > 0 ? undefined : '#cbd5e1',
+                            }}
+                          >
+                            {pendingNotesCount > 0
+                              ? (isEnglish ? `${pendingNotesCount} New Note(s)` : `${pendingNotesCount} Tin mới`)
+                              : studentNotes.length > 0
+                              ? (isEnglish ? `${studentNotes.length} Notes` : `${studentNotes.length} Tin nhắn`)
+                              : (isEnglish ? 'No Notes' : 'Chưa có')}
+                          </Button>
+                        </div>
+                      )}
+
+                      {!isTeacherRole && student.familyId && (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <span style={{ color: '#64748b' }}>🏡 {isEnglish ? 'Family Cluster:' : 'Cụm Gia Đình:'}</span>
                           <Tag color="purple" style={{ borderRadius: 4, fontSize: 10, margin: 0 }}>
@@ -487,7 +595,7 @@ export const StudentCardGrid = ({
                         </div>
                       )}
 
-                      {student.tuitionStatus && (
+                      {!isTeacherRole && student.tuitionStatus && (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <span style={{ color: '#64748b' }}>💰 {isEnglish ? 'Tuition Status:' : 'Học Phí:'}</span>
                           <Tag color={student.tuitionStatus === 'PAID' ? 'green' : 'volcano'} style={{ borderRadius: 4, fontSize: 10, margin: 0 }}>
@@ -511,21 +619,23 @@ export const StudentCardGrid = ({
                     }}
                   >
                     <Space size={6}>
-                      <Button
-                        size="small"
-                        icon={<IdcardOutlined />}
-                        onClick={() => {
-                          if (onViewStudent) {
-                            onViewStudent(student);
-                          } else {
-                            navigate(`/user-management/${studentCode}`);
-                          }
-                        }}
-                        data-testid={`btn-view-profile-${studentCode}`}
-                        style={{ borderRadius: 6, fontSize: 12, whiteSpace: 'nowrap' }}
-                      >
-                        {isEnglish ? 'Profile' : 'Hồ Sơ'}
-                      </Button>
+                      {!isTeacherRole && (
+                        <Button
+                          size="small"
+                          icon={<IdcardOutlined />}
+                          onClick={() => {
+                            if (onViewStudent) {
+                              onViewStudent(student);
+                            } else {
+                              navigate(`/user-management/${studentCode}`);
+                            }
+                          }}
+                          data-testid={`btn-view-profile-${studentCode}`}
+                          style={{ borderRadius: 6, fontSize: 12, whiteSpace: 'nowrap' }}
+                        >
+                          {isEnglish ? 'Profile' : 'Hồ Sơ'}
+                        </Button>
+                      )}
 
                       {canManage && (
                         <Button
@@ -546,20 +656,22 @@ export const StudentCardGrid = ({
                       )}
                     </Space>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>
-                        {isActive ? (isEnglish ? 'Active' : 'Đang học') : (isEnglish ? 'Paused' : 'Tạm dừng')}
-                      </span>
-                      <Tooltip title={!canChangeStatus ? (isEnglish ? 'You do not have permission to change status' : 'Bạn không có quyền đổi trạng thái') : undefined}>
-                        <Switch
-                          size="small"
-                          checked={isActive}
-                          disabled={!canChangeStatus}
-                          onChange={(checked) => handleToggle(student, checked)}
-                          data-testid={`switch-status-student-${studentCode}`}
-                        />
-                      </Tooltip>
-                    </div>
+                    {!isTeacherRole && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                          {isActive ? (isEnglish ? 'Active' : 'Đang học') : (isEnglish ? 'Paused' : 'Tạm dừng')}
+                        </span>
+                        <Tooltip title={!canChangeStatus ? (isEnglish ? 'You do not have permission to change status' : 'Bạn không có quyền đổi trạng thái') : undefined}>
+                          <Switch
+                            size="small"
+                            checked={isActive}
+                            disabled={!canChangeStatus}
+                            onChange={(checked) => handleToggle(student, checked)}
+                            data-testid={`switch-status-student-${studentCode}`}
+                          />
+                        </Tooltip>
+                      </div>
+                    )}
                   </div>
                 </Card>
               </Col>
@@ -567,6 +679,27 @@ export const StudentCardGrid = ({
           })}
         </Row>
       )}
+
+      {/* Modal Giáo viên gửi tin nhắn đến Giáo vụ */}
+      <TeacherContactAcademicModal
+        open={Boolean(activeContactStudent)}
+        student={activeContactStudent}
+        currentUser={currentUser}
+        onClose={() => setActiveContactStudent(null)}
+        onSuccess={() => {
+          setActiveContactStudent(null);
+          loadNotesStats();
+        }}
+      />
+
+      {/* Drawer Giáo vụ xem lịch sử tin nhắn của Giáo viên */}
+      <AcademicStudentNotesDrawer
+        open={Boolean(activeNotesStudent)}
+        student={activeNotesStudent}
+        currentUser={currentUser}
+        onClose={() => setActiveNotesStudent(null)}
+        onRefresh={() => loadNotesStats()}
+      />
     </div>
   );
 };

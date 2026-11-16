@@ -1,13 +1,13 @@
 {
   "name": "lakeducation",
   "private": true,
-  "version": "1.2.111",
+  "version": "1.2.140",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "dev:landing": "vite --config vite.landing.config.js --port 5174",
     "dev:erp": "vite --config vite.erp.config.js --port 5175",
-    "build": "node scripts/bump_build_version.js && vite build && vite build --config vite.landing.config.js && vite build --config vite.erp.config.js",
+    "build": "node scripts/bump_build_version.js && node scripts/verify_deployment_safety.mjs && vite build && vite build --config vite.landing.config.js && vite build --config vite.erp.config.js",
     "build:ci": "vite build && vite build --config vite.landing.config.js && vite build --config vite.erp.config.js",
     "build:landing": "vite build --config vite.landing.config.js",
     "build:erp": "vite build --config vite.erp.config.js",
@@ -20,9 +20,11 @@
     "test:emulator:seed": "LAK_USE_FIREBASE_EMULATOR=true node scripts/seed_local_emulator.js",
     "test:emulator:cleanup": "LAK_USE_FIREBASE_EMULATOR=true node scripts/cleanup_local_emulator.js",
     "clone:doc": "node scripts/sync_target_doc.js",
-    "deploy": "npm run build && firebase deploy --only hosting",
-    "deploy:landing": "npm run build:landing && firebase deploy --only hosting:landing",
-    "deploy:erp": "npm run build:erp && firebase deploy --only hosting:erp",
+    "deploy": "npm run build && firebase deploy --project prod --only hosting",
+    "deploy:prod": "npm run build && firebase deploy --project prod --only hosting",
+    "deploy:backup": "npm run build && firebase deploy --project backup --only hosting",
+    "deploy:backup:landing": "npm run build:landing && firebase deploy --project backup --only hosting:landing",
+    "deploy:backup:erp": "npm run build:erp && firebase deploy --project backup --only hosting:erp",
     "deploy:dev": "npm run build && firebase deploy --project dev --only hosting",
     "deploy:dev:landing": "npm run build:landing && firebase deploy --project dev --only hosting:landing",
     "deploy:dev:erp": "npm run build:erp && firebase deploy --project dev --only hosting:erp",
@@ -54,9 +56,9 @@
     "vite": "^8.2.2"
   },
   "buildMeta": {
-    "date": "20261115",
-    "dailySeq": 5,
-    "buildId": "2026111505v",
-    "updatedAt": "2026-11-15T06:56:06.281Z"
+    "date": "20261116",
+    "dailySeq": 4,
+    "buildId": "2026111604v",
+    "updatedAt": "2026-11-16T01:06:04.081Z"
   }
 }

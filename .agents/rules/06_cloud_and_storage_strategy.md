@@ -40,3 +40,32 @@ Toàn bộ dữ liệu file và các bản Backup/Archive của dự án nằm g
 └── 📁 06_CLASS_RECORDINGS_MATERIALS/       # Giáo trình PDF, Tài liệu giảng dạy & Video lớp Zoom
     └── 📁 2026/                            (ID: 1X7vGrwOCGspqSatOu-Ue21rL-sRsmrsS)
 ```
+
+
+---
+
+## 3. Phân Định 3 Dự Án Firebase Hosting & Cơ Chế Kết Nối Firestore Cách Ly Tuyệt Đối
+
+> **Kỷ luật bất biến:** Ứng dụng đã phát hành cho 520 học viên và 68 cán bộ/giáo viên thật. Tuyệt đối không để xảy ra trường hợp dữ liệu thử nghiệm trên máy lập trình viên (Localhost) hoặc Dev Hosting ghi nhầm vào Database Thật của Production!
+
+### 1. Bản Đồ Phân Tầng 3 Môi Trường:
+
+| Môi Trường | Tên Miền / Cổng Truy Cập | Database Firestore Kết Nối | Dấu Hiệu Nhận Diện Giao Diện | Mật Khẩu Chuẩn | Lệnh Deploy Độc Lập |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| **💻 Localhost (Dev)** | `http://localhost:3000`<br>`http://127.0.0.1:3000` | 🟡 **`lakeducation-dev`**<br>(Sandbox Thử Nghiệm) | 🟢 Banner xanh lá cây trên cùng:<br>`MÔI TRƯỜNG PHÁT TRIỂN • DỮ LIỆU DEV` | `@Bcd1234`<br>*(100% 55 tài khoản)* | *Không deploy (chạy local)* |
+| **🧪 Cloud Dev (Dev)** | `https://dev.lakeducation.edu.vn`<br>`https://lakeducation-dev-erp.web.app` | 🟡 **`lakeducation-dev`**<br>(Sandbox Thử Nghiệm) | 🟢 Banner xanh lá cây trên cùng:<br>`MÔI TRƯỜNG PHÁT TRIỂN • DỮ LIỆU DEV` | `@Bcd1234`<br>*(100% 55 tài khoản)* | `npm run deploy:dev` |
+| **🛡️ Backup (Dự Phòng)** | `https://bk.lakeducation.edu.vn`<br>`https://lakeducation-backup-erp.web.app` | 🟢 **`lakeducationdb`**<br>(Database Thật 100%) | ⚪ Không có banner dev<br>(Giao diện Production) | Mật khẩu Thật<br>(`LakEducation@2026` HV) | `npm run deploy:backup` |
+| **🚀 Production (Chính)** | `https://erp.lakeducation.edu.vn`<br>`https://lakeducation.edu.vn` | 🟢 **`lakeducationdb`**<br>(Database Thật 100%) | ⚪ Không có banner dev<br>(Giao diện Production) | Mật khẩu Thật<br>(`LakEducation@2026` HV) | `npm run deploy:prod` |
+
+### 2. Kỷ Luật Cách Ly Tuyệt Đối Localhost/Dev (`Strict Localhost/Dev Isolation Invariant`):
+1. **Localhost & Dev Domain:** Mặc định 100% kết nối vào sandbox `lakeducation-dev`. Mọi thao tác thêm/sửa/xóa chỉ tác động lên database thử nghiệm, hoàn toàn cách ly với Database Thật.
+2. **Quy chuẩn Mật khẩu Dev:** 100% (55/55 tài khoản) trên `lakeducation-dev` sử dụng mật khẩu chuẩn DEV **`@Bcd1234`**.
+3. **Quy chuẩn Mật khẩu Thật:** Trên Production và Backup, học viên sử dụng mật khẩu thật `LakEducation@2026`, cán bộ/giáo viên sử dụng mật khẩu cá nhân thật.
+
+### 3. Chốt Chặn Kiểm Toán Tự Động Fail-Closed Trước Khi Đóng Gói (`scripts/verify_deployment_safety.mjs`):
+- Tích hợp trực tiếp vào lệnh `npm run build`:
+  ```json
+  "build": "node scripts/bump_build_version.js && node scripts/verify_deployment_safety.mjs && vite build ..."
+  ```
+- Tự động kiểm tra 10 kịch bản giả lập runtime, assert mapping `.firebaserc` và scripts trong `package.json`.
+- Bất kỳ sai lệch cấu hình nào giữa 3 môi trường sẽ kích hoạt dừng khẩn cấp (Fail-Closed, Exit code 1) ngay tại bước 1, ngăn chặn triệt để mọi rủi ro deploy nhầm.

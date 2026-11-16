@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Table, Tag, Space, Rate, Button, Typography, Empty } from 'antd';
+import { Table, Tag, Space, Rate, Button, Typography, Empty, Popover } from 'antd';
 import {
   GlobalOutlined,
   SoundOutlined,
@@ -77,7 +77,32 @@ export const SessionEvaluationTable = ({ attendances }) => {
         title: isEnglish ? "Teacher's Feedback" : 'Nhận Xét Của Giáo Viên (English Feedback)',
         dataIndex: 'teacherFeedback',
         key: 'teacherFeedback',
-        render: (text) => <Text style={{ fontSize: 13, fontStyle: 'italic' }}>"{text}"</Text>,
+        width: 260,
+        render: (text) => {
+          if (!text) return <Text type="secondary">—</Text>;
+          const isLong = text.length > 70;
+          if (!isLong) {
+            return <Text style={{ fontSize: 13, fontStyle: 'italic' }}>"{text}"</Text>;
+          }
+          return (
+            <Popover
+              title={isEnglish ? "Teacher's Detailed Feedback" : 'Nhận Xét Chi Tiết Của Giáo Viên'}
+              content={
+                <div style={{ maxWidth: 360, lineHeight: 1.6, fontStyle: 'italic', padding: '4px 0' }}>
+                  "{text}"
+                </div>
+              }
+              trigger="click"
+            >
+              <div style={{ cursor: 'pointer' }} title={isEnglish ? 'Click to read full feedback' : 'Bấm để đọc toàn bộ nhận xét'}>
+                <Text style={{ fontSize: 13, fontStyle: 'italic' }}>"{text.slice(0, 65)}..."</Text>
+                <div style={{ color: '#1890ff', fontSize: 11, fontWeight: 600, marginTop: 2 }}>
+                  {isEnglish ? '🔍 Click for more details' : '🔍 Bấm để xem đầy đủ'}
+                </div>
+              </div>
+            </Popover>
+          );
+        },
       },
       {
         title: isEnglish ? 'Recorded Video' : 'Video Ghi Hình',

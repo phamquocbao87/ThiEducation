@@ -6,7 +6,13 @@ import { AuthProvider, useAuth } from './core/context/AuthContext';
 import { LanguageProvider, useLanguage } from './core/context/LanguageContext';
 import { AppLayout } from './core/layout/AppLayout';
 import { ProtectedRoute } from './core/router/ProtectedRoute';
-import { SITE_DOMAINS, APP_BUILD_VERSION_LABEL } from './core/config/siteConfig';
+import {
+  SITE_DOMAINS,
+  APP_BUILD_VERSION_LABEL,
+  enforceCanonicalDomain,
+  isBackupErpDomain,
+  isDevErpDomain,
+} from './core/config/siteConfig';
 import { MODULE_SLUGS, getModuleFromSlug, getSlugFromModule } from './shared/utils/slug';
 import { SystemLoginModal } from './modules/landing/components/SystemLoginModal';
 import { LocalDevelopmentBanner } from './core/layout/LocalDevelopmentBanner';
@@ -79,11 +85,16 @@ function ErpPortalLoginGate({ onLoginSuccess }) {
             ghost
             icon={<GlobalOutlined />}
             onClick={() => {
-              window.location.href = SITE_DOMAINS.LANDING_PRODUCTION;
+              const target = isBackupErpDomain()
+                ? SITE_DOMAINS.LANDING_BACKUP
+                : isDevErpDomain()
+                  ? SITE_DOMAINS.LANDING_DEV
+                  : SITE_DOMAINS.LANDING_PRODUCTION;
+              window.location.href = target;
             }}
             style={{ borderRadius: 8, color: '#ffffff', borderColor: 'rgba(255,255,255,0.45)' }}
           >
-            {isEnglish ? 'Landing Page (lakeducation.edu.vn)' : 'Trang Chủ (lakeducation.edu.vn)'}
+            {isEnglish ? 'Landing Page' : 'Trang Chủ'}
           </Button>
         </Space>
       </div>
@@ -92,15 +103,25 @@ function ErpPortalLoginGate({ onLoginSuccess }) {
         open={true}
         language={language}
         onCancel={() => {
-          window.location.href = SITE_DOMAINS.LANDING_PRODUCTION;
+          const target = isBackupErpDomain()
+            ? SITE_DOMAINS.LANDING_BACKUP
+            : isDevErpDomain()
+              ? SITE_DOMAINS.LANDING_DEV
+              : SITE_DOMAINS.LANDING_PRODUCTION;
+          window.location.href = target;
         }}
         onLoginSuccess={onLoginSuccess}
       />
 
-      <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>
-        <div>LAK EDUCATION (lakeducation.com) ©2026</div>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
-          {APP_BUILD_VERSION_LABEL}
+      <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.7)', fontSize: 12, maxWidth: 800, margin: '16px auto 0' }}>
+        <div style={{ fontWeight: 600, color: '#ffffff' }}>
+          {isEnglish ? 'LAK EDUCATION JSC — Internal Educational Management ERP Portal' : 'CÔNG TY CỔ PHẦN LAK EDUCATION — Cổng Thông Tin Quản Lý Đào Tạo & Khảo Thí'}
+        </div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>
+          {isEnglish ? 'Official Domain: erp.lakeducation.edu.vn • McGraw-Hill Wonders ELA Curriculum' : 'Tên miền chính thức: erp.lakeducation.edu.vn • Giáo trình chuẩn McGraw-Hill Wonders ELA'}
+        </div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
+          LAK EDUCATION (lakeducation.com) ©2026 • {APP_BUILD_VERSION_LABEL}
         </div>
       </div>
     </div>
@@ -299,6 +320,10 @@ function ErpRoutes() {
 }
 
 export default function ErpApp() {
+  React.useEffect(() => {
+    enforceCanonicalDomain();
+  }, []);
+
   return (
     <>
       <LocalDevelopmentBanner />

@@ -24,7 +24,26 @@ export default defineConfig({
             .replace('/src/main.jsx', '/src/main.landing.jsx')
             .replace(
               /<title>.*?<\/title>/,
-              '<title>LAK EDUCATION (lakeducation.edu.vn) — McGraw-Hill Wonders ELA (Kindergarten GK – Grade 5)</title>\n    <meta name="description" content="Chương trình phát triển năng lực ngôn ngữ bản ngữ Mỹ (ELA - McGraw-Hill Wonders) dành cho lứa tuổi Mầm non (GK) và Tiểu học (Grades 1–5) tại LAK EDUCATION." />'
+              `<title>LAK EDUCATION (lakeducation.edu.vn) — McGraw-Hill Wonders ELA (Kindergarten GK – Grade 5)</title>
+    <meta name="description" content="Chương trình phát triển năng lực ngôn ngữ bản ngữ Mỹ (ELA - McGraw-Hill Wonders) dành cho lứa tuổi Mầm non (GK) và Tiểu học (Grades 1–5) tại LAK EDUCATION." />
+    <meta name="author" content="CÔNG TY CỔ PHẦN LAK EDUCATION" />
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "EducationalOrganization",
+      "name": "CÔNG TY CỔ PHẦN LAK EDUCATION",
+      "url": "https://lakeducation.edu.vn",
+      "sameAs": "https://lakeducation.com"
+    }
+    </script>
+    <script>
+      (function() {
+        var h = window.location.hostname;
+        if (h === 'lakeducation.web.app' || h === 'lakeducation.firebaseapp.com') {
+          window.location.replace('https://lakeducation.edu.vn' + window.location.pathname + window.location.search + window.location.hash);
+        }
+      })();
+    </script>`
             );
         },
       },

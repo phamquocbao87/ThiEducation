@@ -1,14 +1,18 @@
-import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage, IS_FIREBASE_ENABLED } from '../../../core/services/firebase';
 import { BaseModuleService } from '../../../shared/services/BaseModuleService';
 import { CourseService } from '../../courses/services/CourseService';
+import { ClassService } from '../../courses/services/ClassService';
+import { NotificationService, NOTIFICATION_TYPES } from '../../../core/services/NotificationService';
+import { normalizeMaterialShares, SHARE_SCOPES, TARGET_TYPES } from '../models/material.model';
 
 export class MaterialService extends BaseModuleService {
   static COLLECTION_NAME = 'learning_materials';
 
   /**
    * Lấy toàn bộ tài liệu học tập từ Firestore (kết hợp từ Khóa học & Collection tài liệu)
+   * Đồng thời chuẩn hóa 100% đối tượng chia sẻ (normalizeMaterialShares)
    */
   static async getAllMaterials() {
     const materialsMap = new Map();
@@ -20,7 +24,7 @@ export class MaterialService extends BaseModuleService {
         const cMaterials = c.courseMaterials || [];
         cMaterials.forEach((m, idx) => {
           const matId = m.id || `mat_${c.id}_${idx}`;
-          materialsMap.set(matId, {
+          const normalized = normalizeMaterialShares({
             ...m,
             id: matId,
             courseId: c.id,
@@ -34,6 +38,7 @@ export class MaterialService extends BaseModuleService {
             description: m.description || '',
             uploadedAt: m.uploadedAt || new Date().toISOString(),
           });
+          materialsMap.set(matId, normalized);
         });
       });
     } catch (err) {
@@ -47,10 +52,11 @@ export class MaterialService extends BaseModuleService {
         snap.forEach((docSnap) => {
           const data = docSnap.data();
           if (!data.isDeleted) {
-            materialsMap.set(docSnap.id, {
+            const normalized = normalizeMaterialShares({
               ...data,
               id: docSnap.id,
             });
+            materialsMap.set(docSnap.id, normalized);
           }
         });
       } catch (err) {
@@ -160,7 +166,7 @@ export class MaterialService extends BaseModuleService {
   }
 
   /**
-   * Lưu hoặc Cập nhật tài liệu học tập (Đồng bộ 2 chiều 0ms với Khóa Học)
+   * Lưu hoặc Cập nhật tài liệu học tập (Đồng bộ 2 chiều 0ms với Khóa Học & Phân quyền chia sẻ)
    */
   static async saveMaterial(materialData, actor) {
     if (!materialData.title || !materialData.url) {
@@ -168,6 +174,8 @@ export class MaterialService extends BaseModuleService {
     }
 
     const materialId = materialData.id || `mat_${Date.now()}`;
+    const normalized = normalizeMaterialShares(materialData);
+
     const rawPayload = {
       description: '',
       fileName: '',
@@ -177,11 +185,12 @@ export class MaterialService extends BaseModuleService {
       courseName: 'Toàn Trung Tâm',
       visibility: 'ALL',
       type: 'PDF',
-      ...materialData,
+      ...normalized,
       id: materialId,
       uploadedAt: materialData.uploadedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       lastUpdatedBy: actor?.id || actor?.code || 'USER',
+      lastUpdatedByName: actor?.name || 'User',
       isDeleted: false,
     };
 
@@ -222,6 +231,324 @@ export class MaterialService extends BaseModuleService {
   }
 
   /**
+   * Chia sẻ tài liệu tới các đối tượng chỉ định (Học viên, Lớp học, Khóa học)
+   * Kèm gửi thông báo Realtime Notification tới chuông của người nhận
+   */
+  static async shareMaterialToTargets(materialId, newTargets = [], actor, { sendNotification = true } = {}) {
+    if (!materialId || !Array.isArray(newTargets) || newTargets.length === 0) return null;
+
+    let targetDoc = null;
+    if (IS_FIREBASE_ENABLED && db) {
+      try {
+        const docRef = doc(db, this.COLLECTION_NAME, materialId);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          targetDoc = { id: snap.id, ...snap.data() };
+        }
+      } catch (err) {
+        console.warn('[MaterialService.shareMaterialToTargets] Error fetching doc:', err.message);
+      }
+    }
+
+    if (!targetDoc) {
+      const all = await this.getAllMaterials();
+      targetDoc = all.find((m) => m.id === materialId);
+    }
+
+    if (!targetDoc) throw new Error('MATERIAL_NOT_FOUND');
+
+    const normalized = normalizeMaterialShares(targetDoc);
+    const existingShares = [...normalized.shares];
+    const sharedCourseIds = new Set(normalized.sharedCourseIds || []);
+    const sharedClassIds = new Set(normalized.sharedClassIds || []);
+    const sharedStudentIds = new Set(normalized.sharedStudentIds || []);
+
+    const now = new Date().toISOString();
+    const addedShares = [];
+
+    newTargets.forEach((t) => {
+      const { targetType, targetId, targetName } = t;
+      if (!targetType || !targetId) return;
+
+      const cleanId = String(targetId).trim();
+      const shareKey = `share_${targetType}_${cleanId}`;
+      const existingIdx = existingShares.findIndex(
+        (s) => s.targetType === targetType && String(s.targetId).trim() === cleanId
+      );
+
+      const shareEntry = {
+        id: shareKey,
+        targetType,
+        targetId: cleanId,
+        targetName: targetName || cleanId,
+        sharedAt: now,
+        sharedBy: actor?.id || actor?.code || 'USER',
+        sharedByName: actor?.name || 'Academic Coordinator',
+      };
+
+      if (existingIdx >= 0) {
+        existingShares[existingIdx] = shareEntry;
+      } else {
+        existingShares.push(shareEntry);
+        addedShares.push(shareEntry);
+      }
+
+      if (targetType === 'student') sharedStudentIds.add(cleanId);
+      if (targetType === 'class') sharedClassIds.add(cleanId);
+      if (targetType === 'course') sharedCourseIds.add(cleanId);
+    });
+
+    const updatedPayload = {
+      ...targetDoc,
+      shareScope: SHARE_SCOPES.CUSTOM.key,
+      sharedCourseIds: Array.from(sharedCourseIds),
+      sharedClassIds: Array.from(sharedClassIds),
+      sharedStudentIds: Array.from(sharedStudentIds),
+      shares: existingShares,
+      updatedAt: now,
+      lastUpdatedBy: actor?.id || actor?.code || 'USER',
+      lastUpdatedByName: actor?.name || 'User',
+    };
+
+    if (IS_FIREBASE_ENABLED && db) {
+      const docRef = doc(db, this.COLLECTION_NAME, materialId);
+      await setDoc(docRef, updatedPayload, { merge: true });
+    }
+
+    // Gửi thông báo Realtime đến người nhận
+    if (sendNotification && addedShares.length > 0) {
+      try {
+        await this._dispatchShareNotifications(updatedPayload, addedShares, actor);
+      } catch (notiErr) {
+        console.warn('[MaterialService] Error dispatching notifications:', notiErr);
+      }
+    }
+
+    return updatedPayload;
+  }
+
+  /**
+   * Xóa quyền truy cập (Revoke Access) của 1 đối tượng cụ thể khỏi tài liệu
+   * Cập nhật tức thì 0ms trên Firestore và bộ nhớ
+   */
+  static async revokeMaterialAccess(materialId, targetType, targetId, actor) {
+    if (!materialId || !targetType || !targetId) return null;
+
+    const cleanTargetId = String(targetId).trim();
+    let targetDoc = null;
+
+    if (IS_FIREBASE_ENABLED && db) {
+      try {
+        const docRef = doc(db, this.COLLECTION_NAME, materialId);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          targetDoc = { id: snap.id, ...snap.data() };
+        }
+      } catch (err) {
+        console.warn('[MaterialService.revokeMaterialAccess] Error fetching doc:', err.message);
+      }
+    }
+
+    if (!targetDoc) {
+      const all = await this.getAllMaterials();
+      targetDoc = all.find((m) => m.id === materialId);
+    }
+
+    if (!targetDoc) throw new Error('MATERIAL_NOT_FOUND');
+
+    const normalized = normalizeMaterialShares(targetDoc);
+    const updatedShares = normalized.shares.filter(
+      (s) => !(s.targetType === targetType && String(s.targetId).trim() === cleanTargetId)
+    );
+
+    const updatedCourses = normalized.sharedCourseIds.filter((cid) => cid !== cleanTargetId);
+    const updatedClasses = normalized.sharedClassIds.filter((cid) => cid !== cleanTargetId);
+    const updatedStudents = normalized.sharedStudentIds.filter((sid) => sid !== cleanTargetId);
+
+    const now = new Date().toISOString();
+    const updatedPayload = {
+      ...targetDoc,
+      shares: updatedShares,
+      sharedCourseIds: updatedCourses,
+      sharedClassIds: updatedClasses,
+      sharedStudentIds: updatedStudents,
+      updatedAt: now,
+      lastUpdatedBy: actor?.id || actor?.code || 'USER',
+      lastUpdatedByName: actor?.name || 'User',
+    };
+
+    if (IS_FIREBASE_ENABLED && db) {
+      const docRef = doc(db, this.COLLECTION_NAME, materialId);
+      await setDoc(docRef, updatedPayload, { merge: true });
+    }
+
+    return updatedPayload;
+  }
+
+  /**
+   * Helper phát thông báo chuông Realtime khi chia sẻ tài liệu
+   */
+  static async _dispatchShareNotifications(material, addedShares = [], actor) {
+    const allRecipientUserIds = new Set();
+    let allClasses = [];
+    try {
+      allClasses = await ClassService.getAllClasses();
+    } catch {
+      allClasses = [];
+    }
+
+    for (const share of addedShares) {
+      if (share.targetType === 'student') {
+        allRecipientUserIds.add(share.targetId);
+      } else if (share.targetType === 'class') {
+        const matchedClass = allClasses.find((c) => c.id === share.targetId);
+        if (matchedClass) {
+          if (Array.isArray(matchedClass.studentIds)) {
+            matchedClass.studentIds.forEach((sid) => allRecipientUserIds.add(sid));
+          }
+          if (matchedClass.teacherId) {
+            allRecipientUserIds.add(matchedClass.teacherId);
+          }
+        }
+      } else if (share.targetType === 'course') {
+        const courseClasses = allClasses.filter((c) => c.courseId === share.targetId);
+        courseClasses.forEach((cls) => {
+          if (Array.isArray(cls.studentIds)) {
+            cls.studentIds.forEach((sid) => allRecipientUserIds.add(sid));
+          }
+        });
+      }
+    }
+
+    // Gửi thông báo đến từng người dùng
+    for (const recipientId of allRecipientUserIds) {
+      try {
+        const noti = await NotificationService.sendNotification({
+          recipientId,
+          type: NOTIFICATION_TYPES.MATERIAL_SHARED || 'MATERIAL_SHARED',
+          title: `Tài liệu mới: ${material.title}`,
+          message: `Bạn vừa được chia sẻ tài liệu học tập "${material.title}". Nhấn để xem ngay.`,
+          actionUrl: `/learning-materials?materialId=${material.id}`,
+          metadata: {
+            materialId: material.id,
+            materialTitle: material.title,
+            shareScope: material.shareScope,
+          },
+          createdBy: actor?.id || 'ACADEMIC',
+          createdByName: actor?.name || 'Giáo Vụ LAK',
+          createdByRole: actor?.role || 'academic',
+        });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('lak_notification_dispatched', { detail: noti }));
+        }
+      } catch (err) {
+        console.warn(`[Notification] Failed to send material noti to ${recipientId}:`, err.message);
+      }
+    }
+  }
+
+  /**
+   * Lọc và phân quyền tài liệu theo đúng Role và Phân quyền của Người Dùng (Access Invariant)
+   */
+  static getMaterialsForUser(allMaterials = [], user = null, userClasses = []) {
+    if (!Array.isArray(allMaterials)) return [];
+    if (!user) {
+      return allMaterials.filter((m) => {
+        const norm = normalizeMaterialShares(m);
+        return norm.shareScope === SHARE_SCOPES.ALL.key;
+      });
+    }
+
+    const userRole = user.role || 'student';
+    const userId = String(user.id || user.code || '').trim();
+
+    // 1. Admin, Director, Academic: Xem toàn bộ kho tài liệu
+    if (['admin', 'director', 'academic'].includes(userRole)) {
+      return allMaterials.map(normalizeMaterialShares);
+    }
+
+    // 2. Teacher (Giáo viên bản xứ)
+    if (userRole === 'teacher') {
+      const myTeachingClassIds = new Set(
+        (userClasses || [])
+          .filter((c) => c.teacherId === userId || c.teacherName === user.name)
+          .map((c) => c.id)
+      );
+      const myCourseIds = new Set(
+        (userClasses || [])
+          .filter((c) => c.teacherId === userId)
+          .map((c) => c.courseId)
+          .filter(Boolean)
+      );
+
+      return allMaterials.map(normalizeMaterialShares).filter((item) => {
+        if (item.isDeleted) return false;
+        // Xem tài liệu toàn trường hoặc nội bộ giáo viên
+        if (item.shareScope === SHARE_SCOPES.ALL.key || item.shareScope === SHARE_SCOPES.STAFF_ONLY.key) return true;
+        if (item.visibility === 'TEACHERS_ONLY' || item.visibility === 'ALL') {
+          if (!item.sharedClassIds?.length && !item.sharedStudentIds?.length && !item.sharedCourseIds?.length) return true;
+        }
+        // Xem tài liệu gán cho lớp mình dạy
+        if (item.sharedClassIds && item.sharedClassIds.some((cid) => myTeachingClassIds.has(cid))) return true;
+        // Xem tài liệu gán cho khóa mình dạy
+        if (item.sharedCourseIds && item.sharedCourseIds.some((cid) => myCourseIds.has(cid))) return true;
+        // Xem tài liệu do chính mình tải lên
+        if (item.lastUpdatedBy === userId) return true;
+        return false;
+      });
+    }
+
+    // 3. Student (Học viên)
+    if (userRole === 'student') {
+      const enrolledSet = new Set([
+        ...(Array.isArray(user.enrolledClassIds) ? user.enrolledClassIds : (user.classId ? [user.classId] : [])),
+      ]);
+      const myStudentClasses = (userClasses || []).filter(
+        (c) => enrolledSet.has(c.id) || (Array.isArray(c.studentIds) && c.studentIds.includes(userId))
+      );
+      const studentEnrolledClassIds = new Set([
+        ...enrolledSet,
+        ...myStudentClasses.map((c) => c.id),
+      ]);
+      const studentCourseIds = new Set([
+        ...(user.courseId ? [user.courseId] : []),
+        ...myStudentClasses.map((c) => c.courseId).filter(Boolean),
+      ]);
+
+      return allMaterials.map(normalizeMaterialShares).filter((item) => {
+        if (item.isDeleted) return false;
+        // Chặn tuyệt đối tài liệu nội bộ giáo viên
+        if (item.shareScope === SHARE_SCOPES.STAFF_ONLY.key || item.visibility === 'TEACHERS_ONLY') {
+          return false;
+        }
+        // 1. Tài liệu chia sẻ đích danh cho học viên này
+        if (item.sharedStudentIds && item.sharedStudentIds.includes(userId)) {
+          return true;
+        }
+        // 2. Tài liệu chia sẻ cho lớp học viên đang tham gia
+        if (item.sharedClassIds && item.sharedClassIds.some((cid) => studentEnrolledClassIds.has(cid))) {
+          return true;
+        }
+        // 3. Tài liệu chia sẻ cho khóa học viên đang học
+        if (item.sharedCourseIds && item.sharedCourseIds.some((cid) => studentCourseIds.has(cid))) {
+          return true;
+        }
+        // 4. Tài liệu công khai toàn trường không giới hạn lớp/học viên
+        if (
+          item.shareScope === SHARE_SCOPES.ALL.key &&
+          (!item.sharedClassIds || item.sharedClassIds.length === 0) &&
+          (!item.sharedStudentIds || item.sharedStudentIds.length === 0)
+        ) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    return [];
+  }
+
+  /**
    * Xóa tài liệu học tập (Bảo toàn dữ liệu & Đồng bộ xóa khỏi Khóa học)
    */
   static async deleteMaterial(materialId, courseId, actor) {
@@ -257,34 +584,33 @@ export class MaterialService extends BaseModuleService {
   /**
    * Bộ lọc đa chiều cho tài liệu (Tìm kiếm, Khóa học, Định dạng, Quyền xem)
    */
-  static filterMaterials(materials = [], { searchTerm = '', courseId = 'ALL', type = 'ALL', userRole = 'admin' } = {}) {
-    return materials.filter((item) => {
-      // 1. Phân quyền hiển thị (Học viên không xem tài liệu TEACHERS_ONLY)
-      if (userRole === 'student' && item.visibility === 'TEACHERS_ONLY') {
-        return false;
-      }
+  static filterMaterials(materials = [], { searchTerm = '', courseId = 'ALL', type = 'ALL', user = null, userRole = 'admin', userClasses = [] } = {}) {
+    const userScoped = this.getMaterialsForUser(materials, user || { role: userRole }, userClasses);
 
-      // 2. Lọc theo Khóa học
+    return userScoped.filter((item) => {
+      // 1. Lọc theo Khóa học
       if (courseId && courseId !== 'ALL') {
-        if (item.courseId !== courseId) return false;
+        if (item.courseId !== courseId && (!item.sharedCourseIds || !item.sharedCourseIds.includes(courseId))) {
+          return false;
+        }
       }
 
-      // 3. Lọc theo Phân loại học liệu
+      // 2. Lọc theo Phân loại học liệu
       if (type && type !== 'ALL') {
         if (item.type !== type) return false;
       }
 
-      // 4. Tìm kiếm từ khóa
+      // 3. Tìm kiếm từ khóa
       if (searchTerm && searchTerm.trim()) {
         const term = searchTerm.toLowerCase().trim();
         const matchTitle = (item.title || '').toLowerCase().includes(term);
         const matchCourse = (item.courseName || '').toLowerCase().includes(term);
         const matchDesc = (item.description || '').toLowerCase().includes(term);
-        if (!matchTitle && !matchCourse && !matchDesc) return false;
+        const matchShare = (item.shares || []).some((s) => (s.targetName || '').toLowerCase().includes(term));
+        if (!matchTitle && !matchCourse && !matchDesc && !matchShare) return false;
       }
 
       return true;
     });
   }
 }
-

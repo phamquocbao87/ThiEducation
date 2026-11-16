@@ -2,6 +2,7 @@ import React from 'react';
 import { Avatar, Badge, Button, Card, Rate, Tag, Tooltip, Typography } from 'antd';
 import { AlertOutlined, DesktopOutlined, EditOutlined, MessageOutlined, StarFilled, UserOutlined } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { useAuth } from '../../../core/context/AuthContext';
 import { ATTENTION_STATUS, PRESENCE } from '../models/classroom.model';
 
 const colors = { ONLINE: '#389e0d', OFFLINE: '#cf1322', UNMARKED: '#8c8c8c' };
@@ -22,6 +23,8 @@ export const StudentSeat = React.memo(({
   onRateStudent,
 }) => {
   const { t } = useLanguage();
+  const { currentUser } = useAuth();
+  const isTeacherRole = (currentUser?.role || '').toLowerCase() === 'teacher';
   const isDistracted = status === PRESENCE.ONLINE && attention === ATTENTION_STATUS.DISTRACTED;
   const borderColor = isCurrentStudent ? '#52c41a' : isDistracted ? '#fa8c16' : colors[status];
   const deskColor = isDistracted ? '#fa8c16' : colors[status];
@@ -175,7 +178,7 @@ export const StudentSeat = React.memo(({
           </Button>
         )}
 
-        {!canEdit && isDistracted && cleanPhone && (
+        {!canEdit && isDistracted && cleanPhone && !isTeacherRole && (
           <Button
             size="small"
             data-testid={`zalo-${student.id}`}

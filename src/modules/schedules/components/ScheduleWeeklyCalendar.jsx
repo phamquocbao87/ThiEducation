@@ -14,6 +14,7 @@ import {
 } from '@ant-design/icons';
 import { SESSION_STATUS } from '../models/schedules.model';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { useAuth } from '../../../core/context/AuthContext';
 import { detectMeetingPlatform } from '../../../shared/utils/meetingPlatformUtils';
 import { TimetableSlotService } from '../services/TimetableSlotService';
 
@@ -21,7 +22,12 @@ const { Text } = Typography;
 
 export const ScheduleWeeklyCalendar = ({ timetable, canCheckIn, onCheckIn }) => {
   const { isEnglish } = useLanguage();
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
+
+  // Học viên mở trước 10 phút, Giáo viên/Cán bộ mở trước 15 phút
+  const isStudent = currentUser?.role === 'student';
+  const leadMinutes = isStudent ? 10 : 15;
 
   // 1. Quản lý trạng thái tuần (offset = 0: Tuần hiện tại)
   const [weekOffset, setWeekOffset] = useState(0);
@@ -154,9 +160,11 @@ export const ScheduleWeeklyCalendar = ({ timetable, canCheckIn, onCheckIn }) => 
             </Tag>
           )}
 
-          {/* Quy định khóa 15 phút */}
+          {/* Quy định khóa 10 phút (học viên) hoặc 15 phút (giáo viên/cán bộ) */}
           <Tag color="cyan" style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, fontWeight: 500 }}>
-            ⏰ {isEnglish ? 'Meet & Check-in opens 15m before class' : 'Mở Meet & Điểm danh trước giờ học 15p'}
+            ⏰ {isEnglish
+              ? `Meet & Check-in opens ${leadMinutes}m before class`
+              : `Mở Meet & Điểm danh trước giờ học ${leadMinutes}p`}
           </Tag>
         </Space>
       </div>
@@ -256,7 +264,8 @@ export const ScheduleWeeklyCalendar = ({ timetable, canCheckIn, onCheckIn }) => 
                         day.dateObj,
                         item.startTime,
                         item.endTime,
-                        now
+                        now,
+                        leadMinutes
                       );
 
                       return (
@@ -445,8 +454,8 @@ export const ScheduleWeeklyCalendar = ({ timetable, canCheckIn, onCheckIn }) => 
                                           ? 'Class is live! Click to enter Meet now.'
                                           : 'Lớp đang diễn ra! Bấm để vào phòng Meet ngay.'
                                         : isEnglish
-                                        ? 'Class starts within 15 minutes. Meet is open!'
-                                        : 'Lớp sắp bắt đầu trong 15 phút. Phòng Meet đã mở!'
+                                        ? `Class starts within ${leadMinutes} minutes. Meet is open!`
+                                        : `Lớp sắp bắt đầu trong ${leadMinutes} phút. Phòng Meet đã mở!`
                                     }
                                   >
                                     <Button
@@ -511,8 +520,8 @@ export const ScheduleWeeklyCalendar = ({ timetable, canCheckIn, onCheckIn }) => 
                                 <Tooltip
                                   title={
                                     isEnglish
-                                      ? `Google Meet opens 15m before class (opens at ${timeState.unlockTimeStr} on ${day.shortDate})`
-                                      : `Link Google Meet chỉ mở trước giờ học 15 phút (mở lúc ${timeState.unlockTimeStr} ngày ${day.shortDate})`
+                                      ? `Google Meet opens ${leadMinutes}m before class (opens at ${timeState.unlockTimeStr} on ${day.shortDate})`
+                                      : `Link Google Meet chỉ mở trước giờ học ${leadMinutes} phút (mở lúc ${timeState.unlockTimeStr} ngày ${day.shortDate})`
                                   }
                                 >
                                   <span style={{ display: 'inline-block', cursor: 'not-allowed' }}>

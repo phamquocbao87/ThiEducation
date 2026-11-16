@@ -47,6 +47,13 @@ export const ClassLiveStatusModal = ({ visible, classData, onClose, role = 'acad
     message.success(isEnglish ? `Copied ${label} to clipboard!` : `Đã sao chép ${label} vào bộ nhớ tạm!`);
   };
 
+  const singleMeetingUrl = currentCls.zoomStudentLink || currentCls.zoomHostLink || currentCls.meetingLink;
+  const isSingleRoomLink =
+    !currentCls.zoomHostLink ||
+    !currentCls.zoomStudentLink ||
+    currentCls.zoomHostLink === currentCls.zoomStudentLink ||
+    singleMeetingUrl?.includes('meet.google.com');
+
   return (
     <Modal
       open={visible}
@@ -167,25 +174,40 @@ export const ClassLiveStatusModal = ({ visible, classData, onClose, role = 'acad
         </Row>
 
         <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-          {currentCls.zoomHostLink && (
-            <Button
-              type="primary"
-              icon={detectMeetingPlatform(currentCls.zoomHostLink).icon}
-              style={{ backgroundColor: '#1890ff', borderRadius: 8, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-              onClick={() => window.open(currentCls.zoomHostLink, '_blank')}
-            >
-              {isEnglish ? 'Open Room (Host)' : 'Mở Phòng (Host GV)'}
-            </Button>
-          )}
+          {isSingleRoomLink ? (
+            singleMeetingUrl && (
+              <Button
+                type="primary"
+                icon={detectMeetingPlatform(singleMeetingUrl).icon}
+                style={{ backgroundColor: '#1890ff', borderRadius: 8, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                onClick={() => window.open(singleMeetingUrl, '_blank')}
+              >
+                {isEnglish ? 'Join Online Classroom' : 'Vào Phòng Học Trực Tuyến'}
+              </Button>
+            )
+          ) : (
+            <>
+              {currentCls.zoomHostLink && (
+                <Button
+                  type="primary"
+                  icon={detectMeetingPlatform(currentCls.zoomHostLink).icon}
+                  style={{ backgroundColor: '#1890ff', borderRadius: 8, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => window.open(currentCls.zoomHostLink, '_blank')}
+                >
+                  {isEnglish ? 'Open Room (Host)' : 'Mở Phòng (Host GV)'}
+                </Button>
+              )}
 
-          {currentCls.zoomStudentLink && (
-            <Button
-              icon={detectMeetingPlatform(currentCls.zoomStudentLink).icon}
-              style={{ borderColor: '#52c41a', color: '#16a34a', borderRadius: 8, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-              onClick={() => window.open(currentCls.zoomStudentLink, '_blank')}
-            >
-              {isEnglish ? 'Join Meeting (Students)' : 'Link Tham Gia (Học Viên)'}
-            </Button>
+              {currentCls.zoomStudentLink && (
+                <Button
+                  icon={detectMeetingPlatform(currentCls.zoomStudentLink).icon}
+                  style={{ borderColor: '#52c41a', color: '#16a34a', borderRadius: 8, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => window.open(currentCls.zoomStudentLink, '_blank')}
+                >
+                  {isEnglish ? 'Join Meeting (Students)' : 'Link Tham Gia (Học Viên)'}
+                </Button>
+              )}
+            </>
           )}
 
           {currentCls.zaloGroupLink && (

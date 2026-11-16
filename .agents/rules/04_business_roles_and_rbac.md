@@ -48,6 +48,7 @@ Dự án **ThiEducation** vận hành theo mô hình **6 Vai Trò (Roles)** tác
 - **Phạm vi truy cập (Cô lập dữ liệu cá nhân 100% - Personal Scoped Access):**
   - Xem **Profile cá nhân** của mình.
   - Xem **Các lớp đang tham gia** và lịch học cá nhân (vào phòng học trực tuyến, xem lại video bài giảng).
+  - **Quy định Ngưỡng Mở Phòng Học Trực Tuyến & Meet/Check-in (`Schedule Lead Window`):** Phòng học trực tuyến (Meet / Zoom / Teams) và nút Vào Lớp chỉ mở khóa **trước giờ học 10 phút (`leadMinutes = 10`, 600s)** để tránh học viên vào quá sớm khi giáo viên chưa chuẩn bị xong phòng. Nhãn hiển thị: `Meet & Check-in opens 10m before class` (VI: `Mở Meet & Điểm danh trước giờ học 10p`) và `Opens 10m Before` (VI: `Phòng Mở Trước 10 Phút`). (Trong khi đó, Giáo viên và Cán bộ quản lý vẫn mở trước **15 phút** để chuẩn bị giáo án).
   - Truy cập **Phòng học trực quan (`/classroom/:classId`)** của lớp mình theo học ở chế độ Read-only: Xem vị trí bàn ngồi của mình (`[Ghế của con]`), bài đọc chuẩn bị trước (`studentPrep`), bài tập về nhà (`homework`), kho học liệu khóa học và **Phiếu Nhận Xét Buổi Học Dành Cho Con** (Student Report Card). Tuyệt đối không thấy các ghi chú nội bộ (`teacherNotes`) hay các buổi học nháp (`DRAFT`).
   - Xem và nộp **Bài tập (Homework / Assignments)** của mình.
   - Xem **Đánh giá & Nhận xét của giáo viên** dành riêng cho mình.
@@ -179,6 +180,52 @@ Dự án **ThiEducation** vận hành theo mô hình **6 Vai Trò (Roles)** tác
    - **NGHIÊM NGẶT BẢO MẬT QUYỀN RIÊNG TƯ (Zero Peer-Data Leakage):**
      * Trong giao diện của Học viên, Drawer lịch sử **CHỈ ĐƯỢC PHÉP** hiển thị mức độ chuyên cần, số sao và lời nhận xét của Thầy/Cô dành riêng cho chính học viên đó (`record.studentId === currentStudentId`).
      * Tuyệt đối ẩn toàn bộ danh sách, điểm số và nhận xét của các học viên khác trong cùng lớp học.
+
+---
+
+## 🔒 10. Kỷ Luật Thép Bảo Mật SĐT Học Viên Đối Với Giáo Viên & Cơ Chế Chuyển Tiếp Tin Nhắn Qua Giáo Vụ (Strict Teacher Student-Phone Privacy & Academic Relay Protocol)
+
+1. **Mục Tiêu & Nguyên Tắc Cốt Lõi:**
+   - Trong mô hình giáo dục trực tuyến LAK EDUCATION, **Giáo viên bản xứ (`teacher`)** chỉ tập trung vào công tác chuyên môn giảng dạy, đánh giá và nhận xét học sinh.
+   - Toàn bộ kênh liên lạc trực tiếp với Phụ huynh (qua Số điện thoại, Cuộc gọi thoại, Zalo) thuộc quyền quản lý và điều phối độc quyền của **Bộ phận Giáo Vụ (`academic`)** và **Ban Lãnh Đạo (`director`, `admin`)**.
+   - **QUY TẮC BẤT BIẾN:** Giáo viên tuyệt đối **KHÔNG ĐƯỢC THẤY** bất kỳ số điện thoại nào của học viên hay phụ huynh trên toàn bộ giao diện web của hệ thống.
+
+2. **Cơ Chế Chuyển Tiếp Tin Nhắn Sư Phạm Qua Giáo Vụ (`Academic Relay Protocol` & Silent Security):**
+   - **Giao diện Giáo viên (`/students`):**
+     * Ẩn toàn bộ SĐT phụ huynh, link mở chat Zalo và nút gọi điện thoại một cách tự nhiên (không dán nhãn bảo mật hay tag cấm đoán).
+     * Hiển thị nút bấm thân thiện **`Nhắn Tin`** (Tiếng Anh: **`Message`**).
+     * Khi nhấn nút, mở Modal `TeacherContactAcademicModal` trực diện, trang nhã: hiển thị Tên học viên, Tên phụ huynh, chọn danh mục phản ánh (Học tập, Chuyên cần, Kỷ luật, Đề xuất sư phạm), mức độ ưu tiên và nội dung nhắn gửi.
+     * **TUYỆT ĐỐI CẤM:** Không chèn Alert banner giải thích quy trình bảo mật hay phân bua lý do cấm giáo viên liên hệ phụ huynh.
+     * Dữ liệu được lưu trữ chuẩn mực vào Firestore collection `student_notes` qua `StudentNoteService`.
+   - **Giao diện Giáo Vụ & Ban Lãnh Đạo (`academic`, `director`, `admin`):**
+     * Hiển thị mục `📬 Tin nhắn từ GV` (`Teacher Notes`) trên từng thẻ học sinh với huy hiệu đếm số tin mới chưa xử lý (`pendingNotesCount`).
+     * Mở Drawer `AcademicStudentNotesDrawer` để xem toàn bộ lịch sử tin nhắn của Giáo viên theo thời gian thực, đánh dấu trạng thái xử lý (`PENDING` $\rightarrow$ `RELAYED_TO_PARENT`), sao chép nội dung và chủ động liên hệ phụ huynh qua Zalo/Call.
+
+3. **Chốt Chặn Đa Lớp Chống Rò Rỉ Số Điện Thoại Học Viên & Triệt Tiêu Nhãn Cảnh Báo:**
+   - **Che Mã Cụm Gia Đình (`student.familyId` / `user.familyId`):** Hệ thống tự động sinh `familyId = FAM_<sđt_phụ_huynh>`. Vì vậy, trên giao diện của Giáo viên, mã này bắt buộc được che hoàn toàn thành `🏡 Cụm Gia Đình: Có anh/chị em học cùng` (`Siblings Enrolled`).
+   - **Lọc Thanh Tìm Kiếm:** Loại bỏ các trường SĐT (`s.phone`, `s.phone2`, `s.phoneNumber`, `s.parentPhone`) khỏi danh sách `searchFields` khi `isTeacherRole === true`.
+   - **Ẩn Nút Hồ Sơ (`/user-management`):** Giáo viên không được cấp quyền xem trang hồ sơ quản trị người dùng.
+   - **Thời Khóa Biểu & Lớp Học (`ClassRosterDrawer`):** Cột liên hệ phụ huynh chỉ hiển thị tên phụ huynh, ẩn SĐT thô tự nhiên, không hiển thị tag bảo mật.
+   - **Điểm Danh & Đánh Giá (`StudentProfileDrawer`):** Chỉ hiển thị tên phụ huynh, ẩn SĐT thô tự nhiên, không hiển thị tag bảo mật.
+   - **Phòng Học Trực Tuyến Live Classroom (`StudentSeat`, `SessionEvaluationModal`):** Nút Zalo phụ huynh khi học sinh mất tập trung bị khóa đối với Giáo viên; 4 số cuối điện thoại trong bảng đánh giá sau giờ học được ẩn hoàn toàn đối với Giáo viên.
+
+4. **Kịch Bản Kiểm Toán Tự Động Định Kỳ (`scripts/audit_teacher_student_privacy.py`):**
+   - Trước khi release bất kỳ phiên bản nào, bắt buộc chạy kịch bản Playwright E2E tự động quét DOM toàn bộ các màn hình dưới quyền Giáo viên (`GV952`), đối chiếu trực tiếp với toàn bộ danh sách SĐT học viên thật trong Firestore để khẳng định 100% không rò rỉ dữ liệu.
+
+---
+
+## 🏫 11. Quy Chuẩn Cô Lập Lớp Học Theo Vai Trò Học Viên & Bảo Mật Học Phí Giáo Viên Trên Phân Hệ Khóa Học (`/courses-classes`)
+
+1. **Cô Lập Lớp Học Theo Vai Trò Học Viên (Student Class Scoping Invariant):**
+   - Trên `/courses-classes`, người dùng vai trò Học viên (`student`) **CHỈ ĐƯỢC PHÉP THẤY LỚP MÌNH ĐÃ GHI DANH** (`enrolledClassIds`, `studentIds`) hoặc lớp đang chờ phê duyệt đăng ký (`pendingStudentRequests`).
+   - Tuyệt đối ẩn 100% toàn bộ các lớp học khác của học viên khác để bảo vệ tính riêng tư và chống gây hoang mang cho người dùng.
+   - Nhãn số đếm trên Tab lớp học bắt buộc phản ánh chuẩn xác số lớp mà học viên được phép xem (`visibleClasses.length`), không lấy tổng `allClasses.length` của toàn trường.
+
+2. **Bảo Mật Học Phí Đối Với Giáo Viên Bản Xứ (Teacher Fee Privacy Guard):**
+   - Trên Tab Danh mục Khóa học (`CourseCatalogTab`) và Drawer Chi tiết khóa học (`CourseDetailDrawer`), giáo viên (`teacher`) **TUYỆT ĐỐI KHÔNG NHÌN THẤY BẤT KỲ LOẠI HỌC PHÍ NÀO** (`feePerMonth`, `totalCourseFee`, Card tím `Monthly Fee`, dòng `Full Course Tuition`).
+   - Khi ẩn học phí, 2 Card KPI còn lại (`Duration` và `Max Class Size`) tự động dàn đều 50/50 (`sm={12}`) và dòng `Study Frequency` trải dài `span={2}` để giao diện liền mạch thẩm mỹ, không để lại khoảng trống trơ trọi.
+   - Ban giám đốc (`director`), Giáo vụ (`academic`), IT Admin (`admin`), và Học viên (`student`) vẫn nhìn thấy đầy đủ học phí bình thường.
+
 
 
 

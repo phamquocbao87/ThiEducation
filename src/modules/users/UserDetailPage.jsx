@@ -167,6 +167,8 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
   const watchedEditEnrolledClassIds = useMemo(() => rawWatchedClassIds || [], [rawWatchedClassIds]);
   const isTargetStudent = watchedRole === USER_ROLES.STUDENT;
   const isGmail = isGmailAddress(watchedEmail);
+  const isTeacherRole = (currentUser?.role || '').toLowerCase() === 'teacher';
+  const shouldHidePhone = isTeacherRole && isTargetStudent && !isSelfProfile;
 
   // Kiểm tra trùng lịch học online thời gian thực trong chế độ Chỉnh sửa
   const editConflictInfo = useMemo(() => {
@@ -208,20 +210,21 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
       setUser(normalizedData);
 
       // Đọc danh sách lớp học thực tế từ Cloud Firestore qua ClassService để gắn vào Profile của GV / HV
+      let actualClasses = [];
       try {
-        const allClasses = await ClassService.getAllClasses();
+        actualClasses = await ClassService.getAllClasses();
         const targetCode = data.id || data.code;
         if (data.role === 'teacher') {
-          setLinkedClasses(allClasses.filter((c) => c.teacherId === targetCode));
+          setLinkedClasses(actualClasses.filter((c) => c.teacherId === targetCode));
         } else if (data.role === 'student') {
           const studentClassIds = Array.isArray(data.enrolledClassIds) ? data.enrolledClassIds : [];
-          setLinkedClasses(allClasses.filter((c) => 
+          setLinkedClasses(actualClasses.filter((c) => 
             (Array.isArray(c.studentIds) && c.studentIds.includes(targetCode)) ||
             studentClassIds.includes(c.id) ||
             studentClassIds.includes(c.classId)
           ));
         } else {
-          setLinkedClasses(allClasses);
+          setLinkedClasses(actualClasses);
         }
       } catch {
         setLinkedClasses([]);
@@ -240,9 +243,20 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
         setFamilyMembers([]);
       }
 
-      const initialEnrolled = Array.isArray(data.enrolledClassIds) && data.enrolledClassIds.length > 0
-        ? data.enrolledClassIds
-        : (data.classId ? [data.classId] : []);
+      // [FIX INCONSISTENCY]: Hợp nhất danh sách lớp thực tế của học viên từ cả enrolledClassIds VÀ studentIds của các lớp
+      const studentClassIdSet = new Set(
+        Array.isArray(data.enrolledClassIds) && data.enrolledClassIds.length > 0
+          ? data.enrolledClassIds
+          : (data.classId ? [data.classId] : [])
+      );
+      if (data.role === 'student' && Array.isArray(actualClasses)) {
+        actualClasses.forEach((cls) => {
+          if (Array.isArray(cls.studentIds) && (cls.studentIds.includes(data.id) || cls.studentIds.includes(data.code))) {
+            studentClassIdSet.add(cls.id);
+          }
+        });
+      }
+      const initialEnrolled = Array.from(studentClassIdSet);
 
       form.setFieldsValue({
         name: data.name || '',
@@ -887,7 +901,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                     <MailOutlined style={{ marginRight: 4 }} />
                     {user.email}
                   </span>
-                  {user.phoneNumber && (
+                  {!shouldHidePhone && user.phoneNumber && (
                     <span style={{ color: '#64748b', fontSize: 13, marginLeft: 6 }}>
                       <PhoneOutlined style={{ marginRight: 4 }} />
                       {user.phoneNumber}
@@ -1023,7 +1037,9 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                         </Space>
                       </Descriptions.Item>
                       <Descriptions.Item label={t('userDetail.fields.phone1')}>
-                        {user.phoneNumber ? (
+                        {shouldHidePhone ? (
+                          '—'
+                        ) : user.phoneNumber ? (
                           <a href={'tel:' + user.phoneNumber} style={{ color: '#0284c7' }}>
                             <PhoneOutlined style={{ marginRight: 6 }} />
                             {user.phoneNumber}
@@ -1031,7 +1047,9 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                         ) : '—'}
                       </Descriptions.Item>
                       <Descriptions.Item label={t('userDetail.fields.phone2')}>
-                        {user.secondaryPhone ? (
+                        {shouldHidePhone ? (
+                          '—'
+                        ) : user.secondaryPhone ? (
                           <a href={'tel:' + user.secondaryPhone} style={{ color: '#16a34a' }}>
                             <PhoneOutlined style={{ marginRight: 6 }} />
                             {user.secondaryPhone}
@@ -1041,7 +1059,11 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                       <Descriptions.Item label={t('userDetail.fields.family')}>
                         {user.familyId ? (
                           <Space size={6} wrap>
-                            <Tag color="cyan" style={{ fontWeight: 600 }}>{user.familyId}</Tag>
+                            <Tag color="cyan" style={{ fontWeight: 600 }}>
+                              {shouldHidePhone
+                                ? (isEnglish ? 'Siblings Enrolled' : 'Có anh/chị em học cùng')
+                                : user.familyId}
+                            </Tag>
                             {familyMembers.map((m) => (
                               <Tag
                                 key={m.id || m.code}
@@ -1339,7 +1361,9 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                             )}
                           </Descriptions.Item>
                           <Descriptions.Item label={isEnglish ? 'Parent Contact' : 'Phụ Huynh Liên Hệ'}>
-                            {user.parentName ? `${user.parentName} (${user.parentPhone || user.phoneNumber || '—'})` : (user.parentPhone || user.phoneNumber || '—')}
+                            {shouldHidePhone
+                              ? (user.parentName || (isEnglish ? 'Parent' : 'Phụ huynh'))
+                              : (user.parentName ? `${user.parentName} (${user.parentPhone || user.phoneNumber || '—'})` : (user.parentPhone || user.phoneNumber || '—'))}
                           </Descriptions.Item>
                         </Descriptions>
 

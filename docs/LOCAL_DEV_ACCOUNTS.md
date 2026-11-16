@@ -37,11 +37,12 @@
 ## 🎒 2. Danh Sách 15 Học Viên Thực Tế (`student`)
 
 > **Quy ước đăng nhập Học viên trên môi trường DEV:**  
-> - **Tên đăng nhập:** Số điện thoại phụ huynh đăng ký.  
-> - **Mật khẩu chuẩn DEV:** `@Bcd1234`  
+> - **Tên đăng nhập:** Số điện thoại phụ huynh đăng ký (Ví dụ: `0786436333`).  
+> - **Mật khẩu chuẩn môi trường DEV:** **`@Bcd1234`** *(100% 55 tài khoản trên DEV đều dùng mật khẩu này)*  
+> - **Mật khẩu môi trường Production thật:** `LakEducation@2026`  
 
-| STT | Mã Học Viên | Họ và tên | Tên tiếng Anh | Số điện thoại đăng nhập | Mật khẩu | Link Đăng Nhập 1-Click | Lớp học đang tham gia |
-| :---: | :---: | :--- | :---: | :---: | :---: | :--- | :--- |
+| STT | Mã Học Viên | Họ và tên | Tên tiếng Anh | Số điện thoại đăng nhập | Mật khẩu DEV | Link Đăng Nhập 1-Click | Lớp học đang tham gia |
+| :---: | :---: | :--- | :---: | :---: | :--- | :---: | :--- |
 | 1 | `HV151` | **Bui Truong Tuong Vi** | Vivian | `0786436333` | `@Bcd1234` | [Đăng nhập HV151](http://localhost:3000/?sso_uid=HV151) | `LH005` |
 | 2 | `HV235` | **Nguyen Le Khanh Trang** | Tracy | `0835556263` | `@Bcd1234` | [Đăng nhập HV235](http://localhost:3000/?sso_uid=HV235) | `LH005` |
 | 3 | `HV253` | **Nguyen Dang Thanh Nha** | Melissa | `0909005750` | `@Bcd1234` | [Đăng nhập HV253](http://localhost:3000/?sso_uid=HV253) | `LH005`, `LH002` |

@@ -5,6 +5,7 @@ import { useLanguage } from '../../../core/context/LanguageContext';
 import { PermissionService } from '../../../core/services/PermissionService';
 import { CourseService } from '../services/CourseService';
 import { ClassService } from '../services/ClassService';
+import { IS_STUDENT_ENROLLMENT_ENABLED } from '../models/courses.model';
 import { db } from '../../../core/services/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { NotificationService, NOTIFICATION_TYPES } from '../../../core/services/NotificationService';
@@ -122,13 +123,43 @@ export const useCoursesController = () => {
     return CourseService.filterCourses(courses, courseSearch);
   }, [courses, courseSearch]);
 
+  // Cô lập phạm vi lớp học theo Role (Data Scoping Invariant)
+  // Đối với học viên (role === 'student'): CHỈ ĐƯỢC THẤY LỚP MÌNH ĐÃ ĐĂNG KÝ HOẶC CHỜ DUYỆT
+  const scopedClasses = useMemo(() => {
+    if (currentUser?.role !== 'student') return classes;
+    const studentId = currentUser?.id || currentUser?.code;
+    const enrolledSet = new Set([
+      ...(Array.isArray(currentUser?.enrolledClassIds) ? currentUser.enrolledClassIds : []),
+      ...(currentUser?.classId ? [currentUser.classId] : []),
+    ]);
+
+    return classes.filter((cls) => {
+      if (cls.isDeleted || cls.status === 'Deleted') return false;
+      // 1. Lớp đã ghi danh / đã duyệt
+      if (enrolledSet.has(cls.id) || enrolledSet.has(cls.code)) return true;
+      if (Array.isArray(cls.studentIds) && cls.studentIds.includes(studentId)) return true;
+      // 2. Lớp đang chờ phê duyệt đăng ký
+      if (
+        Array.isArray(cls.pendingStudentRequests) &&
+        cls.pendingStudentRequests.some((r) =>
+          typeof r === 'object'
+            ? r.studentId === studentId || r.id === studentId
+            : r === studentId
+        )
+      ) {
+        return true;
+      }
+      return false;
+    });
+  }, [classes, currentUser]);
+
   const filteredClasses = useMemo(() => {
-    return ClassService.filterClasses(classes, {
+    return ClassService.filterClasses(scopedClasses, {
       keyword: classSearch,
       courseId: selectedCourseFilter,
       teacherId: selectedTeacherFilter,
     });
-  }, [classes, classSearch, selectedCourseFilter, selectedTeacherFilter]);
+  }, [scopedClasses, classSearch, selectedCourseFilter, selectedTeacherFilter]);
 
   const syncUpdatedClasses = async (updatedList, targetClassId = null) => {
     setClasses(updatedList);
@@ -447,6 +478,15 @@ export const useCoursesController = () => {
    * lấy đúng currentUser đang đăng nhập và khóa cứng không cho gửi trùng khi đang chờ phê duyệt.
    */
   const handleRequestEnrollClass = async (classId, customStudent = null) => {
+    if (!IS_STUDENT_ENROLLMENT_ENABLED) {
+      message.warning(
+        isEnglish
+          ? 'Online class enrollment is temporarily closed. Please contact Academic staff for class placement.'
+          : 'Chức năng tự đăng ký lớp học trực tuyến tạm thời đóng. Vui lòng liên hệ Giáo vụ để được xếp lớp!'
+      );
+      return;
+    }
+
     const currentStudentId = currentUser?.id || currentUser?.code;
     const matchedStudent = students.find((s) => s.id === currentStudentId);
     const studentActor =
@@ -671,6 +711,31 @@ export const useCoursesController = () => {
     );
   };
 
+  /**
+   * Giáo vụ / Admin gỡ Học viên khỏi lớp học (Đồng bộ 2 chiều tức thì 0ms)
+   */
+  const handleRemoveStudentFromClass = async (classId, studentId) => {
+    try {
+      const { updatedClasses } = await ClassService.removeStudentFromClass(classId, studentId, classes);
+      setClasses(updatedClasses);
+      const updatedRosterCls = updatedClasses.find((c) => c.id === classId);
+      if (updatedRosterCls && rosterClass?.id === classId) {
+        setRosterClass(updatedRosterCls);
+      }
+      message.success(
+        isEnglish
+          ? 'Student removed from class roster successfully!'
+          : 'Đã gỡ học viên khỏi danh sách lớp học thành công!'
+      );
+    } catch (err) {
+      message.error(
+        isEnglish
+          ? 'Failed to remove student from class: ' + err.message
+          : 'Lỗi gỡ học viên khỏi lớp: ' + err.message
+      );
+    }
+  };
+
   const handleDeleteCourse = async (courseId) => {
     const updated = courses.filter((c) => c.id !== courseId);
     setCourses(updated);
@@ -724,7 +789,7 @@ export const useCoursesController = () => {
     courses: filteredCourses,
     allCourses: courses,
     classes: filteredClasses,
-    allClasses: classes,
+    allClasses: currentUser?.role === 'student' ? scopedClasses : classes,
     teachers,
     allStudents: students,
     courseSearch,
@@ -757,6 +822,7 @@ export const useCoursesController = () => {
     handleRequestEnrollClass,
     handleApproveStudentRequest,
     handleRejectStudentRequest,
+    handleRemoveStudentFromClass,
     handleDeleteCourse,
     handleDeleteClass,
     handleClearAllData,

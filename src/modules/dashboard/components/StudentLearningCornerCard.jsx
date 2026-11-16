@@ -47,8 +47,8 @@ export const StudentLearningCornerCard = () => {
             </Title>
             <Text type="secondary" style={{ fontSize: 12 }}>
               {isEnglish
-                ? 'Top 4 US & international accredited ESL learning platforms'
-                : 'Top 4 nền tảng học tập bổ trợ ELA, STEM & Đọc hiểu chuẩn Mỹ'}
+                ? 'Top 4 US K-12 & Supplemental Learning Platforms'
+                : 'Top 4 nền tảng học tập bổ trợ chuẩn K-12 Hoa Kỳ'}
             </Text>
           </div>
         </Space>
@@ -98,10 +98,13 @@ export const StudentLearningCornerCard = () => {
                   fontWeight: 600,
                   borderColor: p.accentColor,
                   color: p.accentColor,
+                  whiteSpace: 'nowrap',
+                  minWidth: 70,
+                  flexShrink: 0,
                 }}
                 data-testid={`btn-launch-${p.id}`}
               >
-                {isEnglish ? 'Open' : 'Mở'}
+                <span style={{ whiteSpace: 'nowrap' }}>{isEnglish ? 'Open' : 'Mở'}</span>
               </Button>
             </div>
 

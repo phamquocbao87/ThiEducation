@@ -35,8 +35,14 @@ const isEmulatorRequested =
 const isDevDomain =
   typeof window !== 'undefined' &&
   (window.location.hostname.includes('lakeducation-dev') ||
+   window.location.hostname.includes('dev.lakeducation') ||
    window.location.hostname.includes('-dev') ||
    window.location.hostname.includes('qc'));
+
+const isExplicitDevFirebaseRequested =
+  viteEnv.VITE_USE_DEV_FIREBASE === 'true' || nodeEnv.LAK_USE_DEV_FIREBASE === 'true';
+const isExplicitProdFirebaseRequested =
+  viteEnv.VITE_USE_PROD_FIREBASE === 'true' || nodeEnv.LAK_USE_PROD_FIREBASE === 'true';
 
 // Localhost is always isolated from production. A non-local browser must never
 // connect to an emulator, even if a build variable was configured incorrectly.
@@ -45,7 +51,10 @@ if (isEmulatorRequested && typeof window !== 'undefined' && !isLocalhost) {
 }
 
 export const IS_LOCAL_EMULATOR = isLocalhost && isEmulatorRequested;
-export const IS_DEVELOPMENT_FIREBASE = ((isLocalhost || isDevDomain) && !IS_LOCAL_EMULATOR);
+// Môi trường Dev gồm: Localhost (mặc định), Domain Dev, hoặc cờ VITE_USE_DEV_FIREBASE
+// Môi trường Prod & Backup: Domain *.lakeducation.edu.vn, *.lakeducation-backup* hoặc cờ PROD
+export const IS_DEVELOPMENT_FIREBASE =
+  ((isLocalhost && !isExplicitProdFirebaseRequested) || isDevDomain || isExplicitDevFirebaseRequested) && !IS_LOCAL_EMULATOR;
 export const FIREBASE_RUNTIME_ENV = IS_LOCAL_EMULATOR
   ? 'local-emulator'
   : IS_DEVELOPMENT_FIREBASE
@@ -68,6 +77,17 @@ const developmentFirebaseConfig = {
   storageBucket: 'lakeducation-dev.firebasestorage.app',
   messagingSenderId: '609742112072',
   appId: '1:609742112072:web:076073076cf195752e9f7d',
+  ownerEmail: FIREBASE_OWNER_ACCOUNT,
+};
+
+export const backupFirebaseConfig = {
+  apiKey: 'AIzaSyDKYcd1l8ULRUvE6F5NY4R6AFpCp_5Bsvo',
+  authDomain: 'lakeducation-backup.firebaseapp.com',
+  projectId: 'lakeducation-backup',
+  storageBucket: 'lakeducation-backup.firebasestorage.app',
+  messagingSenderId: '621289402673',
+  appId: '1:621289402673:web:8e41d108cf2ff710e8c010',
+  measurementId: 'G-7BV5L3YS5B',
   ownerEmail: FIREBASE_OWNER_ACCOUNT,
 };
 

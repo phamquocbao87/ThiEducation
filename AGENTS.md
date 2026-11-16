@@ -63,16 +63,66 @@ ThiEducation/
        2. *Đang chờ duyệt (`pendingStudentRequests`):* Nút chuyển sang `Đã đăng ký — Chờ phê duyệt` (`disabled=true`, chặn đứng đăng ký trùng lặp), tiếp tục khóa thông tin Zoom.
        3. *Đã phê duyệt (`studentIds`):* Hiển thị `Đã duyệt đăng ký — Đã tham gia lớp học`, mở khóa toàn bộ Link Zoom & nhóm lớp cho học viên.
      - Phân hệ Thời Khóa Biểu Zoom (`src/modules/schedules/` — `/zoom-schedules`): Lịch học & thời khóa biểu phòng học trực tuyến Live Zoom Calendar View.
-6. **Kỷ Luật Bất Biến Về Phạm Vi Task & Đánh Giá Tác Động Bắt Buộc (Strict Scope Integrity & Mandatory Impact Assessment Invariant):**
+     - **Quy định Ngưỡng Mở Phòng Học Trực Tuyến & Meet/Check-in (`Schedule Lead Window`):**
+       * **Học viên (`student`):** Phòng Meet/Zoom và nút Vào Lớp chỉ mở khóa **trước giờ học đúng 10 phút (`leadMinutes = 10`, 600s)** để tránh học viên vào quá sớm khi giáo viên chưa chuẩn bị xong phòng. Nhãn hiển thị song ngữ: `⏰ Meet & Check-in opens 10m before class` (VI: `⏰ Mở Meet & Điểm danh trước giờ học 10p`), nút khóa: `Opens 10m Before` (VI: `Phòng Mở Trước 10 Phút`).
+       * **Giáo viên & Cán bộ (`teacher`, `academic`, `director`, `admin`):** Mở trước **15 phút (`leadMinutes = 15`, 900s)** để thầy cô chuẩn bị giáo án, tài liệu và điểm danh sớm.
+     - **Quy tắc Cô Lập Lớp Học Theo Vai Trò Học Viên (Student Class Scoping Invariant):**
+       * Trên `/courses-classes`, người dùng vai trò Học viên (`student`) **CHỈ ĐƯỢC THẤY LỚP MÌNH ĐÃ GHI DANH** (`enrolledClassIds`, `studentIds`) hoặc đang chờ duyệt (`pendingStudentRequests`).
+       * Tuyệt đối ẩn 100% toàn bộ các lớp học khác của học viên khác để bảo vệ tính riêng tư.
+       * Nhãn số đếm trên Tab lớp học bắt buộc phản ánh đúng số lớp học viên được phép xem (`visibleClasses.length`).
+     - **Quy tắc Bảo Mật Học Phí Đối Với Giáo Viên Bản Xứ (Teacher Fee Privacy Guard):**
+       * Trên Tab Danh mục Khóa học (`CourseCatalogTab`) và Drawer Chi tiết (`CourseDetailDrawer`), giáo viên (`teacher`) **TUYỆT ĐỐI KHÔNG NHÌN THẤY BẤT KỲ LOẠI HỌC PHÍ NÀO** (`feePerMonth`, `totalCourseFee`, Card tím `Monthly Fee`, dòng `Full Course Tuition`).
+       * Khi ẩn học phí, 2 Card KPI còn lại (`Duration` và `Max Class Size`) tự động dàn đều 50/50 (`sm={12}`) và dòng `Study Frequency` trải dài `span={2}` để giao diện liền mạch thẩm mỹ, không để lại khoảng trống trơ trọi.
+6. **Kỷ Luật Bất Biến Về Phạm Vi Task, Quy Trình 6 Bước Fix Bug Toàn Diện & Đánh Giá Tác Động (Strict 6-Step Bug-Fixing Protocol & Cross-Screen Audit Invariant):**
+   - **🚨 QUY TRÌNH 6 BƯỚC BẮT BUỘC KHI SẾP BẢO NÊU BUG HOẶC YÊU CẦU FIX LỖI (SẾP BẢO DIRECTIVE):**
+     * **Bước 1 — Tái hiện lỗi (Reproduce Bug):** Bắt buộc tái hiện chính xác lỗi trên môi trường thực tế (ghi nhận luồng thao tác, ảnh chụp màn hình, log lỗi hoặc viết script Playwright tái hiện), tuyệt đối không suy đoán mò mẫm.
+     * **Bước 2 — Quét & Rà soát Lỗi Tương Tự Trên Toàn Bộ Màn Hình Còn Lại (Cross-Screen Pattern-Wide Scan & Report):**
+       > **CHỈ ĐẠO CỐT LÕI CỦA SẾP BẢO:** Ngay sau khi tái hiện thành công lỗi tại màn hình A, Agent **BẮT BUỘC PHẢI QUÉT TOÀN DIỆN TẤT CẢ CÁC MÀN HÌNH, PHÂN HỆ VÀ 6 ROLES CÒN LẠI** (`Director`, `Academic`, `Teacher`, `Student`, `Accountant`, `Admin`) xem có xuất hiện pattern lỗi tương tự hay không (ví dụ: hardcode tiếng Việt khi ở giao diện tiếng Anh, lỗi ngữ pháp số nhiều `class/classes`, nút bấm thiếu `whiteSpace: nowrap`, layout flex bị co ép rớt chữ dọc...).
+       > Agent phải tổng hợp thành Báo cáo Rà Soát Lỗi Tương Tự (Cross-Screen Audit Report) trình Sếp Bảo, tuyệt đối không fix chắp vá riêng lẻ từng chỗ.
+     * **Bước 3 — Phân tích nguyên nhân gốc rễ (Root Cause Analysis):** Truy vết chính xác dòng code, component, state, service hoặc cấu trúc Firestore gây ra bug, chỉ rõ tại sao lỗi lại xảy ra trên toàn bộ các điểm tìm thấy.
+     * **Bước 4 — Đề xuất phương án sửa chữa đồng bộ (Proposed Synchronous Fix Solution):** Trình bày chi tiết cách fix sạch sẽ, tận gốc cho cả điểm chính lẫn các điểm tương tự phát hiện ở Bước 2; nêu rõ giải pháp kiến trúc thay vì vá tạm bợ.
+     * **Bước 5 — Đánh giá tác động & rủi ro hồi quy (Impact Assessment):** Liệt kê danh sách các module, component dùng chung, hooks, services và routes có khả năng bị ảnh hưởng; khẳng định rủi ro hồi quy (regression risk).
+     * **Bước 6 — Trình duyệt & Chờ Sếp Bảo xác nhận trước khi sửa (Mandatory Confirmation Gate):**
+       > **CẤM TỰ Ý SỬA CODE TRƯỚC KHI CÓ SỰ ĐỒNG Ý CỦA SẾP BẢO.**  
+       > Agent phải dừng lại, xuất trình rõ 5 bước trên trong câu trả lời hoặc Artifact, xin ý kiến xác nhận của Sếp Bảo. **CHỈ KHI SẾP BẢO CONFIRM / XÁC NHẬN** thì mới bắt đầu tiến hành sửa đổi code!
    - **Tuyệt đối không tự ý thay đổi chức năng khác khi chưa có yêu cầu / thông báo:**
      * Đang thực hiện sửa chữa, tối ưu hoặc phát triển cho chức năng A thì **CHỈ ĐƯỢC PHÉP THAO TÁC TRONG PHẠM VI CHỨC NĂNG A**.
      * Tuyệt đối **CẤM** tiện tay sửa đổi, refactor, đổi logic, xóa hoặc làm mới bất kỳ chức năng B nào khác khi chưa có yêu cầu rõ ràng từ Sếp Bảo hoặc chưa thông báo xin phép trước.
-   - **Quy trình 3 bước Đánh giá Tác động (Mandatory 3-Step Impact Assessment Protocol) trước khi code:**
-     * **Bước 1 — Xác định phạm vi ảnh hưởng (Impact Scope Analysis):** Phân tích rõ các file component, hook, service, model dữ liệu hoặc route nào sẽ bị tác động trực tiếp/gián tiếp.
-     * **Bước 2 — Đánh giá rủi ro hồi quy (Regression Risk & Breaking Change Check):** Phân tích xem thay đổi ở chức năng A có nguy cơ làm gãy (break), lỗi ngầm hoặc thay đổi hành vi các chức năng khác (B, C...) đang dùng chung component/service/state hay không.
-     * **Bước 3 — Báo cáo & Xin phép trước khi can thiệp (Notify & Approval Before Modifying Cross-cutting Code):** Nếu phát hiện chức năng B có lỗi hoặc việc sửa chức năng A buộc phải thay đổi component/service dùng chung (`src/shared/`, `src/core/`), Agent **BẮT BUỘC PHẢI DỪNG LẠI, BÁO CÁO RÕ VỀ IMPACT VÀ XIN Ý KIẾN SẾP BẢO**, chỉ khi Sếp đồng ý mới được đụng vào, tuyệt đối không được tự ý sửa ngầm.
    - **Kỷ luật Báo cáo Minh bạch Phạm vi (Scope Transparency):**
      * Sau khi hoàn thành, báo cáo phải nêu rõ danh sách file đã thay đổi, khẳng định các chức năng khác được bảo toàn nguyên vẹn 100% không bị ảnh hưởng.
+   - **Quy Chuẩn Kiểm Thử 3 Tầng Bắt Buộc (Mandatory 3-Tier Testing Protocol: Unit • Integrated • Stress):**
+     * Mọi tính năng phân quyền RBAC hoặc thay đổi logic cốt lõi bắt buộc phải trải qua 3 tầng kiểm thử trước khi báo cáo hoàn thành:
+       1. **Tầng 1 — Unit Test:** Kiểm tra độc lập thuật toán lọc dữ liệu, xử lý điều kiện biên với tập dữ liệu mock đa dạng (`scripts/test_courses_unit_and_scoping.mjs`).
+       2. **Tầng 2 — Integrated Test (Playwright E2E Headless):** Chạy kiểm thử đa vai trò (`student`, `teacher`, `admin`) trên trình duyệt Chromium thật kết nối database Cloud Firestore thật (`scripts/qc_integrated_test_courses_and_privacy.py`).
+       3. **Tầng 3 — Stress Test:** Kiểm tra chịu tải thuật toán trên tập dữ liệu lớn (500+ items qua 1.000 lượt gọi, benchmark $< 0.5\text{ms}$/lượt); kiểm tra chuyển đổi phiên liên tục chống rò rỉ cache/bộ nhớ; và assert Zero Overflow-X trên Mobile 390px (`scrollWidth <= innerWidth` — `scripts/qc_stress_test_courses_and_scoping.py`).
+7. **Kỷ Luật Bảo Mật Web, Chống Bot Phishing False-Positive & Ép Chuyển Hướng Canonical Domain (Anti-Phishing Hardening & Force Canonical Domain Invariant):**
+   - **Tuyệt đối không để xảy ra hiểu lầm Phishing trên tên miền phụ:**
+     * Subdomain `*.web.app` và `*.firebaseapp.com` bị các bot bảo mật (Google Safe Browsing) quét liên tục.
+     * **BẮT BUỘC:** Đặt inline script chuyển hướng 0ms (`window.location.replace`) ngay tại thẻ `<head>` của `dist/erp/index.html` và `dist/landing/index.html` để chuyển toàn bộ lưu lượng về tên miền thương hiệu chính thức: `https://erp.lakeducation.edu.vn` và `https://lakeducation.edu.vn`.
+   - **Quy chuẩn thiết kế Form Đăng nhập an toàn:**
+     * **Tách biệt 2 Tab riêng biệt:** Tab 1 "Tài Khoản LAK" (thuần túy SĐT/Email + Mật khẩu LAK; cấm tuyệt đối chứa logo hoặc chữ Google); Tab 2 "Google Workspace SSO" (nút chuẩn SSO, chú thích an toàn, cấm tuyệt đối chứa ô password).
+     * **CẤM TUYỆT ĐỐI:** Vẽ logo SVG 4 màu Google tự chế đặt trong cùng form hoặc nằm cạnh ô nhập Password nội bộ.
+   - **Tín hiệu pháp lý doanh nghiệp bắt buộc:**
+     * Bổ sung Schema.org JSON-LD `EducationalOrganization` và meta tác giả `CÔNG TY CỔ PHẦN LAK EDUCATION`.
+8. **Kỷ Luật Bất Biến Về Phân Tách 3 Tầng Multi-Hosting & Database Mapping Tuyệt Đối Không Nhầm Lẫn (Strict 3-Tier Multi-Hosting & Database Isolation Invariant):**
+   - **Bản Đồ Cố Định 3 Tầng Multi-Hosting:**
+     | Hệ Thống | Project ID (Firebase/GCP) | Hosting Sites / Targets | Tên Miền Hoạt Động | Database Firestore | Firebase Auth | Mục Đích Sử Dụng |
+     | :--- | :--- | :--- | :--- | :---: | :---: | :--- |
+     | **1. PRODUCTION (Chính thức)** | **`lakeducation`**<br>(`36575839783`, Blaze) | - `erp`: `lakeducation-erp-portal`<br>- `landing`: `lakeducation` | `https://erp.lakeducation.edu.vn`<br>`https://lakeducation.edu.vn`<br>*(Tạm chờ Google duyệt mở lại CDN)* | 🟢 **`lakeducationdb`**<br>(Database Thật 100%) | 🟢 `lakeducation`<br>(Gốc) | 520 học viên, 68 cán bộ/GV vận hành chính thức. |
+     | **2. BACKUP PRODUCTION (Dự phòng)** | **`lakeducation-backup`**<br>(`621289402673`, Spark) | - `erp`: `lakeducation-backup-erp`<br>- `landing`: `lakeducation-backup` | `https://bk.lakeducation.edu.vn`<br>`https://lakeducation-backup-erp.web.app`<br>`https://lakeducation-backup.web.app` | 🟢 **`lakeducationdb`**<br>(Database Thật 100%) | 🟢 `lakeducation`<br>(Authorized Domains) | Dự phòng trực tiếp khi Production chính có sự cố. Toàn bộ dữ liệu ghi thẳng vào DB thật. |
+     | **3. DEVELOPMENT (Môi trường Dev)** | **`lakeducation-dev`**<br>(`609742112072`, Spark) | - `erp`: `lakeducation-dev-erp`<br>- `landing`: `lakeducation-dev` | `https://dev.lakeducation.edu.vn`<br>`https://lakeducation-dev-erp.web.app`<br>`https://lakeducation-dev.web.app` | 🟡 **`lakeducation-dev`**<br>(DB Thử Nghiệm) | 🟡 `lakeducation-dev` | Môi trường Sandbox để IT kiểm thử tính năng mới mà không đụng dữ liệu thật. |
+   - **Kỷ Luật Cưỡng Chế Lệnh Deploy (`package.json`) — Cấm Tuyệt Đối Dùng Lệnh Chung Chung:**
+     * `npm run deploy:prod`: Chỉ đóng gói và deploy duy nhất lên Production `lakeducation`.
+     * `npm run deploy:backup`: Chỉ đóng gói và deploy duy nhất lên Backup `lakeducation-backup`.
+     * `npm run deploy:dev`: Chỉ đóng gói và deploy duy nhất lên Dev `lakeducation-dev`.
+     * `npm run deploy:all`: Deploy đồng thời cả 3 môi trường khi cần phát hành toàn diện.
+   - **Quy Tắc Quản Trị Authorized Domains Trên Firebase Auth:**
+     * Mọi domain của Production (`*.lakeducation.edu.vn`) và Backup (`bk.lakeducation.edu.vn`, `lakeducation-backup-erp.web.app`, `lakeducation-backup.web.app`) BẮT BUỘC phải nằm trong danh sách `authorizedDomains` của Firebase Auth project gốc `lakeducation` để đăng nhập Google OAuth mượt mà không lỗi `auth/unauthorized-domain`.
+   - **Quy Tắc Kết Nối Database & Cách Ly Tuyệt Đối (`src/core/services/firebase.js`):**
+     * **Production & Backup:** Mặc định 100% (cả chạy Production và Backup) đều kết nối trực tiếp vào Database Thật `lakeducationdb` của project `lakeducation`. Mật khẩu học viên là `LakEducation@2026`.
+     * **Localhost & Dev Sandbox:** Mặc định 100% chạy trên Localhost (`http://localhost:3000`) và Dev Domains (`lakeducation-dev-erp.web.app`, `dev.lakeducation.edu.vn`) **BẮT BUỘC kết nối vào Sandbox `lakeducation-dev`**, hiển thị banner xanh lá cây trên đỉnh màn hình, và 100% (55/55 tài khoản) đăng nhập bằng mật khẩu DEV chuẩn **`@Bcd1234`**. Tuyệt đối cấm để Localhost tự do chạm vào Database Thật.
+   - **Chốt Chặn Kiểm Toán Tự Động Fail-Closed Trước Khi Đóng Gói (`scripts/verify_deployment_safety.mjs`):**
+     * Tích hợp trực tiếp vào lệnh `npm run build`: Tự động kiểm tra 10 kịch bản giả lập runtime, assert mapping `.firebaserc` và scripts trong `package.json`. Nếu có bất kỳ sai lệch cấu hình nào giữa 3 môi trường, lệnh build lập tức FAIL ngay ở bước 1, ngăn chặn triệt để mọi rủi ro deploy nhầm.
 
 ---
 
@@ -119,6 +169,18 @@ ThiEducation/
        - **TUYỆT ĐỐI CẤM** tự ý tạo, hardcode hoặc seed dữ liệu mẫu/dữ liệu giả mạo người dùng, giáo viên, học viên (như tự ý gõ nhận xét, tự tạo bản ghi đánh giá buổi học, tự tạo bài tập giả danh giáo viên) khi Sếp Bảo chưa có yêu cầu rõ ràng.
        - **BẮT BUỘC DỌN SẠCH 100% (Strict Teardown Invariant):** Mọi kịch bản kiểm thử E2E tự động (Playwright, Python, Node.js script) nếu có phát sinh dữ liệu tạm để kiểm thử giao diện/API thì **BẮT BUỘC phải dọn sạch hoàn toàn (hard-delete / teardown sạch sẽ 100%)** ngay trong khối `finally` của script. Tuyệt đối cấm để rò rỉ bất kỳ bản ghi test nào (`e2e_`, `test_`, `att_`, `LIVE_`) vào Cloud Firestore thật.
        - **BẢO TOÀN TRẠNG THÁI TRỐNG THỰC TẾ (Authentic Empty State):** Nếu thực tế học viên chưa có đánh giá nào từ giáo viên thật, giao diện BẮT BUỘC phải hiển thị trạng thái Trống (Empty State) *"Chưa có bản đánh giá nào từ giáo viên"* / *"No session evaluations yet"*, cấm tự vẽ hoặc giữ lại dữ liệu test để lấp chỗ trống.
+     * **🚨 KỶ LUẬT THÉP BẢO MẬT SĐT HỌC VIÊN ĐỐI VỚI GIÁO VIÊN & CƠ CHẾ LIÊN HỆ QUA GIÁO VỤ (STRICT TEACHER STUDENT-PHONE PRIVACY & ACADEMIC RELAY PROTOCOL):**
+       - **Mục tiêu cốt lõi:** Giáo viên (`role === 'teacher'`) tuyệt đối **KHÔNG ĐƯỢC THẤY** số điện thoại học viên hoặc phụ huynh ở bất kỳ đâu trên toàn bộ hệ thống (kể cả trong bảng học viên, drawer danh sách lớp, drawer điểm danh, phòng học ảo Live Classroom, chi tiết hồ sơ).
+       - **Cơ chế Chuyển tiếp Tin nhắn qua Giáo vụ (`Academic Relay Protocol`):**
+         * Trên thẻ học viên (`/students`), thay vì hiển thị SĐT, link Zalo và nút Gọi điện, giao diện của Giáo viên chỉ hiển thị nhãn `🔒 Academic Privacy` / `🔒 Bảo mật qua Giáo vụ` và nút bấm **`Nhắn Giáo Vụ` (`Message Academic`)**.
+         * Bấm vào nút sẽ mở Modal [`TeacherContactAcademicModal.jsx`](file:///Volumes/DATA/projects/ThiEducation/src/modules/students/components/TeacherContactAcademicModal.jsx) cho phép Giáo viên chọn loại tin nhắn (Học tập, Chuyên cần, Thái độ, Góp ý khác), nội dung và độ ưu tiên. Tin nhắn được lưu vào collection `student_notes` qua [`StudentNoteService.js`](file:///Volumes/DATA/projects/ThiEducation/src/modules/students/services/StudentNoteService.js).
+         * Các vai trò Cán bộ (`academic`, `director`, `admin`) được mở quyền xem mục `📬 Tin nhắn từ GV` trên thẻ học sinh, hiển thị badge số lượng tin mới (`pendingNotesCount`) và mở [`AcademicStudentNotesDrawer.jsx`](file:///Volumes/DATA/projects/ThiEducation/src/modules/students/components/AcademicStudentNotesDrawer.jsx) để đọc, duyệt và liên hệ phụ huynh qua Zalo/Call để truyền đạt thông tin sư phạm.
+       - **Che giấu Đa Lớp Chống Rò Rỉ Số Điện Thoại:**
+         * *Mã Cụm Gia Đình (`familyId`):* Do hệ thống tự động sinh `familyId = FAM_<sđt_phụ_huynh>`, giao diện Giáo viên **BẮT BUỘC PHẢI CHE** mã này thành `🏡 Cụm Gia Đình: Có anh/chị em học cùng` (`Siblings Enrolled`).
+         * *Thanh Tìm Kiếm:* Loại bỏ `s.phone`, `s.phone2`, `s.phoneNumber`, `s.parentPhone` khỏi danh sách `searchFields` khi `isTeacherRole === true` để ngăn giáo viên dò tìm học sinh bằng SĐT.
+         * *Drawer Danh Sách Lớp (`ClassRosterDrawer`) & Điểm Danh (`StudentProfileDrawer`):* Thay thế toàn bộ số điện thoại bằng thẻ nhãn `🔒 Academic Privacy` / `🔒 Bảo mật qua Giáo vụ`.
+         * *Phòng Học Trực Tuyến (`StudentSeat`, `SessionEvaluationModal`):* Khóa nút Zalo phụ huynh trên ghế học sinh; che 4 số cuối SĐT trong bảng đánh giá buổi học đối với Giáo viên.
+       - **Kiểm toán Tự động:** Chạy `python3 scripts/audit_teacher_student_privacy.py` để quét tự động DOM toàn bộ màn hình với danh sách SĐT thật trong Firestore.
 5. **Chuẩn Đa Ngôn Ngữ (`Localization / i18n` — Mặc định Tiếng Anh `en`, Thứ hai Tiếng Việt `vi`):**
    - **Tập trung hóa 100% UI Labels vào 2 File Từ Điển Độc Lập:**
      * 🇬🇧 **Tiếng Anh (Mặc định):** [`src/core/i18n/locales/en.js`](file:///Volumes/DATA/projects/ThiEducation/src/core/i18n/locales/en.js)
@@ -143,6 +205,15 @@ ThiEducation/
    - **100% sử dụng ngôn ngữ nghiệp vụ sư phạm & quản trị giáo dục thuần túy.**
    - Chuẩn soạn thảo giáo trình dùng **`@tiptap/react`** (hỗ trợ chính thức React 19; không import riêng `extension-underline` vì StarterKit v3 đã tích hợp sẵn).
    - Khi hiển thị tóm tắt ngoài Card hoặc Table, **bắt buộc dùng hàm `stripHtml()`** để lọc sạch mã HTML.
+   - **Kỷ Luật Bảo Mật Ngầm & Giao Diện Tự Nhiên (Silent & Seamless Security Invariant):**
+     * **Cơ chế bảo mật phải diễn ra ngầm 100%:** Khi một vai trò không có quyền xem thông tin (ví dụ Giáo viên không được thấy SĐT phụ huynh) hoặc hành động được chuyển tiếp ngầm qua bộ phận khác (như Giáo vụ chuyển tin cho phụ huynh), giao diện **BẮT BUỘC PHẢI GIỮ TỰ NHIÊN VÀ TRỰC DIỆN**.
+     * **TUYỆT ĐỐI CẤM:**
+       1. Cấm hiển thị các nhãn/tag mang tính cấm đoán hoặc phân bua lý do kỹ thuật (như `🔒 Bảo mật qua Giáo vụ`, `🔒 Academic Privacy`, `🔒 Bị ẩn do phân quyền`).
+       2. Cấm đưa các Alert banner mô tả quy trình trung chuyển nội bộ vào Form thao tác (như *"Giáo viên không liên hệ trực tiếp với phụ huynh...", "Quy trình Bảo mật & Cầu nối..."*).
+       3. Cấm đặt tên nút mang tính phòng ban nội bộ (`Nhắn Giáo Vụ`); phải dùng từ ngữ giao tiếp tự nhiên: **`Nhắn Tin`** (`Message`), **`Gửi Tin Nhắn`** (`Send Message`).
+     * **Nguyên tắc hiển thị chuẩn:**
+       - Cột/Mục thông tin phụ huynh: Chỉ hiển thị `Phụ huynh: [Tên phụ huynh]`, ẩn SĐT thô một cách tự nhiên mà không cần dán nhãn bảo mật.
+       - Modal gửi tin nhắn: Chỉ hiển thị biểu mẫu sạch sẽ (Tên học viên, Tên phụ huynh, Phân loại, Mức độ ưu tiên, Nội dung tin nhắn).
    - **Phòng Vệ Đa Ngôn Ngữ Chống Rò Rỉ Mã Khóa Kỹ Thuật (Defensive i18n Guardrail):**
      * Hàm bọc `t(key, fallback)` tại `LanguageContext.jsx` bắt buộc chặn đứng mọi trường hợp i18next trả về tên khóa thô (`res === key`), lập tức kích hoạt chuỗi fallback nghiệp vụ song ngữ an toàn.
      * Trước khi bàn giao bất kỳ tính năng nào có i18n, bắt buộc chạy script đối soát đảm bảo 100% khóa mới đã được định nghĩa đầy đủ ở cả 2 tệp `src/core/i18n/locales/vi.js` và `en.js`.

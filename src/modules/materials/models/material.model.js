@@ -69,3 +69,96 @@ export const VISIBILITY_TYPES = {
   },
 };
 
+export const SHARE_SCOPES = {
+  ALL: {
+    key: 'ALL',
+    labelVi: 'Công Khai (Toàn Trường)',
+    labelEn: 'Public (Organization-wide)',
+    badgeColor: 'green',
+    descriptionVi: 'Tất cả giáo viên và học viên đều có thể xem và tải về',
+    descriptionEn: 'Accessible to all teachers and students in the system',
+  },
+  CUSTOM: {
+    key: 'CUSTOM',
+    labelVi: 'Tùy Chọn Chia Sẻ',
+    labelEn: 'Custom Sharing (Targeted)',
+    badgeColor: 'purple',
+    descriptionVi: 'Chỉ các Khóa học, Lớp học hoặc Học viên được chọn mới thấy',
+    descriptionEn: 'Restricted only to selected courses, classes or students',
+  },
+  STAFF_ONLY: {
+    key: 'STAFF_ONLY',
+    labelVi: 'Nội Bộ Giáo Viên & Giáo Vụ',
+    labelEn: 'Staff Only (Confidential)',
+    badgeColor: 'volcano',
+    descriptionVi: 'Chỉ Giáo viên, Giáo vụ, Ban Giám đốc và IT Admin được xem',
+    descriptionEn: 'Restricted to Teachers, Academic Staff, Director and IT Admin',
+  },
+};
+
+export const TARGET_TYPES = {
+  COURSE: {
+    key: 'course',
+    labelVi: 'Khóa Học',
+    labelEn: 'Course',
+    badgeColor: 'geekblue',
+    icon: 'ReadOutlined',
+  },
+  CLASS: {
+    key: 'class',
+    labelVi: 'Lớp Học',
+    labelEn: 'Class',
+    badgeColor: 'blue',
+    icon: 'TeamOutlined',
+  },
+  STUDENT: {
+    key: 'student',
+    labelVi: 'Học Viên',
+    labelEn: 'Student',
+    badgeColor: 'cyan',
+    icon: 'UserOutlined',
+  },
+};
+
+/**
+ * Chuẩn hóa đối tượng chia sẻ của một tài liệu học tập
+ */
+export const normalizeMaterialShares = (material = {}) => {
+  const sharedCourseIds = Array.isArray(material.sharedCourseIds)
+    ? material.sharedCourseIds.filter(Boolean)
+    : material.courseId && material.courseId !== 'ALL'
+    ? [material.courseId]
+    : [];
+
+  const sharedClassIds = Array.isArray(material.sharedClassIds)
+    ? material.sharedClassIds.filter(Boolean)
+    : material.classId
+    ? [material.classId]
+    : [];
+
+  const sharedStudentIds = Array.isArray(material.sharedStudentIds)
+    ? material.sharedStudentIds.filter(Boolean)
+    : [];
+
+  const shares = Array.isArray(material.shares) ? material.shares : [];
+
+  let scope = material.shareScope;
+  if (!scope) {
+    if (material.visibility === 'TEACHERS_ONLY') {
+      scope = SHARE_SCOPES.STAFF_ONLY.key;
+    } else if (sharedClassIds.length > 0 || sharedStudentIds.length > 0 || (sharedCourseIds.length > 0 && material.courseId !== 'ALL')) {
+      scope = SHARE_SCOPES.CUSTOM.key;
+    } else {
+      scope = SHARE_SCOPES.ALL.key;
+    }
+  }
+
+  return {
+    ...material,
+    shareScope: scope,
+    sharedCourseIds,
+    sharedClassIds,
+    sharedStudentIds,
+    shares,
+  };
+};

@@ -18,7 +18,7 @@ import { ExerciseAttemptService } from '../../exercises/services/ExerciseAttempt
  */
 export class StudentDashboardService extends BaseModuleService {
   /**
-   * 4 Nền tảng học tập quốc tế uy tín trong "Learning Corner"
+   * 4 Nền tảng học tập quốc tế uy tín trong "Learning Corner" (Top 4 US K-12 & Supplemental Learning Platforms)
    */
   static getLearningCornerPlatforms() {
     return [
@@ -26,11 +26,11 @@ export class StudentDashboardService extends BaseModuleService {
         id: 'acellus',
         name: 'Acellus Academy',
         url: 'https://www.acellusacademy.com/',
-        badge: 'STEM & ELA Videos',
+        badge: 'Accredited K-12',
         badgeColor: 'blue',
         accentColor: '#002d62',
-        tagline: 'Video bài giảng chuẩn Mỹ (K-12 Accredited)',
-        taglineEn: 'US Accredited ELA, Math & Science Video Lessons',
+        tagline: 'Trường trực tuyến & chương trình video chuẩn kiểm định K-12 Hoa Kỳ',
+        taglineEn: 'US Accredited K-12 Online School & Video Curriculum',
         description: 'Hệ thống học tập video tương tác chuẩn giáo dục Mỹ giúp củng cố ngữ pháp và tư duy khoa học.',
         descriptionEn: 'Interactive video lectures & vectored instruction adhering to US education standards.',
         iconEmoji: '🎓',
@@ -39,11 +39,11 @@ export class StudentDashboardService extends BaseModuleService {
         id: 'ixl',
         name: 'IXL Learning',
         url: 'https://www.ixl.com/',
-        badge: 'Grammar & Math',
+        badge: 'Comprehensive K-12 Curriculum',
         badgeColor: 'green',
         accentColor: '#16a34a',
-        tagline: 'Luyện tập cá nhân hóa Ngữ pháp & Từ vựng',
-        taglineEn: 'Personalized ELA Grammar & Reading Skills',
+        tagline: 'Luyện tập thích ứng cá nhân hóa cho Toán, ELA, Khoa học, Xã hội, Giáo trình Wonders và Luyện thi SAT/ACT',
+        taglineEn: 'Personalized, Adaptive Practice for Math, ELA, Science, SS, Textbooks (Wonders…), Test Prep (SAT, ACT, GED…)',
         description: 'Kho bài tập phân cấp thông minh theo năng lực giúp chuẩn hóa ngữ pháp và mở rộng vốn từ.',
         descriptionEn: 'Smart adaptive practice arena tailored to student diagnostic levels.',
         iconEmoji: '📘',
@@ -55,8 +55,8 @@ export class StudentDashboardService extends BaseModuleService {
         badge: 'Leveled Reading',
         badgeColor: 'orange',
         accentColor: '#ea580c',
-        tagline: 'Thư viện đọc sách phân cấp chuẩn thế giới',
-        taglineEn: 'World-Leading Leveled Reading & Quizzes',
+        tagline: 'Sách điện tử phân cấp tương tác & bài trắc nghiệm đọc hiểu',
+        taglineEn: 'Interactive Leveled eBooks & Reading Comprehension Quizzes',
         description: 'Kho sách đọc điện tử phong phú kèm file nghe audio bản xứ và bài trắc nghiệm đọc hiểu.',
         descriptionEn: 'Extensive eBook library with native read-aloud audio and comprehension quizzes.',
         iconEmoji: '📚',
@@ -65,11 +65,11 @@ export class StudentDashboardService extends BaseModuleService {
         id: 'khan',
         name: 'Khan Academy',
         url: 'https://www.khanacademy.org/',
-        badge: 'Self-Paced Practice',
+        badge: 'Self-Paced Learning',
         badgeColor: 'cyan',
         accentColor: '#0d9488',
-        tagline: 'Khóa học & bài tập bổ trợ miễn phí toàn cầu',
-        taglineEn: 'Free World-Class Education for Anyone, Anywhere',
+        tagline: 'Bài giảng video & luyện tập thành thạo miễn phí cho Toán, Khoa học & SAT',
+        taglineEn: 'Free Video Lessons & Mastery Practice for Math, Science & SAT',
         description: 'Nền tảng học tập phi lợi nhuận cung cấp các bài giảng ELA, khoa học và tư duy logic chất lượng cao.',
         descriptionEn: 'Self-paced mastery learning with thousands of interactive exercises.',
         iconEmoji: '🌐',
@@ -290,28 +290,17 @@ export class StudentDashboardService extends BaseModuleService {
 
   /**
    * Đọc 100% tài liệu học tập từ Cloud Firestore (`learning_materials` collection)
-   * Lọc theo khóa học / lớp học của học viên
+   * Lọc theo khóa học / lớp học và phân quyền đích danh của học viên (Access Invariant)
    * TUYỆT ĐỐI KHÔNG DÙNG DUMMY DATA.
    */
-  static async getStudentClassMaterials(myClasses = []) {
+  static async getStudentClassMaterials(myClasses = [], currentUser = null) {
     try {
       const allMaterials = await MaterialService.getAllMaterials();
-      const classCourseIds = new Set();
-      myClasses.forEach((c) => {
-        if (c.courseId) classCourseIds.add(c.courseId);
-        if (c.id) classCourseIds.add(c.id);
-      });
-
-      // Lọc tài liệu thuộc các lớp hoặc khóa học học viên đang tham gia
-      const matched = (allMaterials || []).filter((m) => {
-        if (m.isDeleted) return false;
-        if (m.courseId && classCourseIds.has(m.courseId)) return true;
-        if (m.classId && classCourseIds.has(m.classId)) return true;
-        return true; // Nếu chưa gán lớp thì cho phép truy cập tài nguyên ELA chung trong hệ thống
-      });
+      const userToFilter = currentUser || { role: 'student', enrolledClassIds: (myClasses || []).map((c) => c.id) };
+      const matched = MaterialService.getMaterialsForUser(allMaterials, userToFilter, myClasses);
 
       if (matched.length > 0) {
-        return matched.slice(0, 6);
+        return matched.slice(0, 10);
       }
     } catch (err) {
       console.warn('[StudentDashboardService] Lỗi lấy tài liệu từ MaterialService:', err.message);

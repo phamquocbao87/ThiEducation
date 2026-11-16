@@ -315,6 +315,7 @@ export default function ClassroomPage() {
                 cls={c.cls}
                 session={c.session}
                 now={c.now}
+                currentUser={currentUser}
                 onOpenRoom={c.canEdit ? () => c.markTeacherCheckIn('AUTO_HOST_OPEN') : undefined}
               />
             </FormSectionCard>

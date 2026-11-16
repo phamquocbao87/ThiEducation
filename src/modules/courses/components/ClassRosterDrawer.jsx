@@ -11,6 +11,7 @@ import {
   Row,
   Col,
   Card,
+  Tooltip,
 } from 'antd';
 import {
   UserOutlined,
@@ -36,6 +37,7 @@ import { ClassService } from '../services/ClassService';
 import { formatScheduleForViewer } from '../../../shared/utils/scheduleUtils';
 import { AdminAuditInfo } from '../../../shared/components/AdminAuditInfo';
 import { detectMeetingPlatform, MeetingPlatformBadge } from '../../../shared/utils/meetingPlatformUtils';
+import { findClassSession, getSessionTimer } from '../../../shared/utils/classSessionUtils';
 import { ClassAbsenceReportModal } from '../../attendance/components/ClassAbsenceReportModal';
 import { TeacherMeetingRoomModal } from './TeacherMeetingRoomModal';
 
@@ -125,14 +127,35 @@ export const ClassRosterDrawer = ({
           },
         ];
 
-  const studentZoomUrl =
+  const rawStudentZoomUrl =
     targetClass.zoomStudentLink ||
     targetClass.meetingLink ||
     'https://zoom.us/j/888999101';
-  const hostZoomUrl =
-    targetClass.zoomHostLink || studentZoomUrl.replace('/j/', '/s/') + '?role=host';
+  const studentZoomUrl = (rawStudentZoomUrl || '').replace(/^:\s*/, '').trim();
+  const rawHostZoomUrl =
+    targetClass.zoomHostLink || studentZoomUrl;
+  const hostZoomUrl = (rawHostZoomUrl || '').replace(/^:\s*/, '').trim();
+  const isSingleMeetingLink =
+    !targetClass.zoomHostLink ||
+    targetClass.zoomHostLink === studentZoomUrl ||
+    studentZoomUrl.includes('meet.google.com') ||
+    !targetClass.zoomHostLink.trim();
   const zaloUrl =
     targetClass.zaloGroupLink || 'https://zalo.me/g/lakeducation_class';
+
+  // Kiểm tra khung giờ buổi học (Schedule Lead Window Guard):
+  // - Học viên: Chỉ mở trước giờ học 10 phút (leadSeconds = 600) hoặc khi đang học
+  // - Cán bộ quản lý (canManage) / Giáo viên: Mở theo thẩm quyền
+  const classSession = targetClass ? findClassSession(targetClass, Date.now()) : null;
+  const classTimer = classSession ? getSessionTimer(classSession, Date.now()) : null;
+  const leadSeconds = isStudentRole ? 600 : 900;
+  const isRoomTimeOpen = Boolean(
+    classTimer && (
+      classTimer.state === 'live' ||
+      (classTimer.state === 'upcoming' && classTimer.startsIn <= leadSeconds)
+    )
+  );
+  const canJoinRoom = canManage || (isStudentRole ? (isAlreadyEnrolled && isRoomTimeOpen) : true);
 
   const columns = [
     {
@@ -300,24 +323,50 @@ export const ClassRosterDrawer = ({
             </Button>
           )}
           {canViewClassRoomLinks && (
-            <Button
-              icon={detectMeetingPlatform(canManage || isTeacherRole ? hostZoomUrl : studentZoomUrl).icon}
-              onClick={() =>
-                window.open(canManage || isTeacherRole ? hostZoomUrl : studentZoomUrl, '_blank')
-              }
-              style={{
-                height: 40,
-                borderRadius: 8,
-                borderColor: '#722ed1',
-                color: '#722ed1',
-                fontWeight: 500,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-              }}
-            >
-              {isEnglish ? 'Join Meeting Room' : 'Vào Phòng Học'}
-            </Button>
+            canJoinRoom ? (
+              <Button
+                icon={detectMeetingPlatform(canManage || isTeacherRole ? hostZoomUrl : studentZoomUrl).icon}
+                onClick={() =>
+                  window.open(canManage || isTeacherRole ? hostZoomUrl : studentZoomUrl, '_blank')
+                }
+                style={{
+                  height: 40,
+                  borderRadius: 8,
+                  borderColor: '#722ed1',
+                  color: '#722ed1',
+                  fontWeight: 500,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                {isEnglish ? 'Join Meeting Room' : 'Vào Phòng Học'}
+              </Button>
+            ) : (
+              <Tooltip
+                title={
+                  isEnglish
+                    ? 'Online classroom will automatically open 10 minutes before class starts'
+                    : 'Phòng học trực tuyến sẽ tự động mở trước giờ học 10 phút'
+                }
+              >
+                <Button
+                  disabled
+                  icon={<ClockCircleOutlined />}
+                  style={{
+                    height: 40,
+                    borderRadius: 8,
+                    background: '#f8fafc',
+                    borderColor: '#e2e8f0',
+                    color: '#64748b',
+                    fontWeight: 500,
+                    cursor: 'not-allowed',
+                  }}
+                >
+                  {isEnglish ? '⏰ Opens 10m Before' : '⏰ Phòng Mở Trước 10 Phút'}
+                </Button>
+              </Tooltip>
+            )
           )}
           {canManage && onEdit && (
             <Button
@@ -718,38 +767,91 @@ export const ClassRosterDrawer = ({
           )}
         </Descriptions.Item>
 
-        {!isStudentRole && (
+        {isSingleMeetingLink ? (
           <Descriptions.Item
-            label={isEnglish ? 'Zoom Link for Teacher (Host)' : 'Link Zoom Giáo Viên (Host)'}
+            label={isEnglish ? 'Online Classroom Link' : 'Link Phòng Học Trực Tuyến'}
             span={2}
           >
-            <a href={hostZoomUrl} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>
-              {hostZoomUrl}
-            </a>
+            {canViewClassRoomLinks ? (
+              canJoinRoom ? (
+                <Space size={8} style={{ flexWrap: 'wrap' }}>
+                  <MeetingPlatformBadge url={studentZoomUrl} size="small" />
+                  <a
+                    href={studentZoomUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ wordBreak: 'break-all', fontWeight: 600 }}
+                  >
+                    {studentZoomUrl}
+                  </a>
+                </Space>
+              ) : (
+                <Space size={8} style={{ flexWrap: 'wrap' }}>
+                  <MeetingPlatformBadge url={studentZoomUrl} size="small" />
+                  <Tag color="default" style={{ margin: 0 }}>
+                    🔒 {isEnglish ? 'Link opens 10m before class' : 'Link mở trước giờ học 10 phút'}
+                  </Tag>
+                </Space>
+              )
+            ) : (
+              <Text type="secondary">
+                {isEnglish
+                  ? '🔒 Classroom link will be unlocked once Academic approves your registration.'
+                  : '🔒 Link vào phòng học sẽ được mở khóa ngay khi Giáo vụ phê duyệt đăng ký của bạn.'}
+              </Text>
+            )}
           </Descriptions.Item>
-        )}
+        ) : (
+          <>
+            {!isStudentRole && (
+              <Descriptions.Item
+                label={isEnglish ? 'Host Meeting Link (Teacher)' : 'Link Phòng Học (Host Giáo Viên)'}
+                span={2}
+              >
+                <Space size={8} style={{ flexWrap: 'wrap' }}>
+                  <MeetingPlatformBadge url={targetClass.zoomHostLink} size="small" />
+                  <a href={targetClass.zoomHostLink} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>
+                    {targetClass.zoomHostLink}
+                  </a>
+                </Space>
+              </Descriptions.Item>
+            )}
 
-        <Descriptions.Item
-          label={isEnglish ? 'Zoom Link for Students (Join)' : 'Link Zoom Học Viên (Vào Học)'}
-          span={2}
-        >
-          {canViewClassRoomLinks ? (
-            <a
-              href={studentZoomUrl}
-              target="_blank"
-              rel="noreferrer"
-              style={{ wordBreak: 'break-all' }}
+            <Descriptions.Item
+              label={isEnglish ? 'Student Join Link' : 'Link Phòng Học (Học Viên)'}
+              span={2}
             >
-              {studentZoomUrl}
-            </a>
-          ) : (
-            <Text type="secondary">
-              {isEnglish
-                ? '🔒 Zoom classroom link will be unlocked once Academic approves your registration.'
-                : '🔒 Link vào phòng học Zoom sẽ được mở khóa ngay khi Giáo vụ phê duyệt đăng ký của bạn.'}
-            </Text>
-          )}
-        </Descriptions.Item>
+              {canViewClassRoomLinks ? (
+                canJoinRoom ? (
+                  <Space size={8} style={{ flexWrap: 'wrap' }}>
+                    <MeetingPlatformBadge url={studentZoomUrl} size="small" />
+                    <a
+                      href={studentZoomUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ wordBreak: 'break-all' }}
+                    >
+                      {studentZoomUrl}
+                    </a>
+                  </Space>
+                ) : (
+                  <Space size={8} style={{ flexWrap: 'wrap' }}>
+                    <MeetingPlatformBadge url={studentZoomUrl} size="small" />
+                    <Tag color="default" style={{ margin: 0 }}>
+                      🔒 {isEnglish ? 'Link opens 10m before class' : 'Link mở trước giờ học 10 phút'}
+                    </Tag>
+                  </Space>
+                )
+              ) : (
+                <Text type="secondary">
+                  {isEnglish
+                    ? '🔒 Classroom link will be unlocked once Academic approves your registration.'
+                    : '🔒 Link vào phòng học sẽ được mở khóa ngay khi Giáo vụ phê duyệt đăng ký của bạn.'}
+                </Text>
+              )}
+            </Descriptions.Item>
+          </>
+        )}
 
         <Descriptions.Item
           label={isEnglish ? 'Class Zalo Group Chat' : 'Link Nhóm Chat Zalo Của Lớp'}
@@ -890,6 +992,71 @@ export const ClassRosterDrawer = ({
         scroll={{ x: 600 }}
         style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0' }}
       />
+
+      {/* 7. Danh Sách Học Viên Học Thử (Trial Students) */}
+      {Array.isArray(targetClass.trialStudents) && targetClass.trialStudents.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <div style={{ marginBottom: 12 }}>
+            <Title level={5} style={{ margin: 0, color: '#d97706' }}>
+              <UserAddOutlined style={{ marginRight: 6, color: '#fa8c16' }} />
+              {isEnglish ? 'Trial Students' : 'Học Viên Học Thử'} (
+              {targetClass.trialStudents.length} {isEnglish ? 'students' : 'học viên'})
+            </Title>
+          </div>
+          <Table
+            dataSource={targetClass.trialStudents}
+            columns={[
+              {
+                title: isEnglish ? 'Student Name' : 'Họ & Tên',
+                key: 'name',
+                render: (_, r) => (
+                  <Space>
+                    <Avatar size="small" icon={<UserOutlined />} style={{ backgroundColor: '#fa8c16' }} />
+                    <div>
+                      <Text strong>{r.name}</Text>
+                      {r.englishName && (
+                        <Tag color="cyan" style={{ marginLeft: 6 }}>
+                          {r.englishName}
+                        </Tag>
+                      )}
+                    </div>
+                  </Space>
+                ),
+              },
+              {
+                title: isEnglish ? 'Gender' : 'Giới Tính',
+                dataIndex: 'gender',
+                key: 'gender',
+                render: (v) => (
+                  <Tag color={v === 'Nữ' || v === 'Female' ? 'magenta' : 'blue'}>
+                    {v || (isEnglish ? 'N/A' : 'Chưa rõ')}
+                  </Tag>
+                ),
+              },
+              {
+                title: isEnglish ? 'Parent Phone' : 'SĐT Phụ Huynh',
+                key: 'phone',
+                render: (_, r) => {
+                  const p = r.parentPhone || r.phone || '';
+                  if (!p) return <Text type="secondary">—</Text>;
+                  return isTeacherRole ? `***${p.replace(/\D/g, '').slice(-3)}` : p;
+                },
+              },
+              {
+                title: isEnglish ? 'Trial Date' : 'Ngày Học Thử',
+                dataIndex: 'trialDate',
+                key: 'trialDate',
+                render: (v) => <Tag color="orange">{v || (isEnglish ? 'Scheduled' : 'Theo lịch')}</Tag>,
+              },
+            ]}
+            rowKey={(r, idx) => r.id || `trial-${idx}`}
+            pagination={false}
+            size="small"
+            scroll={{ x: 500 }}
+            style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #fde68a' }}
+          />
+        </div>
+      )}
 
       {/* Modal Báo Vắng Mặt */}
       <ClassAbsenceReportModal

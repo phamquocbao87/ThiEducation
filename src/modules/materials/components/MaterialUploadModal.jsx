@@ -23,7 +23,7 @@ import {
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { useAuth } from '../../../core/context/AuthContext';
-import { MATERIAL_TYPES, VISIBILITY_TYPES } from '../models/material.model';
+import { MATERIAL_TYPES, SHARE_SCOPES, VISIBILITY_TYPES } from '../models/material.model';
 import { MaterialService } from '../services/MaterialService';
 
 const { Text } = Typography;
@@ -52,6 +52,8 @@ export const MaterialUploadModal = ({
   files = [],
   editingItem = null,
   courses = [],
+  classes = [],
+  students = [],
   loading = false,
   onSave,
   onSaveBatch,
@@ -60,6 +62,9 @@ export const MaterialUploadModal = ({
   const { isEnglish } = useLanguage();
   const { currentUser } = useAuth();
   const [form] = Form.useForm();
+
+  // Trạng thái chia sẻ phân quyền
+  const [shareScope, setShareScope] = useState('ALL');
 
   // Trạng thái tiến trình upload Firebase Storage
   const [uploading, setUploading] = useState(false);
@@ -92,6 +97,8 @@ export const MaterialUploadModal = ({
       setCompletedCount(0);
 
       if (editingItem) {
+        const itemScope = editingItem.shareScope || (editingItem.visibility === 'TEACHERS_ONLY' ? 'STAFF_ONLY' : ((editingItem.sharedClassIds?.length || editingItem.sharedStudentIds?.length) ? 'CUSTOM' : 'ALL'));
+        setShareScope(itemScope);
         form.setFieldsValue({
           title: editingItem.title || '',
           courseId: editingItem.courseId || 'ALL',
@@ -99,7 +106,9 @@ export const MaterialUploadModal = ({
           type: editingItem.type || 'PDF',
           url: editingItem.url || '',
           description: editingItem.description || '',
-          visibility: editingItem.visibility || 'ALL',
+          shareScope: itemScope,
+          sharedClassIds: editingItem.sharedClassIds || [],
+          sharedStudentIds: editingItem.sharedStudentIds || [],
         });
       } else if (isDirectFileUpload) {
         const firstFile = files[0];
@@ -108,23 +117,29 @@ export const MaterialUploadModal = ({
           ? `Bộ ${files.length} Tài Liệu Học Tập (${files[0].name.replace(/\.[^/.]+$/, '')}...)`
           : firstFile.name.replace(/\.[^/.]+$/, '');
 
+        setShareScope('ALL');
         form.resetFields();
         form.setFieldsValue({
           title: defaultTitle,
           courseId: courses[0]?.id || 'ALL',
           folderName: suggestedFolderName,
           type: detected,
-          visibility: 'ALL',
+          shareScope: 'ALL',
+          sharedClassIds: [],
+          sharedStudentIds: [],
           description: isMultiple ? `Đợt tải lên gồm ${files.length} tệp tài liệu số.` : '',
         });
       } else {
+        setShareScope('ALL');
         form.resetFields();
         form.setFieldsValue({
           title: '',
           courseId: courses[0]?.id || 'ALL',
           folderName: suggestedFolderName,
           type: 'PDF',
-          visibility: 'ALL',
+          shareScope: 'ALL',
+          sharedClassIds: [],
+          sharedStudentIds: [],
           url: 'https://drive.google.com/',
         });
       }
@@ -137,6 +152,37 @@ export const MaterialUploadModal = ({
     const courseLevel = selectedCourse ? (selectedCourse.level || selectedCourse.courseLevel || 'Standard') : 'All';
     const courseCode = selectedCourse ? (selectedCourse.code || selectedCourse.id) : 'ALL';
     const folderName = (values.folderName || suggestedFolderName).trim().replace(/[\\:*?"<>|]/g, '_');
+    const finalScope = values.shareScope || shareScope || 'ALL';
+    const sharedClassIds = finalScope === 'CUSTOM' ? (values.sharedClassIds || []) : [];
+    const sharedStudentIds = finalScope === 'CUSTOM' ? (values.sharedStudentIds || []) : [];
+    const sharedCourseIds = values.courseId && values.courseId !== 'ALL' ? [values.courseId] : [];
+
+    // Khởi tạo danh sách shares chi tiết ban đầu
+    const initialShares = [];
+    sharedClassIds.forEach((cid) => {
+      const c = classes.find((cls) => cls.id === cid);
+      initialShares.push({
+        id: `share_class_${cid}`,
+        targetType: 'class',
+        targetId: cid,
+        targetName: c ? c.name || c.id : cid,
+        sharedAt: new Date().toISOString(),
+        sharedBy: currentUser?.id || 'USER',
+        sharedByName: currentUser?.name || 'Academic',
+      });
+    });
+    sharedStudentIds.forEach((sid) => {
+      const s = students.find((stu) => stu.id === sid || stu.code === sid);
+      initialShares.push({
+        id: `share_student_${sid}`,
+        targetType: 'student',
+        targetId: sid,
+        targetName: s ? `${s.name} ${s.englishName ? `(${s.englishName})` : ''}` : sid,
+        sharedAt: new Date().toISOString(),
+        sharedBy: currentUser?.id || 'USER',
+        sharedByName: currentUser?.name || 'Academic',
+      });
+    });
 
     // 1. Trường hợp tải file kéo thả lên Firebase Storage
     if (isDirectFileUpload) {
@@ -182,7 +228,12 @@ export const MaterialUploadModal = ({
             courseName,
             courseLevel,
             courseCode,
-            visibility: values.visibility,
+            shareScope: finalScope,
+            sharedCourseIds,
+            sharedClassIds,
+            sharedStudentIds,
+            shares: initialShares,
+            visibility: finalScope === 'STAFF_ONLY' ? 'TEACHERS_ONLY' : 'ALL',
             description: values.description || '',
             isFirebaseStorage: true,
             uploadedAt: new Date().toISOString(),
@@ -224,6 +275,12 @@ export const MaterialUploadModal = ({
       courseName,
       courseLevel,
       courseCode,
+      shareScope: finalScope,
+      sharedCourseIds,
+      sharedClassIds,
+      sharedStudentIds,
+      shares: initialShares.length > 0 ? initialShares : (editingItem?.shares || []),
+      visibility: finalScope === 'STAFF_ONLY' ? 'TEACHERS_ONLY' : 'ALL',
     });
   };
 
@@ -474,20 +531,66 @@ export const MaterialUploadModal = ({
           />
         </Form.Item>
 
-        {/* Quyền xem */}
+        {/* Quyền xem & Phạm vi chia sẻ */}
         <Form.Item
-          name="visibility"
-          label={<strong>{isEnglish ? 'Access Permission' : 'Quyền Truy Cập & Hiển Thị'}</strong>}
+          name="shareScope"
+          label={<strong>{isEnglish ? 'Sharing Scope & Access Permission' : 'Phạm Vi Chia Sẻ & Quyền Truy Cập'}</strong>}
         >
-          <Radio.Group style={{ width: '100%' }}>
-            <Radio value={VISIBILITY_TYPES.ALL.key} style={{ display: 'block', marginBottom: 6 }}>
-              {isEnglish ? '🟢 Public (Visible to all Teachers and Students)' : '🟢 Công khai (Tất cả Giáo viên và Học viên đều thấy)'}
+          <Radio.Group
+            style={{ width: '100%' }}
+            value={shareScope}
+            onChange={(e) => setShareScope(e.target.value)}
+          >
+            <Radio value={SHARE_SCOPES.ALL.key} style={{ display: 'block', marginBottom: 6 }}>
+              {isEnglish ? '🟢 Public (Visible to all Teachers and Students)' : '🟢 Công khai (Tất cả Giáo viên và Học viên toàn trường)'}
             </Radio>
-            <Radio value={VISIBILITY_TYPES.TEACHERS_ONLY.key} style={{ display: 'block' }}>
-              {isEnglish ? '🔒 Teachers & Academic Only (Hidden from Students)' : '🔒 Nội bộ Giáo Viên & Giáo Vụ (Ẩn đối với Học viên)'}
+            <Radio value={SHARE_SCOPES.CUSTOM.key} style={{ display: 'block', marginBottom: 6 }}>
+              {isEnglish ? '🎯 Custom Targets (Restricted to selected classes or students)' : '🎯 Tùy chọn chia sẻ (Chỉ các Lớp học hoặc Học viên được chọn)'}
+            </Radio>
+            <Radio value={SHARE_SCOPES.STAFF_ONLY.key} style={{ display: 'block' }}>
+              {isEnglish ? '🔒 Staff Only (Teachers & Academic Staff only)' : '🔒 Nội bộ Giáo Viên & Giáo Vụ (Ẩn hoàn toàn với Học viên)'}
             </Radio>
           </Radio.Group>
         </Form.Item>
+
+        {/* Nếu chọn CUSTOM: Mở rộng trường chọn Lớp và Học viên */}
+        {shareScope === SHARE_SCOPES.CUSTOM.key && (
+          <div style={{ padding: '12px 14px', borderRadius: 10, background: '#faf5ff', border: '1px solid #d8b4fe', marginBottom: 16 }}>
+            <Form.Item
+              name="sharedClassIds"
+              label={<strong>{isEnglish ? 'Target Classes' : 'Lớp Học Áp Dụng (Tùy chọn)'}</strong>}
+              style={{ marginBottom: 12 }}
+            >
+              <Select
+                mode="multiple"
+                placeholder={isEnglish ? 'Select classes...' : 'Chọn các lớp học muốn share...'}
+                options={classes.map((c) => ({
+                  value: c.id,
+                  label: `${c.name || c.id} [${c.id}] • ${c.teacherName || 'GV'}`,
+                }))}
+                style={{ width: '100%' }}
+                maxTagCount="responsive"
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="sharedStudentIds"
+              label={<strong>{isEnglish ? 'Target Students' : 'Học Viên Đích Danh (Tùy chọn)'}</strong>}
+              style={{ marginBottom: 0 }}
+            >
+              <Select
+                mode="multiple"
+                placeholder={isEnglish ? 'Select specific students...' : 'Chọn các học viên đích danh muốn share...'}
+                options={students.map((s) => ({
+                  value: s.id || s.code,
+                  label: `${s.name} ${s.englishName ? `(${s.englishName})` : ''} [${s.code || s.id}]`,
+                }))}
+                style={{ width: '100%' }}
+                maxTagCount="responsive"
+              />
+            </Form.Item>
+          </div>
+        )}
       </Form>
     </Modal>
   );

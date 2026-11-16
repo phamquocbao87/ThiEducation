@@ -170,14 +170,21 @@
       * **Khoảng cách dọc:** Mọi `Form.Item` trong các trang chi tiết / đăng ký người dùng phải đặt `style={{ marginBottom: 14 }}` (hoặc tối đa `16px`), loại bỏ hoàn toàn khoảng hở thừa `24px` gây loãng giao diện trên màn hình Desktop.
       * **Chiều cao controls:** Các ô nhập liệu (`Input`, `Select`, `InputNumber`, `DatePicker`) cố định chuẩn Enterprise: `height: 38px - 40px`, `borderRadius: 8px`.
       * **Trục lưới cân xứng 50/50:** Mọi dòng 2 trường dữ liệu bắt buộc chia đều `Col xs={24} sm={12}` (50% / 50%) và lấp đầy 100% bề rộng cột để mép phải và mép trái thẳng hàng tuyệt đối.
-19. **Kỷ Luật Bất Biến Về Phạm Vi Task & Đánh Giá Tác Động Bắt Buộc (Strict Scope Integrity & Mandatory Impact Assessment Invariant):**
+19. **Kỷ Luật Bất Biến Về Phạm Vi Task, Quy Trình 6 Bước Fix Bug Toàn Diện & Đánh Giá Tác Động (Strict 6-Step Bug-Fixing Protocol & Cross-Screen Audit Invariant):**
+    - **🚨 QUY TRÌNH 6 BƯỚC BẮT BUỘC KHI SẾP BẢO NÊU BUG HOẶC YÊU CẦU FIX LỖI (SẾP BẢO DIRECTIVE):**
+      * **Bước 1 — Tái hiện lỗi (Reproduce Bug):** Bắt buộc tái hiện chính xác lỗi trên môi trường thực tế (ghi nhận luồng thao tác, ảnh chụp màn hình, log lỗi hoặc viết script Playwright tái hiện), tuyệt đối không suy đoán mò mẫm.
+      * **Bước 2 — Quét & Rà soát Lỗi Tương Tự Trên Toàn Bộ Màn Hình Còn Lại (Cross-Screen Pattern-Wide Scan & Report):**
+        > **CHỈ ĐẠO CỐT LÕI CỦA SẾP BẢO:** Ngay sau khi tái hiện thành công lỗi tại màn hình A, Agent **BẮT BUỘC PHẢI QUÉT TOÀN DIỆN TẤT CẢ CÁC MÀN HÌNH, PHÂN HỆ VÀ 6 ROLES CÒN LẠI** (`Director`, `Academic`, `Teacher`, `Student`, `Accountant`, `Admin`) xem có xuất hiện pattern lỗi tương tự hay không (ví dụ: hardcode tiếng Việt khi ở giao diện tiếng Anh, lỗi ngữ pháp số nhiều `class/classes`, nút bấm thiếu `whiteSpace: nowrap`, layout flex bị co ép rớt chữ dọc...).
+        > Agent phải tổng hợp thành Báo cáo Rà Soát Lỗi Tương Tự (Cross-Screen Audit Report) trình Sếp Bảo, tuyệt đối không fix chắp vá riêng lẻ từng chỗ.
+      * **Bước 3 — Phân tích nguyên nhân gốc rễ (Root Cause Analysis):** Truy vết chính xác dòng code, component, state, service hoặc cấu trúc Firestore gây ra bug, chỉ rõ tại sao lỗi lại xảy ra trên toàn bộ các điểm tìm thấy.
+      * **Bước 4 — Đề xuất phương án sửa chữa đồng bộ (Proposed Synchronous Fix Solution):** Trình bày chi tiết cách fix sạch sẽ, tận gốc cho cả điểm chính lẫn các điểm tương tự phát hiện ở Bước 2; nêu rõ giải pháp kiến trúc thay vì vá tạm bợ.
+      * **Bước 5 — Đánh giá tác động & rủi ro hồi quy (Impact Assessment):** Liệt kê danh sách các module, component dùng chung, hooks, services và routes có khả năng bị ảnh hưởng; khẳng định rủi ro hồi quy (regression risk).
+      * **Bước 6 — Trình duyệt & Chờ Sếp Bảo xác nhận trước khi sửa (Mandatory Confirmation Gate):**
+        > **CẤM TỰ Ý SỬA CODE TRƯỚC KHI CÓ SỰ ĐỒNG Ý CỦA SẾP BẢO.**  
+        > Agent phải dừng lại, xuất trình rõ 5 bước trên trong câu trả lời hoặc Artifact, xin ý kiến xác nhận của Sếp Bảo. **CHỈ KHI SẾP BẢO CONFIRM / XÁC NHẬN** thì mới bắt đầu tiến hành sửa đổi code!
     - **Nguyên tắc "Đang sửa A tuyệt đối không chạm B":**
       * Khi nhận yêu cầu sửa chữa, tối ưu hoặc làm mới chức năng A: AI Agent & Developer **CHỈ ĐƯỢC PHÉP THAO TÁC TRONG PHẠM VI CHỨC NĂNG A**.
       * Tuyệt đối **CẤM** tiện tay sửa đổi, refactor lại mã nguồn, đổi logic nghiệp vụ, xóa bỏ hoặc làm mới bất kỳ chức năng B nào khác nếu chưa có yêu cầu rõ ràng từ Sếp Bảo hoặc chưa thông báo xin phép trước.
-    - **Quy trình 3 bước Đánh giá Tác động (Mandatory Impact Assessment Protocol) trước khi code:**
-      * **Bước 1 — Phân tích phạm vi ảnh hưởng (Impact Scope Analysis):** Xác định rõ các file component, hook, service, model dữ liệu hoặc route nào sẽ bị tác động trực tiếp/gián tiếp.
-      * **Bước 2 — Đánh giá rủi ro hồi quy (Regression Risk & Breaking Change Check):** Phân tích xem thay đổi ở chức năng A có nguy cơ làm gãy (break), lỗi ngầm hoặc thay đổi hành vi các chức năng khác (B, C...) đang dùng chung component/service/state hay không.
-      * **Bước 3 — Báo cáo & Xin phép trước khi can thiệp (Notify & Approval Before Modifying Cross-cutting Code):** Nếu phát hiện chức năng B có lỗi hoặc việc sửa chức năng A buộc phải thay đổi component/service dùng chung (`src/shared/`, `src/core/`), Agent **BẮT BUỘC PHẢI DỪNG LẠI, BÁO CÁO RÕ VỀ IMPACT VÀ XIN Ý KIẾN SẾP BẢO**, chỉ khi Sếp đồng ý mới được đụng vào, tuyệt đối không được tự ý sửa ngầm.
     - **Báo cáo minh bạch phạm vi thay đổi:** Sau khi hoàn thành, báo cáo phải nêu rõ danh sách file đã thay đổi, khẳng định các chức năng khác được bảo toàn nguyên vẹn 100% không bị ảnh hưởng.
 20. **Quy Chuẩn Bất Biến Về Tập Trung Hóa 100% UI Labels Vào 2 File Từ Điển Ngôn Ngữ (`Centralized i18n Locales Invariant`):**
     - **Định vị 2 File Từ Điển Trung Tâm:**
@@ -188,6 +195,14 @@
       * Cấu trúc cây đối tượng (`namespaces`) giữa 2 file `en.js` và `vi.js` bắt buộc phải đối xứng 100% (`common`, `menus`, `roles`, `banners`, `pages`, `dashboard`, `users`, `userDetail`, `curriculum`, `courses`, `schedules`, `attendance`, `contracts`, `tuition`).
       * Các component giao diện gọi chuỗi thông qua `t('<namespace>.<key>')` từ `useLanguage()`.
       * **Bảo tồn Dữ liệu Nhập của Người Dùng (`User Input Data Integrity`):** Tên học viên, tên giáo viên, email, số điện thoại, ghi chú, nội dung mô tả khóa học do người dùng nhập vào **BẢO TOÀN NGUYÊN VẸN 100%**, tuyệt đối không chạy qua bộ dịch tự động làm biến dạng dữ liệu gốc.
+21. **Quy Chuẩn Kiểm Thử 3 Tầng Bắt Buộc Trước Khi Nghiệm Thu (Mandatory 3-Tier Testing Protocol: Unit • Integrated • Stress):**
+    - Mọi tính năng phân quyền RBAC, lọc dữ liệu hoặc can thiệp logic nghiệp vụ cốt lõi bắt buộc phải vượt qua đầy đủ 3 tầng kiểm thử trước khi bàn giao nghiệm thu cho Sếp Bảo:
+      * **Tầng 1 — Unit Test:** Kiểm tra độc lập thuật toán xử lý dữ liệu, kiểm tra các tập dữ liệu biên (Edge cases, Deleted records, Pending requests).
+      * **Tầng 2 — Integrated Test (Playwright E2E Headless):** Chạy kiểm thử tự động trên trình duyệt Chromium thật kết nối database Cloud Firestore thật, kiểm chứng góc nhìn thực tế của từng Role (`student`, `teacher`, `admin`, `academic`).
+      * **Tầng 3 — Stress Test:** 
+        1. *Chịu tải thuật toán (Data Scalability):* Chạy trên tập dữ liệu lớn ($500+$ items qua $1.000$ lượt gọi liên tục, benchmark $< 0.5\text{ms}$/lượt, zero memory leak).
+        2. *Cách ly đa phiên liên tục (Cross-Role Session Isolation):* Chuyển đổi tài khoản qua lại liên tục giữa các role để chứng minh state và cache không bị rò rỉ chéo.
+        3. *Kiểm toán tràn ngang giao diện (Zero Overflow-X Mobile 390px):* Assert `scrollWidth <= innerWidth` trên cả màn hình Desktop (1366px) và Mobile (390px).
 
 ---
 
@@ -302,6 +317,12 @@
    - Khi soạn/chỉnh sửa giáo án, hợp nhất "Khung Bài Học (Unit & Week)" và "Ngày Giảng Dạy Dự Kiến" thành 1 ô Dropdown TKB thông minh duy nhất (`select-schedule-session`) sinh tự động từ thời khóa biểu của lớp. Khi chọn buổi, tự động điền đồng bộ `sessionIndex`, `date`, `unitWeek`.
    - Trình soạn thảo mục tiêu bài học chuẩn sư phạm `SimpleObjectivesEditor.jsx` tích hợp các phím tắt 1-chạm nạp nhanh cấu trúc McGraw-Hill Wonders (`🎯 Question`, `📖 Reading`, `🔤 Phonics`, `💬 Words`, `🧩 Grammar`), bộ đếm số lượng mục tiêu/dòng thời gian thực và thanh công cụ Bold/Italic/Bullet trực quan.
 
+5. **Kỷ Luật Cửa Sổ Mở Phòng Học Trực Tuyến & Dịch Vụ Tập Trung (`Schedule Lead Window & TimetableSlotService`):**
+   - Mọi phân hệ hiển thị hoặc kiểm tra điều kiện vào phòng học trực tuyến (Google Meet / Zoom / Microsoft Teams) bắt buộc gọi qua `TimetableSlotService.getSessionTimingState(...)` với tham số `leadMinutes` động.
+   - **Học viên (`student`):** `leadMinutes = 10` (600s), nút vào phòng và link trực tuyến chỉ mở trước giờ học đúng 10 phút.
+   - **Giáo viên & Cán bộ (`teacher`, `academic`, `director`, `admin`):** `leadMinutes = 15` (900s) để thầy/cô vào phòng chuẩn bị giáo án, thiết bị và điểm danh sớm.
+   - Tuyệt đối cấm hardcode giá trị cứng `startsIn <= 900` hay `15 * 60 * 1000` tại các component view.
+
 ---
 
 ## 11. Quy Chuẩn Chỉ Nói Quy Trình Cho User & Phòng Vệ Rò Rỉ Mã Khóa i18n (`User Workflow Focus & Defensive i18n Guardrail Invariant`)
@@ -396,6 +417,83 @@
      * **Bước 1:** Bắt buộc xuất bản sao lưu kiểm toán snapshot lưu tại `docs/migration_audit_backup.json` (chứa ID, role, trạng thái mã hóa trước di trú).
      * **Bước 2:** Chạy kiểm toán idempotency (chỉ băm các document chưa có tiền tố `$2b$` hoặc `$2a$`).
      * **Bước 3:** Chạy bộ kiểm thử Playwright Headless Browser trên 6 kịch bản thực tế (Admin, Director, Teacher, Single Student, Family Cluster, Wrong Password Rejection) và xác nhận 100% PASS trước khi bàn giao.
+
+---
+
+## 15. Kỷ Luật Thiết Kế Giao Diện Tự Nhiên & Bảo Mật Ngầm (Natural User Interface & Silent Security Invariant)
+
+1. **Bảo Mật Ngầm Tuyệt Đối (Silent & Seamless Security Invariant):**
+   - Mọi cơ chế phân quyền, bảo vệ dữ liệu nhạy cảm hay trung chuyển thông tin giữa các vai trò (ví dụ: Teacher $\to$ Academic $\to$ Parent) **BẮT BUỘC PHẢI DIỄN RA DƯỚI NỀN (UNDER THE HOOD)**.
+   - Giao diện người dùng phải trông hoàn toàn tự nhiên, thân thiện và liền mạch như một tính năng thông thường.
+2. **Triệt Tiêu Hoàn Toàn Nhãn/Cảnh Báo Bảo Mật Thừa Thãi (Zero Security Disclaimers):**
+   - Tuyệt đối **KHÔNG** hiển thị các nhãn/tag mang tính cấm đoán hoặc phân bua lý do kỹ thuật (như `🔒 Bảo mật qua Giáo vụ`, `🔒 Academic Privacy`, `🔒 Bị ẩn do phân quyền`). Thay vào đó, đơn giản là không hiển thị hoặc chỉ hiển thị các thông tin được phép (ví dụ: tên phụ huynh).
+   - Tuyệt đối **KHÔNG** đưa banner/alert mô tả quy trình trung chuyển nội bộ ("Tin nhắn sẽ chuyển đến bộ phận XYZ...") vào form thao tác của người dùng.
+3. **Từ Ngữ Tự Nhiên, Trực Diện (User-Centric Terminology):**
+   - Dùng từ ngữ sư phạm gần gũi: **`Nhắn Tin`** / **`Gửi Tin Nhắn`** (`Message` / `Send Message`) thay vì dùng từ ngữ hành chính `Nhắn Giáo Vụ` (`Message Academic`).
+
+---
+
+## 16. Quy Chuẩn Form Xác Thực, Chống Bot Phishing False-Positive & Ép Chuyển Hướng Canonical Domain (`Anti-Phishing & Canonical Domain Invariant`)
+
+1. **Nguyên tắc Phân Lập Form Xác Thực:**
+   - Khi ứng dụng hỗ trợ cả đăng nhập bằng Mật khẩu nội bộ và Đăng nhập bằng Google OAuth (SSO):
+     * **BẮT BUỘC** tách biệt thành 2 Tab hoặc 2 Section độc lập hoàn toàn (`Segmented` hoặc `Tabs`).
+     * **Tab nhập Mật khẩu nội bộ:** Tuyệt đối **KHÔNG** đặt logo Google hoặc nút Google bên trong, tránh thuật toán bot quét (Google Safe Browsing) hiểu lầm là trang credential-harvesting.
+     * **Tab Google SSO:** Chỉ gồm nút bấm chuyển hướng an toàn sang `accounts.google.com`, tuyệt đối **KHÔNG** chứa ô nhập mật khẩu.
+     * **CẤM TUYỆT ĐỐI:** Vẽ logo SVG 4 màu Google tự chế đặt trong cùng form hoặc nằm cạnh ô nhập Password nội bộ.
+
+2. **Ép Chuyển Hướng Canonical Domain (0ms Redirect):**
+   - Trong `siteConfig.js`, hàm `enforceCanonicalDomain()` và inline script tại `vite.*.config.js`:
+     * Tự động `window.location.replace` từ các tên miền phụ đám mây (`*.web.app`, `*.firebaseapp.com`) sang tên miền doanh nghiệp chính thức (`.edu.vn`).
+     * Đảm bảo bot crawler khi truy cập `web.app` nhận được chỉ thị chuyển hướng ngay lập tức, không bao giờ quét được form đăng nhập trên domain phụ.
+
+3. **Cấu Trúc Dữ Liệu Pháp Lý Doanh Nghiệp (Institutional Trust):**
+   - Mọi trang đích (Landing, ERP Gate) bắt buộc có Schema.org `EducationalOrganization` và thông tin pháp nhân đầy đủ (`CÔNG TY CỔ PHẦN LAK EDUCATION`, liên kết Điều khoản dịch vụ và Chính sách quyền riêng tư).
+
+---
+
+## 17. Kỷ Luật Phân Tách 3 Tầng Multi-Hosting & Database Mapping Tuyệt Đối Không Nhầm Lẫn (`Strict 3-Tier Multi-Hosting & Database Isolation Invariant`)
+
+1. **Bản Đồ Cố Định 3 Tầng Hạ Tầng LAK EDUCATION:**
+   - **Tầng 1 — PRODUCTION (Chính thức):**
+     * Project ID: `lakeducation` (Number: `36575839783`, Blaze Plan)
+     * Hosting Sites / Targets: `erp` $\to$ `lakeducation-erp-portal`, `landing` $\to$ `lakeducation`
+     * Domain: `https://erp.lakeducation.edu.vn` & `https://lakeducation.edu.vn` (Tạm chờ Google duyệt mở lại)
+     * Cloud Firestore Database: **`lakeducationdb`** (Database Thật 100%)
+     * Firebase Auth: `lakeducation` (Gốc)
+     * Đối tượng: 520 học viên, 68 cán bộ/giáo viên vận hành thật.
+   - **Tầng 2 — BACKUP PRODUCTION (Dự phòng khẩn cấp):**
+     * Project ID: `lakeducation-backup` (Number: `621289402673`, Spark Plan)
+     * Hosting Sites / Targets: `erp` $\to$ `lakeducation-backup-erp`, `landing` $\to$ `lakeducation-backup`
+     * Domain: `https://bk.lakeducation.edu.vn`, `https://lakeducation-backup-erp.web.app`
+     * Cloud Firestore Database: **`lakeducationdb`** (Database Thật 100% của project `lakeducation`)
+     * Firebase Auth: `lakeducation` (qua cơ chế Authorized Domains)
+     * Đối tượng: Thay thế tức thì khi Production chính gặp sự cố mạng hoặc CDN. Ghi nhận dữ liệu trực tiếp vào Database thật.
+   - **Tầng 3 — DEVELOPMENT (Môi trường Dev / Sandbox):**
+     * Project ID: `lakeducation-dev` (Number: `609742112072`, Spark Plan)
+     * Hosting Sites / Targets: `erp` $\to$ `lakeducation-dev-erp`, `landing` $\to$ `lakeducation-dev`
+     * Domain: `https://dev.lakeducation.edu.vn`, `https://lakeducation-dev-erp.web.app`
+     * Cloud Firestore Database: `lakeducation-dev` (Database Thử Nghiệm Sandbox)
+     * Firebase Auth: `lakeducation-dev`
+     * Đối tượng: Dành riêng cho IT kiểm thử tính năng mới, tuyệt đối không ảnh hưởng dữ liệu thật.
+
+2. **Kỷ Luật Cưỡng Chế Lệnh Deploy (`package.json`):**
+   - Tuyệt đối cấm chạy `firebase deploy` tự do không chỉ định target.
+   - Bắt buộc dùng đúng lệnh kịch bản:
+     * `npm run deploy:prod` $\to$ Chỉ deploy lên Production `lakeducation`.
+     * `npm run deploy:backup` $\to$ Chỉ deploy lên Backup `lakeducation-backup`.
+     * `npm run deploy:dev` $\to$ Chỉ deploy lên Dev `lakeducation-dev`.
+     * `npm run deploy:all` $\to$ Deploy đồng bộ cả 3 môi trường.
+
+3. **Cấu Hình Cloudflare DNS Bắt Buộc (DNS Only):**
+   - Cả 2 subdomain `bk.lakeducation.edu.vn` và `dev.lakeducation.edu.vn` khi trỏ CNAME về Firebase Hosting (`lakeducation-backup-erp.web.app` và `lakeducation-dev-erp.web.app`) **BẮT BUỘC TẮT PROXY (đám mây xám `DNS only`)** để Google Trust Services xác thực và cấp phát SSL tự động không bị nghẽn SSL handshake.
+
+4. **Kỷ Luật Cách Ly Tuyệt Đối Localhost/Dev Sandbox & Chốt Chặn Kiểm Toán Fail-Closed:**
+   - **Localhost & Dev Domain:** Mặc định 100% kết nối vào sandbox `lakeducation-dev`, hiển thị thanh banner màu xanh lá cây `MÔI TRƯỜNG PHÁT TRIỂN • DỮ LIỆU DEV`, và 100% (55/55 tài khoản) sử dụng mật khẩu DEV chuẩn **`@Bcd1234`**. Tuyệt đối không để máy local kết nối tự do vào Database Thật của Production.
+   - **Chốt chặn Fail-Closed (`scripts/verify_deployment_safety.mjs`):** Tích hợp vào lệnh `npm run build`. Trước khi đóng gói, tự động assert 10 kịch bản giả lập runtime. Nếu phát hiện bất kỳ sự sai lệch cấu hình nào giữa 3 môi trường, lệnh build lập tức FAIL ngay ở bước 1, ngăn chặn triệt để mọi rủi ro deploy nhầm.
+
+
+
 
 
 

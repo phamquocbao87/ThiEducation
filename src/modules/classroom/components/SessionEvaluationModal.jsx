@@ -639,7 +639,7 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
             </Space>
 
             <div style={{ fontSize: 11, color: '#94a3b8' }}>
-              {cleanPhone ? `${cleanPhone.slice(-4)}` : ''}
+              {isAcademic && cleanPhone ? `${cleanPhone.slice(-4)}` : ''}
             </div>
           </div>
         );

@@ -12,6 +12,8 @@ export const SITE_DOMAINS = {
   ERP_PRODUCTION: 'https://erp.lakeducation.edu.vn',
   LANDING_PRODUCTION_FIREBASE: 'https://lakeducation.web.app',
   ERP_PRODUCTION_FIREBASE: 'https://lakeducation-erp-portal.web.app',
+  LANDING_BACKUP: 'https://lakeducation-backup.web.app',
+  ERP_BACKUP: 'https://lakeducation-backup-erp.web.app',
   LANDING_DEV: 'https://lakeducation-dev.web.app',
   ERP_DEV: 'https://lakeducation-dev-erp.web.app',
 };
@@ -82,13 +84,65 @@ export const isDevLandingDomain = () => {
 export const isDevErpDomain = () => {
   if (typeof window === 'undefined') return false;
   const host = window.location.hostname;
-  return host === 'lakeducation-dev-erp.web.app' || host === 'lakeducation-dev-erp.firebaseapp.com';
+  return (
+    host === 'lakeducation-dev-erp.web.app' ||
+    host === 'lakeducation-dev-erp.firebaseapp.com' ||
+    host === 'dev.lakeducation.edu.vn'
+  );
+};
+
+export const isBackupLandingDomain = () => {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return (
+    host === 'lakeducation-backup.web.app' ||
+    host === 'lakeducation-backup.firebaseapp.com'
+  );
+};
+
+export const isBackupErpDomain = () => {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return (
+    host === 'lakeducation-backup-erp.web.app' ||
+    host === 'lakeducation-backup-erp.firebaseapp.com' ||
+    host === 'bk.lakeducation.edu.vn' ||
+    host === 'erp-bk.lakeducation.edu.vn'
+  );
+};
+
+/**
+ * Ép chuyển hướng 0ms từ tên miền phụ Firebase (web.app / firebaseapp.com) về tên miền thương hiệu chính thức
+ * Triệt tiêu hoàn toàn việc người dùng hoặc bot Google truy cập form trên web.app
+ */
+export const enforceCanonicalDomain = () => {
+  if (typeof window === 'undefined') return;
+  const host = window.location.hostname;
+
+  // Nếu đang ở cổng ERP trên web.app hoặc firebaseapp.com của Production
+  if (
+    host === 'lakeducation-erp-portal.web.app' ||
+    host === 'lakeducation-erp-portal.firebaseapp.com'
+  ) {
+    const target = `${SITE_DOMAINS.ERP_PRODUCTION}${window.location.pathname}${window.location.search}${window.location.hash}`;
+    window.location.replace(target);
+    return;
+  }
+
+  // Nếu đang ở Landing Page trên web.app hoặc firebaseapp.com của Production
+  if (
+    host === 'lakeducation.web.app' ||
+    host === 'lakeducation.firebaseapp.com'
+  ) {
+    const target = `${SITE_DOMAINS.LANDING_PRODUCTION}${window.location.pathname}${window.location.search}${window.location.hash}`;
+    window.location.replace(target);
+    return;
+  }
 };
 
 /**
  * Tạo đường dẫn đích sau khi người dùng Login thành công trên Landing Page
- * - Nếu đang ở trên domain thật lakeducation.edu.vn -> Chuyển hướng sang https://erp.lakeducation.edu.vn/<route>?sso_uid=<id>&lang=<lang>
- * - Nếu đang ở trên domain production firebase lakeducation.web.app -> Chuyển hướng sang https://lakeducation-erp-portal.web.app/<route>?sso_uid=<id>&lang=<lang>
+ * - Luôn chuyển hướng sang https://erp.lakeducation.edu.vn/<route>?sso_uid=<id>&lang=<lang>
  * - Nếu đang ở trên domain dev lakeducation-dev.web.app -> Chuyển hướng sang https://lakeducation-dev-erp.web.app/<route>?sso_uid=<id>&lang=<lang>
  * - Nếu đang ở trên localhost (hoặc cùng domain) -> Trả về path nội bộ /<route>
  */
@@ -100,15 +154,24 @@ export const resolveErpTargetAfterLogin = (user, lang = 'en') => {
       sso_uid: user.id || user.code,
       lang,
     });
-    const host = typeof window !== 'undefined' ? window.location.hostname : '';
-    const erpBase =
-      host.includes('web.app') || host.includes('firebaseapp.com')
-        ? SITE_DOMAINS.ERP_PRODUCTION_FIREBASE
-        : SITE_DOMAINS.ERP_PRODUCTION;
+    // Luôn ưu tiên tên miền thương hiệu chính thức https://erp.lakeducation.edu.vn
+    const erpBase = SITE_DOMAINS.ERP_PRODUCTION;
 
     return {
       isExternalRedirect: true,
       url: `${erpBase}/${targetSlug}?${params.toString()}`,
+      path: `/${targetSlug}`,
+    };
+  }
+
+  if (isBackupLandingDomain()) {
+    const params = new URLSearchParams({
+      sso_uid: user.id || user.code,
+      lang,
+    });
+    return {
+      isExternalRedirect: true,
+      url: `${SITE_DOMAINS.ERP_BACKUP}/${targetSlug}?${params.toString()}`,
       path: `/${targetSlug}`,
     };
   }
