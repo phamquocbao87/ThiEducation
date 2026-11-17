@@ -1,5 +1,5 @@
 /* global __APP_VERSION__, __BUILD_TIME__ */
-import { MODULE_SLUGS } from '../../shared/utils/slug';
+import { MODULE_SLUGS } from '../../shared/utils/slug.js';
 
 export const APP_VERSION =
   typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.2.1';
@@ -145,9 +145,19 @@ export const enforceCanonicalDomain = () => {
  * - Luôn chuyển hướng sang https://erp.lakeducation.edu.vn/<route>?sso_uid=<id>&lang=<lang>
  * - Nếu đang ở trên domain dev lakeducation-dev.web.app -> Chuyển hướng sang https://lakeducation-dev-erp.web.app/<route>?sso_uid=<id>&lang=<lang>
  * - Nếu đang ở trên localhost (hoặc cùng domain) -> Trả về path nội bộ /<route>
+ * - Hỗ trợ Deep Linking & Intended Redirect: nếu có `redirectPath`, ưu tiên chuyển thẳng vào path đó
  */
-export const resolveErpTargetAfterLogin = (user, lang = 'en') => {
-  const targetSlug = ROLE_DEFAULT_ERP_ROUTE[user?.role] || MODULE_SLUGS.dashboard;
+export const resolveErpTargetAfterLogin = (user, lang = 'en', redirectPath = null) => {
+  const defaultSlug = ROLE_DEFAULT_ERP_ROUTE[user?.role] || MODULE_SLUGS.dashboard;
+
+  // Chuẩn hóa redirectPath nếu có (loại trừ /, /login, /home, /landing)
+  let effectivePath = redirectPath ? String(redirectPath).trim() : null;
+  if (effectivePath && ['/', '/login', '/landing', '/home'].includes(effectivePath)) {
+    effectivePath = null;
+  }
+  const cleanPath = effectivePath
+    ? (effectivePath.startsWith('/') ? effectivePath.substring(1) : effectivePath)
+    : defaultSlug;
 
   if (isProductionLandingDomain()) {
     const params = new URLSearchParams({
@@ -156,11 +166,12 @@ export const resolveErpTargetAfterLogin = (user, lang = 'en') => {
     });
     // Luôn ưu tiên tên miền thương hiệu chính thức https://erp.lakeducation.edu.vn
     const erpBase = SITE_DOMAINS.ERP_PRODUCTION;
+    const delimiter = cleanPath.includes('?') ? '&' : '?';
 
     return {
       isExternalRedirect: true,
-      url: `${erpBase}/${targetSlug}?${params.toString()}`,
-      path: `/${targetSlug}`,
+      url: `${erpBase}/${cleanPath}${delimiter}${params.toString()}`,
+      path: `/${cleanPath}`,
     };
   }
 
@@ -169,10 +180,11 @@ export const resolveErpTargetAfterLogin = (user, lang = 'en') => {
       sso_uid: user.id || user.code,
       lang,
     });
+    const delimiter = cleanPath.includes('?') ? '&' : '?';
     return {
       isExternalRedirect: true,
-      url: `${SITE_DOMAINS.ERP_BACKUP}/${targetSlug}?${params.toString()}`,
-      path: `/${targetSlug}`,
+      url: `${SITE_DOMAINS.ERP_BACKUP}/${cleanPath}${delimiter}${params.toString()}`,
+      path: `/${cleanPath}`,
     };
   }
 
@@ -181,17 +193,18 @@ export const resolveErpTargetAfterLogin = (user, lang = 'en') => {
       sso_uid: user.id || user.code,
       lang,
     });
+    const delimiter = cleanPath.includes('?') ? '&' : '?';
     return {
       isExternalRedirect: true,
-      url: `${SITE_DOMAINS.ERP_DEV}/${targetSlug}?${params.toString()}`,
-      path: `/${targetSlug}`,
+      url: `${SITE_DOMAINS.ERP_DEV}/${cleanPath}${delimiter}${params.toString()}`,
+      path: `/${cleanPath}`,
     };
   }
 
   return {
     isExternalRedirect: false,
-    url: `/${targetSlug}`,
-    path: `/${targetSlug}`,
+    url: `/${cleanPath}`,
+    path: `/${cleanPath}`,
   };
 };
 

@@ -152,7 +152,16 @@ function ErpRoutes() {
       message.success(
         language === 'en' ? `Welcome back, ${res.user.name}!` : `Xin chào, ${res.user.name}!`
       );
-      navigate(`/${res.defaultRoute || MODULE_SLUGS.dashboard}`);
+      // Deep Linking & Intended Redirect:
+      // Nếu người dùng truy cập một route cụ thể (ví dụ /zoom-schedules, /classroom/LH004...)
+      // thì ưu tiên chuyển vào đúng route đó thay vì luôn ép về defaultRoute (dashboard)
+      const currentPathname = location.pathname;
+      const isDirectRoute = currentPathname && currentPathname !== '/' && currentPathname !== '/login';
+      const intendedUrl = isDirectRoute
+        ? (currentPathname + location.search + location.hash)
+        : null;
+
+      navigate(intendedUrl || `/${res.defaultRoute || MODULE_SLUGS.dashboard}`, { replace: true });
     }
   };
 

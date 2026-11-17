@@ -199,3 +199,52 @@ Khi tiếp nhận tài liệu báo cáo bugs hoặc yêu cầu nâng cấp hệ 
   page.goto(f'{URL}/path', wait_until='networkidle')
   ```
 - Áp dụng thống nhất cho toàn bộ các script kiểm thử tự động trên Localhost, Dev và Production.
+
+---
+
+## 🛡️ 8. Ma Trận Đánh Giá Tác Động 4 Chiều (4-Dimensional Impact Assessment Matrix - Chống Bỏ Sót Bug)
+
+> **Kỷ luật cưỡng chế trước khi code:** Khi sửa bất kỳ component hay logic nào, Agent **TUYỆT ĐỐI CẤM** chỉ nhìn nhận scope bề mặt chức năng. Bắt buộc phải rà soát qua 4 chiều:
+> 1. **Chiều 1 — Data Inflow & Temporal Graph (Đồ thị thời gian ngầm):**
+>    - Dữ liệu đầu vào của component đến từ đâu? Có bị kích hoạt ngầm bởi Timer đếm ngược (`useClassroomClock`), Polling hay Realtime WebSocket/Firestore listeners không?
+>    - Nếu controller có timer tick 1s, bắt buộc phải memoize tham chiếu object (`useMemo`), triệt tiêu việc sinh object reference mới mỗi giây làm re-render toàn bộ cây component con.
+> 2. **Chiều 2 — User Dirty State Protection (Bảo vệ dữ liệu đang soạn thảo):**
+>    - Component có ô nhập liệu (Input, Textarea, Form, Checkbox) người dùng đang gõ dở không?
+>    - Nếu có event ngầm (như timer, realtime update của học sinh khác), dữ liệu gõ dở có bị ghi đè không? Nếu có nguy cơ, bắt buộc dùng Local Buffer State / Ref.
+> 3. **Chiều 3 — Hàng Rào Phòng Thủ Cũ (Chesterton's Fence Guard):**
+>    - Tuyệt đối **CẤM XÓA HOẶC SIMPLIFY** bất kỳ đoạn code nào có chú thích hoặc bản chất là code phòng thủ (`// Bảo vệ...`, `// Guard...`, `// Tombstone...`, `if (localEditsRef.current[s.id])`).
+>    - Nếu muốn tái cấu trúc, bắt buộc phải chứng minh đoạn code mới vẫn bảo toàn 100% tính năng phòng thủ đó.
+> 4. **Chiều 4 — Cross-Module Consumers:**
+>    - Component, Hook hoặc Service này có bao nhiêu trang và vai trò khác đang dùng chung?
+
+---
+
+## 🔒 9. Nguyên Tắc Kiến Trúc "Cách Ly Buffer Realtime Form" (Local Buffer Invariant)
+
+> **Quy chuẩn kiến trúc React Realtime bắt buộc:**
+> 1. Khi một component cho phép người dùng nhập liệu (Input, Textarea, Form):
+>    - Toàn bộ dữ liệu người dùng đang soạn thảo (**Dirty State**) bắt buộc phải được lưu giữ độc lập trong **Local State / Local Ref** làm bộ đệm (Buffer).
+>    - Realtime stream (Firestore `onSnapshot`, Polling, WebSocket, Clock Timer) **CHỈ ĐƯỢC PHÉP CẬP NHẬT DỮ LIỆU NỀN**, tuyệt đối không được ghi đè (`overwrite`) lên ô nhập liệu mà người dùng đang gõ hoặc chưa lưu.
+> 2. Khi nạp dữ liệu mới từ server, bắt buộc thực hiện **Merge thông minh**:
+>    `merged = { ...serverData, ...userLocalEdits }` (Ưu tiên tuyệt đối nội dung người dùng đang gõ trong `localEditsRef`).
+> 3. Chỉ reset `localEditsRef` khi người dùng chủ động chuyển hẳn sang một bản ghi hoặc buổi học khác (`record.id` / `sessionIndex` thay đổi).
+
+---
+
+## 🧪 10. Kiểm Thử Độ Trễ Gõ Phím Con Người & Bộ Khóa Chốt Hồi Quy Trước Deploy (Zero-Reopen Gatekeeper)
+
+> **Kỷ luật cưỡng chế trong mọi kịch bản kiểm thử E2E Playwright:**
+> 1. **Thử nghiệm Độ trễ Con người (Temporal Typing Retention Test $\ge 3\text{s}$):**
+>    - Tuyệt đối cấm kiểm thử bằng cách bấm nút tag/điền form rồi bấm Lưu ngay lập tức ($< 1\text{s}$).
+>    - Mọi form/input bắt buộc phải test qua kịch bản con người:
+>      ```python
+>      await textarea.fill("Nội dung đánh giá kiểm thử...")
+>      await page.wait_for_timeout(3500)  # ⏳ Bắt buộc dừng 3.5 giây mô phỏng con người dừng tay suy nghĩ
+>      val_after = await textarea.input_value()
+>      assert val_after == "Nội dung đánh giá kiểm thử...", "FAIL: Chữ bị xóa hoặc reset do re-render ngầm!"
+>      ```
+> 2. **Cổng Khóa Chốt Hồi Quy Trước Deploy (Cumulative Regression Lock Gate):**
+>    - Mọi bug sau khi sửa bắt buộc phải được đưa vào bộ test tự động tích lũy (`scripts/qc_regression_typing_retention.py`).
+>    - Trước khi chạy lệnh Deploy (`deploy:dev`, `deploy:backup`, `deploy:prod`), hệ thống bắt buộc chạy lại toàn bộ test suite hồi quy.
+>    - **Nếu một tính năng mới làm gãy bất kỳ test cũ nào $\rightarrow$ LẬP TỨC CHẶN ĐỨNG BUILD VÀ DỪNG DEPLOY!**
+

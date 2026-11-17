@@ -103,6 +103,7 @@ export const SessionEvaluationPanel = ({
   const [isRecordingModalOpen, setIsRecordingModalOpen] = useState(false);
   const [historyDocs, setHistoryDocs] = useState([]);
   const localEditsRef = useRef({});
+  const lastSessionKeyRef = useRef(null);
 
   const isTeacher = userRole === 'teacher';
   const isAcademic = ['academic', 'admin', 'director'].includes(userRole);
@@ -180,45 +181,73 @@ export const SessionEvaluationPanel = ({
     : cls?.scheduleData?.formatted || cls?.schedule || '';
 
   // 3. Khởi tạo & cập nhật dữ liệu đánh giá khi đổi session hoặc nạp record mới
+  const currentSessionKey = String(
+    selectedSessionOverride?.id ||
+    selectedSessionOverride?.start ||
+    session?.id ||
+    session?.start ||
+    attendance?.sessionId ||
+    attendance?.date ||
+    sessionIndex ||
+    'default'
+  );
+
   useEffect(() => {
-    localEditsRef.current = {};
+    const isDifferentSession = lastSessionKeyRef.current !== currentSessionKey;
+    if (isDifferentSession) {
+      lastSessionKeyRef.current = currentSessionKey;
+      localEditsRef.current = {};
+    }
+
     const existing = attendance?.studentEvaluations || {};
     const notes = attendance?.quickNotes || {};
     const presence = attendance?.presence || {};
 
-    const nextMap = {};
-    roster.forEach((s) => {
-      const note = notes[s.id];
-      const isOffline = presence[s.id] === 'OFFLINE';
+    setEvaluations((prev) => {
+      const nextMap = isDifferentSession ? {} : { ...prev };
+      roster.forEach((s) => {
+        const note = notes[s.id];
+        const isOffline = presence[s.id] === 'OFFLINE';
 
-      const hasNoteText = Boolean(note?.text);
-      const hasNoteTags = Boolean(note?.tags && note.tags.length > 0);
-      const noteComment = hasNoteText ? note.text : (hasNoteTags ? note.tags.join(', ') : '');
+        const hasNoteText = Boolean(note?.text);
+        const hasNoteTags = Boolean(note?.tags && note.tags.length > 0);
+        const noteComment = hasNoteText ? note.text : (hasNoteTags ? note.tags.join(', ') : '');
 
-      if (existing[s.id]) {
-        nextMap[s.id] = {
-          stars: existing[s.id].stars || (isOffline ? 1 : 5),
-          comment: existing[s.id].comment ?? noteComment,
-          tags: existing[s.id].tags || note?.tags || [],
-        };
-      } else {
-        nextMap[s.id] = {
-          stars: isOffline ? 1 : 5,
-          comment: noteComment,
-          tags: note?.tags || [],
-        };
-      }
+        // 🛡️ CHESTERTON'S FENCE & LOCAL BUFFER GUARD:
+        // Bảo vệ tuyệt đối văn bản người dùng đang gõ dở dang trên cùng session.
+        // Tuyệt đối không cho phép server hay timer nền đè mất chữ!
+        if (!isDifferentSession && localEditsRef.current[s.id]) {
+          nextMap[s.id] = {
+            ...(nextMap[s.id] || {}),
+            ...localEditsRef.current[s.id],
+          };
+          return;
+        }
+
+        if (existing[s.id]) {
+          nextMap[s.id] = {
+            stars: existing[s.id].stars || (isOffline ? 1 : 5),
+            comment: existing[s.id].comment ?? noteComment,
+            tags: existing[s.id].tags || note?.tags || [],
+          };
+        } else if (isDifferentSession || !nextMap[s.id]) {
+          nextMap[s.id] = {
+            stars: isOffline ? 1 : 5,
+            comment: noteComment,
+            tags: note?.tags || [],
+          };
+        }
+      });
+      return nextMap;
     });
-    setEvaluations(nextMap);
   }, [
+    currentSessionKey,
     attendance?.id,
     attendance?.sessionId,
     attendance?.date,
     attendance?.studentEvaluations,
     attendance?.quickNotes,
-    attendance?.presence,
     roster,
-    session?.start,
   ]);
 
   const handleUpdateStudent = (studentId, field, value) => {

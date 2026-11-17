@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../../core/context/AuthContext';
 import { useClassroomClock } from '../../../shared/hooks/useClassroomClock';
@@ -97,10 +97,21 @@ export const useClassroomController = () => {
     && (now >= session.start || session.isEnded || Boolean(selectedSessionOverride))
   );
 
-  const presence = { ...(record?.presence || {}), ...pendingChanges };
-  const attentionFlags = { ...(record?.attentionFlags || {}), ...pendingAttentionChanges };
-  const attentionCount = Object.values(attentionFlags).filter((s) => s === 'DISTRACTED').length;
-  const attentionIds = Object.keys(attentionFlags).filter((id) => attentionFlags[id] === 'DISTRACTED');
+  const presence = useMemo(() => {
+    return { ...(record?.presence || {}), ...pendingChanges };
+  }, [record?.presence, pendingChanges]);
+
+  const attentionFlags = useMemo(() => {
+    return { ...(record?.attentionFlags || {}), ...pendingAttentionChanges };
+  }, [record?.attentionFlags, pendingAttentionChanges]);
+
+  const attentionCount = useMemo(() => {
+    return Object.values(attentionFlags).filter((s) => s === 'DISTRACTED').length;
+  }, [attentionFlags]);
+
+  const attentionIds = useMemo(() => {
+    return Object.keys(attentionFlags).filter((id) => attentionFlags[id] === 'DISTRACTED');
+  }, [attentionFlags]);
 
   const mark = useCallback(async (changes) => {
     if (!canEdit || !changes || !Object.keys(changes).length) return;

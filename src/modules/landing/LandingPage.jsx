@@ -53,7 +53,9 @@ export const LandingPage = () => {
 
     if (authResult && authResult.success) {
       const { user } = authResult;
-      const target = resolveErpTargetAfterLogin(user, language);
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const redirectUrl = (params && params.get('redirect')) || pendingRedirectUrl;
+      const target = resolveErpTargetAfterLogin(user, language, redirectUrl);
 
       message.success(
         language === 'en'
@@ -64,8 +66,6 @@ export const LandingPage = () => {
       if (target.isExternalRedirect) {
         window.location.href = target.url;
       } else {
-        const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-        const redirectUrl = (params && params.get('redirect')) || pendingRedirectUrl;
         navigate(redirectUrl || target.path);
       }
     }

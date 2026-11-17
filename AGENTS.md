@@ -116,10 +116,18 @@ ThiEducation/
        > Agent phải tổng hợp thành Báo cáo Rà Soát Lỗi Tương Tự (Cross-Screen Audit Report) trình Sếp Bảo, tuyệt đối không fix chắp vá riêng lẻ từng chỗ.
      * **Bước 3 — Phân tích nguyên nhân gốc rễ (Root Cause Analysis):** Truy vết chính xác dòng code, component, state, service hoặc cấu trúc Firestore gây ra bug, chỉ rõ tại sao lỗi lại xảy ra trên toàn bộ các điểm tìm thấy.
      * **Bước 4 — Đề xuất phương án sửa chữa đồng bộ (Proposed Synchronous Fix Solution):** Trình bày chi tiết cách fix sạch sẽ, tận gốc cho cả điểm chính lẫn các điểm tương tự phát hiện ở Bước 2; nêu rõ giải pháp kiến trúc thay vì vá tạm bợ.
-     * **Bước 5 — Đánh giá tác động & rủi ro hồi quy (Impact Assessment):** Liệt kê danh sách các module, component dùng chung, hooks, services và routes có khả năng bị ảnh hưởng; khẳng định rủi ro hồi quy (regression risk).
+     * **Bước 5 — Đánh giá tác động theo Ma trận 4 Chiều & Rủi ro hồi quy (4-Dimensional Impact Assessment):**
+       > **KỶ LUẬT ĐÁNH GIÁ IMPACT 4 CHIỀU (CHỐNG REOPEN BUG):** Bắt buộc trả lời 4 câu hỏi trước khi sửa code:
+       > 1. *Data Inflow & Temporal Graph:* Dữ liệu component đến từ đâu? Có bị kích hoạt ngầm bởi Timer (`useClassroomClock`), Polling hay Realtime listeners không?
+       > 2. *User Dirty State Protection:* Component có ô nhập liệu (Input/Textarea/Form) người dùng đang soạn thảo dở không? Phải đảm bảo Realtime Stream không ghi đè lên Local Buffer!
+       > 3. *Chesterton's Fence Guard (Hàng Rào Phòng Thủ Cũ):* Tuyệt đối **CẤM XÓA HOẶC SIMPLIFY** bất kỳ đoạn code nào có chú thích hoặc bản chất là code phòng thủ (`// Bảo vệ...`, `// Guard...`, `// Tombstone...`, `if (localEditsRef.current[s.id])`).
+       > 4. *Cross-Module Consumers:* Có bao nhiêu component, hook, service khác đang dùng chung dữ liệu này?
      * **Bước 6 — Trình duyệt & Chờ Sếp Bảo xác nhận trước khi sửa (Mandatory Confirmation Gate):**
        > **CẤM TỰ Ý SỬA CODE TRƯỚC KHI CÓ SỰ ĐỒNG Ý CỦA SẾP BẢO.**  
        > Agent phải dừng lại, xuất trình rõ 5 bước trên trong câu trả lời hoặc Artifact, xin ý kiến xác nhận của Sếp Bảo. **CHỈ KHI SẾP BẢO CONFIRM / XÁC NHẬN** thì mới bắt đầu tiến hành sửa đổi code!
+   - **Kỷ Luật Khóa Chốt Hồi Quy & Thử Nghiệm Độ Trễ Gõ Phím Con Người (Temporal Typing Retention $\ge 3\text{s}$):**
+     * Mọi form/input bắt buộc phải test qua kịch bản con người: Gõ phím $\rightarrow$ Dừng chờ 3.5 giây mô phỏng người dừng tay suy nghĩ $\rightarrow$ Assert nội dung không bị mất chữ do re-render ngầm.
+     * Mọi bug sau khi sửa bắt buộc phải đưa vào bộ test tự động tích lũy (`scripts/qc_regression_typing_retention.py`). Nếu bất kỳ tính năng mới nào làm gãy test cũ $\rightarrow$ Tự động chặn đứng build và dừng deploy ngay lập tức!
    - **Tuyệt đối không tự ý thay đổi chức năng khác khi chưa có yêu cầu / thông báo:**
      * Đang thực hiện sửa chữa, tối ưu hoặc phát triển cho chức năng A thì **CHỈ ĐƯỢC PHÉP THAO TÁC TRONG PHẠM VI CHỨC NĂNG A**.
      * Tuyệt đối **CẤM** tiện tay sửa đổi, refactor, đổi logic, xóa hoặc làm mới bất kỳ chức năng B nào khác khi chưa có yêu cầu rõ ràng từ Sếp Bảo hoặc chưa thông báo xin phép trước.

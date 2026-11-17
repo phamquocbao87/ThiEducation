@@ -47,18 +47,21 @@ export default function ClassroomPage() {
   const [isSavingPlan, setIsSavingPlan] = useState(false);
   const [isSavingCourseMat, setIsSavingCourseMat] = useState(false);
 
+  const sessionStart = c.session?.start;
+  const sessionDate = c.session?.date;
+
   const sessionAttendance = useMemo(() => ({
     presence: c.presence,
     quickNotes: c.quickNotes,
     studentEvaluations: c.studentEvaluations,
     attentionFlags: c.attentionFlags,
-    date: c.session?.start
+    date: sessionStart
       ? new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'vi-VN', {
           dateStyle: 'medium',
           timeZone: 'Asia/Ho_Chi_Minh',
-        }).format(c.session.start)
-      : c.session?.date || undefined,
-  }), [c.presence, c.quickNotes, c.studentEvaluations, c.attentionFlags, c.session, language]);
+        }).format(sessionStart)
+      : sessionDate || undefined,
+  }), [c.presence, c.quickNotes, c.studentEvaluations, c.attentionFlags, sessionStart, sessionDate, language]);
 
   const userRole = currentUser?.role || 'student';
   const currentStudentId = userRole === 'student' ? currentUser?.id : null;

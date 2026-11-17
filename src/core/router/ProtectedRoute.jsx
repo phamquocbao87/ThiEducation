@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Result, Button, Card, Typography, Space } from 'antd';
 import { LockOutlined, ArrowLeftOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { PermissionService } from '../services/PermissionService';
 import { ROLE_DEFAULT_ERP_ROUTE } from '../config/siteConfig';
 
@@ -18,6 +19,8 @@ const { Text, Title } = Typography;
  */
 export const ProtectedRoute = ({ moduleKey, children }) => {
   const { isAuthenticated, currentUser } = useAuth();
+  const { language } = useLanguage();
+  const isEnglish = language === 'en';
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -32,7 +35,7 @@ export const ProtectedRoute = ({ moduleKey, children }) => {
     );
 
   if (!isAuthenticated || !currentUser || !hasStoredSession) {
-    const redirectParam = encodeURIComponent(location.pathname + location.search);
+    const redirectParam = encodeURIComponent(location.pathname + location.search + location.hash);
     return <Navigate to={`/?require_login=true&redirect=${redirectParam}`} replace />;
   }
 
@@ -71,13 +74,15 @@ export const ProtectedRoute = ({ moduleKey, children }) => {
           <Result
             status="403"
             title={
-              <span style={{ fontSize: 24, fontWeight: 800, color: '#ff4d4f' }}>
-                403 Not Found
+              <span style={{ fontSize: 24, fontWeight: 800, color: '#ff4d4f' }} data-testid="error-403-title">
+                {isEnglish ? '403 Forbidden' : '403 Không Có Quyền Truy Cập'}
               </span>
             }
             subTitle={
               <Text type="secondary" style={{ fontSize: 14 }}>
-                Trang bạn yêu cầu không tồn tại hoặc bạn không có quyền truy cập.
+                {isEnglish
+                  ? 'The requested page does not exist or your account does not have permission to access it.'
+                  : 'Trang bạn yêu cầu không tồn tại hoặc tài khoản của bạn không có quyền truy cập vào phân hệ này.'}
               </Text>
             }
             extra={
@@ -85,14 +90,16 @@ export const ProtectedRoute = ({ moduleKey, children }) => {
                 type="primary"
                 icon={<ArrowLeftOutlined />}
                 onClick={() => navigate(`/${defaultRouteSlug}`)}
+                data-testid="btn-back-dashboard"
                 style={{
                   borderRadius: 8,
                   height: 40,
                   fontWeight: 600,
                   backgroundColor: '#1890ff',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                Quay Lại
+                {isEnglish ? 'Back to Dashboard' : 'Quay Lại Dashboard'}
               </Button>
             }
           />
