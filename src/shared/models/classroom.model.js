@@ -224,6 +224,8 @@ export const buildLessonPlan = (cls, planData = {}, actor, now = Date.now()) => 
       : [],
     studentPrep: String(planData.studentPrep || '').trim(),
     homework: String(planData.homework || '').trim(),
+    readingDailyTime: String(planData.readingDailyTime || '60+ mins').trim(),
+    writingDailyTime: String(planData.writingDailyTime || '30+ mins').trim(),
     slideLink: String(planData.slideLink || '').trim(),
     teacherNotes: String(planData.teacherNotes || '').trim(),
     status,

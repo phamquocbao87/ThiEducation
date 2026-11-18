@@ -145,6 +145,15 @@ export const en = {
       'Check in to live classes, manage individual student profiles, take attendance, rate 4 skills, and review homework.',
     tabEvaluations: 'Attendance & Session Evaluations',
     tabHomeworks: 'Homework Assignments',
+    studentAttendanceTitle: 'Personal Learning Journey & Attendance Record',
+    studentAttendanceSub:
+      'Track your 4-skill English progress, personal attendance, native teacher evaluations, and assigned homework.',
+    tabStudentEvaluations: 'Personal Attendance & Session Evaluations',
+    tabStudentHomeworks: 'My Assigned Homework & Tasks',
+    teacherPendingFeedback: 'Feedback Updating',
+    teacherPendingDesc: 'Native teacher will post evaluation after review.',
+    teacherFeedbackCallout: "Teacher's Direct Feedback",
+    studentFeedbacksCount: 'Student Feedbacks',
     tuitionTitleManager: 'Tuition Collection & Billing Reconciliation',
     tuitionTitleStudent: 'My Personal Tuition & Billing Status',
     tuitionSub:
@@ -226,6 +235,10 @@ export const en = {
     editorTitle: 'Author Lesson Plan',
     saveLessonPlanAction: 'Save Lesson Plan (0ms)',
     saveNoteSuccess: 'Student note saved successfully!',
+    readingSuggestedDailyTime: 'Reading Suggested Daily Time',
+    writingSuggestedDailyTime: 'Writing Suggested Daily Time',
+    readingDailyBadge: 'Reading Daily',
+    writingDailyBadge: 'Writing Daily',
   },
   dashboard: {
     classTimer: {

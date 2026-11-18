@@ -8,6 +8,7 @@ import { SessionEvaluationTable } from './components/SessionEvaluationTable';
 import { SessionEvaluationModal } from './components/SessionEvaluationModal';
 import { StudentProfileDrawer } from './components/StudentProfileDrawer';
 import { HomeworkAssignmentPanel } from './components/HomeworkAssignmentPanel';
+import { StudentAttendancePersonalView } from './components/StudentAttendancePersonalView';
 
 const { Title, Text } = Typography;
 
@@ -23,6 +24,10 @@ export const AttendancePage = () => {
     selectedClass,
     studentRoster,
     permissions,
+    isStudentRole,
+    myClass,
+    myPersonalAttendances,
+    personalStats,
     isEvaluationModalOpen,
     setIsEvaluationModalOpen,
     isProfileDrawerOpen,
@@ -36,6 +41,32 @@ export const AttendancePage = () => {
     handleSubmitHomework,
   } = useAttendanceController();
 
+  // 1. VIEW HỌC VIÊN: CỔNG NHẬT KÝ RÈN LUYỆN & CHUYÊN CẦN CÁ NHÂN
+  if (permissions.isStudent) {
+    return (
+      <div>
+        <div style={{ marginBottom: 16 }}>
+          <Title level={3} style={{ margin: 0 }}>
+            {t('pages.studentAttendanceTitle')}
+          </Title>
+          <Text type="secondary">{t('pages.studentAttendanceSub')}</Text>
+        </div>
+
+        <Spin spinning={loading} tip={t('common.loading', { defaultValue: 'Đang tải dữ liệu từ Cloud Firestore...' })}>
+          <StudentAttendancePersonalView
+            currentUser={currentUser}
+            myClass={myClass}
+            myPersonalAttendances={myPersonalAttendances}
+            scopedHomeworks={scopedHomeworks}
+            personalStats={personalStats}
+            onSubmitHomework={handleSubmitHomework}
+          />
+        </Spin>
+      </div>
+    );
+  }
+
+  // 2. VIEW GIÁO VIÊN / CÁN BỘ QUẢN LÝ: ĐIỀU HÀNH CA DẠY VÀ ĐÁNH GIÁ CHUNG
   return (
     <div>
       <div style={{ marginBottom: 16 }}>

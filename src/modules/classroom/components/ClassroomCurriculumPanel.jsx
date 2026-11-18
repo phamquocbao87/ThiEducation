@@ -23,6 +23,7 @@ import {
   UploadOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { FormattedText } from '../../../shared/components/controls';
 import { LESSON_PLAN_STATUS } from '../../../shared/models/classroom.model';
 import { generateClassSessionDates } from '../../../shared/utils/classSessionUtils';
 
@@ -363,20 +364,98 @@ export const ClassroomCurriculumPanel = ({
                   </Text>
                   <div style={{ fontSize: 12, color: '#262626', lineHeight: '20px', whiteSpace: 'pre-line' }}>
                     {Array.isArray(realPlan.objectives)
-                      ? realPlan.objectives.map((obj, i) => <div key={i}>{obj}</div>)
-                      : (realPlan.objectives || (isEnglish ? 'Objectives will be added by teacher.' : 'Mục tiêu đang được cập nhật.'))}
+                      ? realPlan.objectives.map((obj, i) => (
+                          <div key={i}>
+                            <FormattedText content={obj} />
+                          </div>
+                        ))
+                      : (
+                          <FormattedText
+                            content={realPlan.objectives}
+                            fallback={isEnglish ? 'Objectives will be added by teacher.' : 'Mục tiêu đang được cập nhật.'}
+                          />
+                        )}
                   </div>
                 </div>
               </Col>
 
               <Col xs={24} md={12}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {/* McGraw-Hill Wonders Suggested Daily Time Benchmarks */}
+                  <div
+                    data-testid="wonders-daily-time-badges"
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: 8,
+                      alignItems: 'center',
+                      backgroundColor: '#f0f5ff',
+                      border: '1px solid #adc6ff',
+                      borderRadius: 8,
+                      padding: '8px 12px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          backgroundColor: '#096dd9',
+                          color: '#ffffff',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: '0 4px',
+                          textAlign: 'center',
+                          boxShadow: '0 2px 4px rgba(9,109,217,0.25)',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {realPlan.readingDailyTime || '60+ mins'}
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#096dd9' }}>
+                        {isEnglish ? 'Reading Suggested Daily Time' : 'Đọc Gợi Ý / Ngày'}
+                      </span>
+                    </div>
+
+                    <div style={{ width: 1, height: 18, backgroundColor: '#d9d9d9', margin: '0 4px' }} />
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          backgroundColor: '#389e0d',
+                          color: '#ffffff',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: '0 4px',
+                          textAlign: 'center',
+                          boxShadow: '0 2px 4px rgba(56,158,13,0.25)',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {realPlan.writingDailyTime || '30+ mins'}
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#389e0d' }}>
+                        {isEnglish ? 'Writing Suggested Daily Time' : 'Viết Gợi Ý / Ngày'}
+                      </span>
+                    </div>
+                  </div>
+
                   {/* Học sinh chuẩn bị bài trước */}
                   <div style={{ backgroundColor: '#ffffff', border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
                     <Text strong style={{ fontSize: 12, color: '#389e0d', display: 'block', marginBottom: 4 }}>
                       📖 {isEnglish ? 'Student Pre-Class Reading:' : 'Học Sinh Đọc Chuẩn Bị (Student Prep):'}
                     </Text>
-                    <Text style={{ fontSize: 12, color: '#262626' }}>
+                    <Text style={{ fontSize: 12, color: '#262626', whiteSpace: 'pre-line', display: 'block' }}>
                       {realPlan.studentPrep || (isEnglish ? 'None required' : 'Không có yêu cầu chuẩn bị trước')}
                     </Text>
                   </div>
@@ -386,7 +465,7 @@ export const ClassroomCurriculumPanel = ({
                     <Text strong style={{ fontSize: 12, color: '#cf1322', display: 'block', marginBottom: 4 }}>
                       📚 {isEnglish ? 'Homework & Practice Tasks:' : 'Bài Tập Về Nhà (Homework):'}
                     </Text>
-                    <Text style={{ fontSize: 12, color: '#262626' }}>
+                    <Text style={{ fontSize: 12, color: '#262626', whiteSpace: 'pre-line', display: 'block' }}>
                       {realPlan.homework || (isEnglish ? 'No homework assigned' : 'Chưa giao bài tập')}
                     </Text>
                   </div>

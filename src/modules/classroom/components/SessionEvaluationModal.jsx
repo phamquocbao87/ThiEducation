@@ -41,6 +41,7 @@ import { useLanguage } from '../../../core/context/LanguageContext';
 import { useIsMobile } from '../../../shared/hooks/useIsMobile';
 import { ClassroomService } from '../services/ClassroomService';
 import { SimpleEvaluationEditor } from './SimpleEvaluationEditor';
+import { FormattedText } from '../../../shared/components/controls';
 import { EvaluationHistoryDrawer } from './EvaluationHistoryDrawer';
 import { SessionRecordingUploadModal } from '../../materials/components/SessionRecordingUploadModal';
 
@@ -554,8 +555,10 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
           <Text strong style={{ color: '#1d39c4', display: 'block', marginBottom: 6 }}>
             💬 {isEnglish ? "Direct Teacher's Evaluation & Feedback:" : 'Lời Nhận Xét Trực Tiếp Từ Giáo Viên:'}
           </Text>
-          <Paragraph italic style={{ fontSize: 13, color: '#262626', margin: 0, lineHeight: '22px', whiteSpace: 'pre-line' }}>
-            "{studentEval.comment?.trim() || (isOnline
+          <Paragraph italic={!studentEval.comment?.trim()} style={{ fontSize: 13, color: '#262626', margin: 0, lineHeight: '22px', whiteSpace: 'pre-line' }}>
+            "{studentEval.comment?.trim() ? (
+              <FormattedText content={studentEval.comment} />
+            ) : (isOnline
               ? (isEnglish ? 'Actively participated in class, pronunciation was very clear and completed homework well.' : 'Tham gia học tích cực, phát âm rất chuẩn và làm bài tập xuất sắc hôm nay.')
               : (isEnglish ? 'Absent from class today.' : 'Vắng mặt buổi học hôm nay.'))}"
           </Paragraph>
@@ -1060,7 +1063,7 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
           showIcon
           icon={<WarningOutlined style={{ color: '#fa8c16' }} />}
           message={
-            <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+            <span style={{ fontWeight: 700 }}>
               {isEnglish
                 ? `Retroactive Evaluation: Session ${sessionIndex} (${formattedSessionDate})`
                 : `Đang Đánh Giá Bù Cho: Buổi ${sessionIndex} (${formattedSessionDate})`}
@@ -1084,7 +1087,7 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
           showIcon
           icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
           message={
-            <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+            <span style={{ fontWeight: 700 }}>
               {isEnglish
                 ? `Session ${sessionIndex} (${formattedSessionDate}) — Already Evaluated`
                 : `Buổi ${sessionIndex} (${formattedSessionDate}) — Đã Hoàn Tất Đánh Giá`}
@@ -1108,7 +1111,7 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
           showIcon
           icon={<ClockCircleOutlined style={{ color: '#fa8c16' }} />}
           message={
-            <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+            <span style={{ fontWeight: 700 }}>
               {isEnglish ? 'Upcoming Session — Evaluation Temporarily Locked' : 'Buổi Học Chưa Diễn Ra — Đánh Giá Sau Giờ Đang Tạm Khóa'}
             </span>
           }
@@ -1280,16 +1283,16 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
                   </div>
                 )}
 
-                {/* Ô Nhập Nhận Xét Của Giáo Viên */}
-                <Input.TextArea
-                  rows={3}
-                  value={item.comment || ''}
-                  disabled={!canEvaluate}
-                  onChange={(e) => handleUpdateStudent(record.id, 'comment', e.target.value)}
-                  placeholder={placeholderText}
-                  style={{ borderRadius: 8, fontSize: 13, width: '100%', marginBottom: 10 }}
-                  data-testid={`eval-comment-mobile-${record.id}`}
-                />
+                {/* Ô Nhập Nhận Xét Của Giáo Viên (WYSIWYG TipTap Đồng Bộ Cả Mobile) */}
+                <div style={{ marginBottom: 10, width: '100%' }}>
+                  <SimpleEvaluationEditor
+                    value={item.comment || ''}
+                    disabled={!canEvaluate}
+                    onChange={(val) => handleUpdateStudent(record.id, 'comment', val)}
+                    placeholder={placeholderText}
+                    testId={`eval-comment-mobile-${record.id}`}
+                  />
+                </div>
 
                 {/* Nút Hành Động Ở Thẻ: Lưu Riêng Từng Em */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>

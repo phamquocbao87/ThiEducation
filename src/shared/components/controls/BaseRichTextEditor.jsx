@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
 import { Button, Space, Tooltip, Divider } from 'antd';
 import {
   BoldOutlined,
@@ -44,6 +45,7 @@ export const BaseRichTextEditor = ({
           levels: [2, 3],
         },
       }),
+      Underline,
     ],
     content: value || '',
     onUpdate: ({ editor: ed }) => {

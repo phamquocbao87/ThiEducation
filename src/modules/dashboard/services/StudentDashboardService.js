@@ -112,6 +112,8 @@ export class StudentDashboardService extends BaseModuleService {
       objectives: rawObjectives,
       studentPrep: realPlan.studentPrep || '',
       homework: realPlan.homework || '',
+      readingDailyTime: realPlan.readingDailyTime || '60+ mins',
+      writingDailyTime: realPlan.writingDailyTime || '30+ mins',
       slideLink: realPlan.slideLink || '',
     };
   }

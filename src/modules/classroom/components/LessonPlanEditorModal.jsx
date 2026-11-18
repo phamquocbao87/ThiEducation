@@ -4,7 +4,7 @@ import { BookOutlined, CalendarOutlined, CopyOutlined, ThunderboltOutlined } fro
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { LESSON_PLAN_STATUS } from '../../../shared/models/classroom.model';
 import { generateClassSessionDates } from '../../../shared/utils/classSessionUtils';
-import { SimpleObjectivesEditor } from './SimpleObjectivesEditor';
+import { SimpleObjectivesEditor, parseObjectivesList } from './SimpleObjectivesEditor';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -34,19 +34,22 @@ export const LessonPlanEditorModal = ({
       const targetSession = initialPlan?.sessionIndex || sessionIndex || 1;
       setSelectedSessionVal(targetSession);
       const matchedSchedule = scheduleSessions.find((s) => s.sessionIndex === targetSession);
+      const planToUse = initialPlan || cls?.lessonPlans?.[targetSession] || null;
 
-      if (initialPlan) {
+      if (planToUse) {
         form.setFieldsValue({
           sessionIndex: targetSession,
-          date: initialPlan.date || matchedSchedule?.date || '',
-          unitWeek: initialPlan.unitWeek || matchedSchedule?.unitWeek || '',
-          lessonTitle: initialPlan.lessonTitle || '',
-          objectives: Array.isArray(initialPlan.objectives) ? initialPlan.objectives.join('\n') : (initialPlan.objectives || ''),
-          studentPrep: initialPlan.studentPrep || '',
-          homework: initialPlan.homework || '',
-          slideLink: initialPlan.slideLink || '',
-          teacherNotes: initialPlan.teacherNotes || '',
-          status: initialPlan.status || LESSON_PLAN_STATUS.READY,
+          date: planToUse.date || matchedSchedule?.date || '',
+          unitWeek: planToUse.unitWeek || matchedSchedule?.unitWeek || '',
+          lessonTitle: planToUse.lessonTitle || '',
+          objectives: Array.isArray(planToUse.objectives) ? planToUse.objectives.join('\n') : (planToUse.objectives || ''),
+          studentPrep: planToUse.studentPrep || '',
+          homework: planToUse.homework || '',
+          readingDailyTime: planToUse.readingDailyTime || '60+ mins',
+          writingDailyTime: planToUse.writingDailyTime || '30+ mins',
+          slideLink: planToUse.slideLink || '',
+          teacherNotes: planToUse.teacherNotes || '',
+          status: planToUse.status || LESSON_PLAN_STATUS.READY,
         });
       } else {
         form.resetFields();
@@ -58,22 +61,52 @@ export const LessonPlanEditorModal = ({
           objectives: '',
           studentPrep: '',
           homework: '',
+          readingDailyTime: '60+ mins',
+          writingDailyTime: '30+ mins',
           slideLink: '',
           teacherNotes: '',
           status: LESSON_PLAN_STATUS.READY,
         });
       }
     }
-  }, [open, initialPlan, sessionIndex, form, scheduleSessions]);
+  }, [open, initialPlan, sessionIndex, form, scheduleSessions, cls?.lessonPlans]);
 
   const handleSelectScheduleSession = (val) => {
     setSelectedSessionVal(val);
     const matched = scheduleSessions.find((s) => s.sessionIndex === val);
-    if (matched) {
+    const targetPlan = cls?.lessonPlans?.[val] || null;
+
+    if (targetPlan) {
       form.setFieldsValue({
-        sessionIndex: matched.sessionIndex,
-        date: matched.date,
-        unitWeek: matched.unitWeek,
+        sessionIndex: val,
+        date: targetPlan.date || matched?.date || '',
+        unitWeek: targetPlan.unitWeek || matched?.unitWeek || '',
+        lessonTitle: targetPlan.lessonTitle || '',
+        objectives: Array.isArray(targetPlan.objectives)
+          ? targetPlan.objectives.join('\n')
+          : (targetPlan.objectives || ''),
+        studentPrep: targetPlan.studentPrep || '',
+        homework: targetPlan.homework || '',
+        readingDailyTime: targetPlan.readingDailyTime || '60+ mins',
+        writingDailyTime: targetPlan.writingDailyTime || '30+ mins',
+        slideLink: targetPlan.slideLink || '',
+        teacherNotes: targetPlan.teacherNotes || '',
+        status: targetPlan.status || LESSON_PLAN_STATUS.READY,
+      });
+    } else {
+      form.setFieldsValue({
+        sessionIndex: val,
+        date: matched?.date || '',
+        unitWeek: matched?.unitWeek || `Unit 1 Week ${Math.ceil(val / 2)} · Lesson ${val}`,
+        lessonTitle: '',
+        objectives: '',
+        studentPrep: '',
+        homework: '',
+        readingDailyTime: '60+ mins',
+        writingDailyTime: '30+ mins',
+        slideLink: '',
+        teacherNotes: '',
+        status: LESSON_PLAN_STATUS.READY,
       });
     }
   };
@@ -93,6 +126,8 @@ export const LessonPlanEditorModal = ({
       ].join('\n'),
       studentPrep: 'Literature Anthology, pp. 10–25; Companion pp. 30–35',
       homework: 'Practice Book trang 12, 14, 16 và 18',
+      readingDailyTime: '60+ mins',
+      writingDailyTime: '30+ mins',
       status: LESSON_PLAN_STATUS.READY,
     });
   };
@@ -103,6 +138,8 @@ export const LessonPlanEditorModal = ({
         unitWeek: previousPlan.unitWeek || form.getFieldValue('unitWeek'),
         studentPrep: previousPlan.studentPrep || '',
         homework: previousPlan.homework || '',
+        readingDailyTime: previousPlan.readingDailyTime || '60+ mins',
+        writingDailyTime: previousPlan.writingDailyTime || '30+ mins',
         objectives: Array.isArray(previousPlan.objectives) ? previousPlan.objectives.join('\n') : (previousPlan.objectives || ''),
       });
     }
@@ -110,12 +147,7 @@ export const LessonPlanEditorModal = ({
 
   const handleFinish = (values) => {
     const rawObjectives = values.objectives;
-    const objectives = Array.isArray(rawObjectives)
-      ? rawObjectives
-      : String(rawObjectives || '')
-          .split('\n')
-          .map((s) => s.trim())
-          .filter(Boolean);
+    const objectives = parseObjectivesList(rawObjectives);
 
     const actualSessionIndex = Number(values.sessionIndex) || selectedSessionVal || sessionIndex;
 
@@ -200,7 +232,11 @@ export const LessonPlanEditorModal = ({
         form={form}
         layout="vertical"
         onFinish={handleFinish}
-        initialValues={{ status: LESSON_PLAN_STATUS.READY }}
+        initialValues={{
+          status: LESSON_PLAN_STATUS.READY,
+          readingDailyTime: '60+ mins',
+          writingDailyTime: '30+ mins',
+        }}
       >
         <Form.Item name="sessionIndex" hidden>
           <Input />
@@ -303,14 +339,91 @@ export const LessonPlanEditorModal = ({
             name="studentPrep"
             label={isEnglish ? 'Student Pre-Class Reading (Student Prep)' : 'Học Sinh Đọc Chuẩn Bị (Student Prep)'}
           >
-            <Input placeholder="Ví dụ: Companion pp. 36–42; Decodable #4" style={{ height: 38, borderRadius: 8 }} />
+            <TextArea
+              autoSize={{ minRows: 2, maxRows: 4 }}
+              placeholder="Ví dụ: Companion pp. 36–42; Decodable #4"
+              style={{ borderRadius: 8 }}
+            />
           </Form.Item>
 
           <Form.Item
             name="homework"
             label={isEnglish ? 'Homework & Practice Tasks' : 'Bài Tập Về Nhà (Homework - Tự động điền vào báo cáo)'}
           >
-            <Input placeholder="Ví dụ: Practice Book pp. 20, 22, 24" style={{ height: 38, borderRadius: 8, color: '#389e0d', fontWeight: 600 }} />
+            <TextArea
+              autoSize={{ minRows: 2, maxRows: 4 }}
+              placeholder="Ví dụ: Practice Book pp. 20, 22, 24"
+              style={{ borderRadius: 8, color: '#389e0d', fontWeight: 600 }}
+            />
+          </Form.Item>
+        </div>
+
+        {/* 3. THỜI LƯỢNG RÈN LUYỆN GỢI Ý MỖI NGÀY (MCGRAW-HILL WONDERS BENCHMARKS) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0 16px' }}>
+          <Form.Item
+            name="readingDailyTime"
+            label={
+              <Space size={6}>
+                <span style={{ fontWeight: 600 }}>
+                  {isEnglish ? 'Reading Suggested Daily Time' : 'Thời Lượng Đọc Gợi Ý (Mỗi Ngày)'}
+                </span>
+                <Tag color="blue" style={{ fontSize: 10, margin: 0, padding: '0 4px', borderRadius: 4 }}>
+                  Wonders 60+ mins
+                </Tag>
+              </Space>
+            }
+            extra={
+              <Space size={4} style={{ marginTop: 4 }}>
+                <span style={{ fontSize: 11, color: '#8c8c8c' }}>{isEnglish ? 'Quick pick:' : 'Gợi ý nhanh:'}</span>
+                {['45 mins', '60+ mins', '90 mins'].map((time) => (
+                  <Tag
+                    key={time}
+                    style={{ cursor: 'pointer', fontSize: 11, borderRadius: 4 }}
+                    onClick={() => form.setFieldsValue({ readingDailyTime: time })}
+                  >
+                    {time}
+                  </Tag>
+                ))}
+              </Space>
+            }
+          >
+            <Input
+              placeholder="Ví dụ: 60+ mins"
+              style={{ height: 38, borderRadius: 8, color: '#096dd9', fontWeight: 600 }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="writingDailyTime"
+            label={
+              <Space size={6}>
+                <span style={{ fontWeight: 600 }}>
+                  {isEnglish ? 'Writing Suggested Daily Time' : 'Thời Lượng Viết Gợi Ý (Mỗi Ngày)'}
+                </span>
+                <Tag color="cyan" style={{ fontSize: 10, margin: 0, padding: '0 4px', borderRadius: 4 }}>
+                  Wonders 30+ mins
+                </Tag>
+              </Space>
+            }
+            extra={
+              <Space size={4} style={{ marginTop: 4 }}>
+                <span style={{ fontSize: 11, color: '#8c8c8c' }}>{isEnglish ? 'Quick pick:' : 'Gợi ý nhanh:'}</span>
+                {['20 mins', '30+ mins', '45 mins'].map((time) => (
+                  <Tag
+                    key={time}
+                    style={{ cursor: 'pointer', fontSize: 11, borderRadius: 4 }}
+                    onClick={() => form.setFieldsValue({ writingDailyTime: time })}
+                  >
+                    {time}
+                  </Tag>
+                ))}
+              </Space>
+            }
+          >
+            <Input
+              placeholder="Ví dụ: 30+ mins"
+              style={{ height: 38, borderRadius: 8, color: '#389e0d', fontWeight: 600 }}
+            />
           </Form.Item>
         </div>
 

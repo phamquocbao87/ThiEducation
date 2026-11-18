@@ -32,6 +32,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { FormattedText } from '../../../shared/components/controls';
 import { ClassroomService } from '../services/ClassroomService';
 
 const { Text, Title, Paragraph } = Typography;
@@ -288,7 +289,11 @@ export const EvaluationHistoryDrawer = ({
       key: 'comment',
       render: (_, record) => (
         <div style={{ fontSize: 12, color: record.comment ? '#334155' : '#94a3b8', fontStyle: record.comment ? 'normal' : 'italic', lineHeight: '18px', whiteSpace: 'pre-line' }}>
-          {record.comment ? `"${record.comment}"` : (isEnglish ? '(No detailed comments recorded)' : '(Chưa có nhận xét chi tiết)')}
+          {record.comment ? (
+            <FormattedText content={record.comment} />
+          ) : (
+            isEnglish ? '(No detailed comments recorded)' : '(Chưa có nhận xét chi tiết)'
+          )}
         </div>
       ),
     },
@@ -526,8 +531,12 @@ export const EvaluationHistoryDrawer = ({
                         </Text>
                         <Rate disabled value={myEval.stars} character={<StarFilled />} style={{ fontSize: 16 }} />
                       </div>
-                      <Paragraph italic style={{ fontSize: 13, color: '#1e293b', margin: 0, lineHeight: '22px', whiteSpace: 'pre-line' }}>
-                        {myEval.comment ? `"${myEval.comment}"` : (isEnglish ? '(No detailed comments recorded for this session)' : '(Chưa có nhận xét chi tiết cho buổi học này)')}
+                      <Paragraph italic={!myEval.comment} style={{ fontSize: 13, color: '#1e293b', margin: 0, lineHeight: '22px', whiteSpace: 'pre-line' }}>
+                        {myEval.comment ? (
+                          <FormattedText content={myEval.comment} />
+                        ) : (
+                          isEnglish ? '(No detailed comments recorded for this session)' : '(Chưa có nhận xét chi tiết cho buổi học này)'
+                        )}
                       </Paragraph>
                     </div>
                   );

@@ -27,6 +27,7 @@ import { useAuth } from '../../../core/context/AuthContext';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { useIsMobile } from '../../../shared/hooks/useIsMobile';
 import { StudentDashboardService } from '../services/StudentDashboardService';
+import { FormattedText } from '../../../shared/components/controls';
 import { StudentLearningCornerCard } from './StudentLearningCornerCard';
 import { StudentClassMaterialsCard } from './StudentClassMaterialsCard';
 import { StudentHomeworkTasksCard } from './StudentHomeworkTasksCard';
@@ -728,9 +729,77 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                               lineHeight: 1.4,
                             }}
                           >
-                            {obj}
+                            <FormattedText content={obj} />
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 1.5. Thời lượng rèn luyện hàng ngày chuẩn McGraw-Hill Wonders */}
+                  {(lessonPrep.readingDailyTime || lessonPrep.writingDailyTime) && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 12,
+                        alignItems: 'center',
+                        backgroundColor: '#f0f5ff',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: 8,
+                        padding: '10px 14px',
+                        marginBottom: 12,
+                      }}
+                      data-testid="student-wonders-daily-benchmarks"
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minWidth: 30,
+                            height: 30,
+                            borderRadius: '50%',
+                            backgroundColor: '#2563eb',
+                            color: '#ffffff',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: '0 4px',
+                            textAlign: 'center',
+                          }}
+                        >
+                          {lessonPrep.readingDailyTime || '60+ mins'}
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#1e40af' }}>
+                          {isEnglish ? 'Reading Suggested Daily Time' : 'Đọc Gợi Ý / Ngày'}
+                        </span>
+                      </div>
+
+                      <div style={{ width: 1, height: 16, backgroundColor: '#cbd5e1' }} />
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minWidth: 30,
+                            height: 30,
+                            borderRadius: '50%',
+                            backgroundColor: '#16a34a',
+                            color: '#ffffff',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: '0 4px',
+                            textAlign: 'center',
+                          }}
+                        >
+                          {lessonPrep.writingDailyTime || '30+ mins'}
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#166534' }}>
+                          {isEnglish ? 'Writing Suggested Daily Time' : 'Viết Gợi Ý / Ngày'}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -750,7 +819,7 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                       <Text strong style={{ fontSize: 13, color: '#15803d', display: 'block', marginBottom: 4 }}>
                         📖 {isEnglish ? 'Student Pre-Class Reading & Preparation:' : 'Nội Dung Học Sinh Cần Chuẩn Bị Trước Khi Lên Lớp (Student Prep):'}
                       </Text>
-                      <div style={{ fontSize: 13, color: '#166534', fontWeight: 600 }}>
+                      <div style={{ fontSize: 13, color: '#166534', fontWeight: 600, whiteSpace: 'pre-line' }}>
                         {lessonPrep.studentPrep}
                       </div>
                     </div>
@@ -771,7 +840,7 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                       <Text strong style={{ fontSize: 13, color: '#c2410c', display: 'block', marginBottom: 4 }}>
                         📚 {isEnglish ? 'Assigned Homework:' : 'Bài Tập Giáo Viên Giao Về Nhà (Homework):'}
                       </Text>
-                      <div style={{ fontSize: 13, color: '#9a3412', fontWeight: 600 }}>
+                      <div style={{ fontSize: 13, color: '#9a3412', fontWeight: 600, whiteSpace: 'pre-line' }}>
                         {lessonPrep.homework}
                       </div>
                     </div>

@@ -1,8 +1,12 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
 import { Button, Space, Tooltip, Divider } from 'antd';
 import {
   BoldOutlined,
   ItalicOutlined,
+  UnderlineOutlined,
   UnorderedListOutlined,
   OrderedListOutlined,
   ClearOutlined,
@@ -10,9 +14,35 @@ import {
 import { useLanguage } from '../../../core/context/LanguageContext';
 
 /**
+ * normalizeEvaluationToHtml
+ * Chuẩn hóa nhận xét giáo viên sang HTML chuẩn TipTap,
+ * tự động khôi phục chuỗi markdown cũ (**bold**, *italic*) và lỗi dấu sao xếp chồng (******).
+ */
+export const normalizeEvaluationToHtml = (value) => {
+  if (!value) return '';
+  const str = String(value).trim();
+  if (!str) return '';
+
+  let cleanStr = str.replace(/\*{4,}/g, '**');
+  cleanStr = cleanStr.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  cleanStr = cleanStr.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+
+  if (/<(p|ul|ol|div|h[1-6])[\s>]/i.test(cleanStr)) {
+    return cleanStr;
+  }
+
+  return cleanStr
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => `<p>${line}</p>`)
+    .join('');
+};
+
+/**
  * SimpleEvaluationEditor
- * Trình soạn thảo nhận xét đơn giản, chuẩn sư phạm dành cho Giáo viên.
- * Chiều cao chuẩn ~160px (cao gấp 5 lần ô input 32px ban đầu).
+ * Trình soạn thảo nhận xét sư phạm WYSIWYG trực quan dành cho Giáo viên.
+ * Hỗ trợ: In đậm (B), In nghiêng (I), Gạch chân (U), Danh sách (List •= / 1.=), Phím tắt nhận xét sư phạm.
  */
 export const SimpleEvaluationEditor = React.memo(({
   value = '',
@@ -23,87 +53,66 @@ export const SimpleEvaluationEditor = React.memo(({
   maxLength = 1000,
 }) => {
   const { isEnglish } = useLanguage();
-  const textareaRef = useRef(null);
   const [isFocused, setIsFocused] = useState(false);
 
-  const handleFormat = (prefix, suffix = '') => {
-    if (disabled) return;
-    const textarea = textareaRef.current;
-    if (!textarea) return;
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: false,
+        codeBlock: false,
+        blockquote: false,
+      }),
+      Underline,
+    ],
+    content: normalizeEvaluationToHtml(value),
+    editable: !disabled,
+    editorProps: {
+      attributes: {
+        class: 'tiptap-eval-content',
+        'data-testid': testId || 'simple-evaluation-editor-content',
+        style: 'outline: none; height: 95px; overflow-y: auto; padding: 6px 10px; font-size: 13px; line-height: 20px; color: #1e293b;',
+      },
+    },
+    onFocus: () => setIsFocused(true),
+    onBlur: () => setIsFocused(false),
+    onUpdate: ({ editor: ed }) => {
+      const html = ed.getHTML();
+      const cleanHtml = ed.isEmpty ? '' : html;
+      onChange?.(cleanHtml);
+    },
+  });
 
-    const start = textarea.selectionStart ?? 0;
-    const end = textarea.selectionEnd ?? 0;
-    const currentVal = value || '';
-    const selectedText = currentVal.substring(start, end);
-
-    let newText = '';
-    let newCursorPos = start + prefix.length;
-
-    if (selectedText) {
-      newText = currentVal.substring(0, start) + prefix + selectedText + suffix + currentVal.substring(end);
-      newCursorPos = start + prefix.length + selectedText.length + suffix.length;
-    } else {
-      const sample = prefix === '**' ? 'từ khóa' : prefix === '*' ? 'lưu ý' : '';
-      newText = currentVal.substring(0, start) + prefix + sample + suffix + currentVal.substring(end);
-      newCursorPos = start + prefix.length + sample.length;
+  // Đồng bộ nội dung khi `value` từ bên ngoài thay đổi (ví dụ khi reset form hoặc chọn học viên khác)
+  useEffect(() => {
+    if (editor && value !== undefined) {
+      const currentHtml = editor.getHTML();
+      const normalized = normalizeEvaluationToHtml(value);
+      if (normalized !== currentHtml && (normalized !== '' || !editor.isEmpty)) {
+        editor.commands.setContent(normalized, false);
+      }
     }
+  }, [value, editor]);
 
-    onChange?.(newText);
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(newCursorPos, newCursorPos);
-    }, 0);
-  };
-
-  const handleInsertBullet = (bullet = '• ') => {
-    if (disabled) return;
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart ?? 0;
-    const currentVal = value || '';
-    const prefixNewline = start > 0 && currentVal[start - 1] !== '\n' ? '\n' : '';
-    const insertText = `${prefixNewline}${bullet}`;
-
-    const newText = currentVal.substring(0, start) + insertText + currentVal.substring(start);
-    onChange?.(newText);
-
-    setTimeout(() => {
-      textarea.focus();
-      const newPos = start + insertText.length;
-      textarea.setSelectionRange(newPos, newPos);
-    }, 0);
-  };
+  // Đồng bộ trạng thái editable khi `disabled` thay đổi
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(!disabled);
+    }
+  }, [disabled, editor]);
 
   const handleInsertSnippet = (snippet) => {
-    if (disabled) return;
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart ?? 0;
-    const currentVal = value || '';
-    const prefixNewline = start > 0 && currentVal[start - 1] !== '\n' ? '\n' : '';
-    const insertText = `${prefixNewline}${snippet} `;
-
-    const newText = currentVal.substring(0, start) + insertText + currentVal.substring(start);
-    onChange?.(newText);
-
-    setTimeout(() => {
-      textarea.focus();
-      const newPos = start + insertText.length;
-      textarea.setSelectionRange(newPos, newPos);
-    }, 0);
+    if (!editor || disabled) return;
+    editor.chain().focus().insertContent(`<p>${snippet}</p>`).run();
   };
 
   const handleClear = () => {
-    if (disabled) return;
+    if (!editor || disabled) return;
+    editor.commands.clearContent();
     onChange?.('');
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-    }
   };
 
-  const currentLength = (value || '').length;
+  const textContent = editor ? editor.getText() : '';
+  const currentLength = textContent.length;
 
   return (
     <div
@@ -136,47 +145,68 @@ export const SimpleEvaluationEditor = React.memo(({
         }}
       >
         <Space size={2} wrap={false} style={{ overflowX: 'auto', maxWidth: 'calc(100% - 30px)' }}>
-          <Tooltip title={isEnglish ? 'Bold' : 'In đậm (Bold)'}>
+          {/* Bold */}
+          <Tooltip title={isEnglish ? 'Bold (Ctrl+B)' : 'In đậm (Ctrl+B)'}>
             <Button
               size="small"
-              type="text"
+              type={editor?.isActive('bold') ? 'primary' : 'text'}
               disabled={disabled}
               icon={<BoldOutlined />}
-              onClick={() => handleFormat('**', '**')}
+              onClick={() => editor?.chain().focus().toggleBold().run()}
               style={{ width: 26, height: 26, padding: 0 }}
+              data-testid="btn-eval-bold"
             />
           </Tooltip>
 
-          <Tooltip title={isEnglish ? 'Italic' : 'In nghiêng (Italic)'}>
+          {/* Italic */}
+          <Tooltip title={isEnglish ? 'Italic (Ctrl+I)' : 'In nghiêng (Ctrl+I)'}>
             <Button
               size="small"
-              type="text"
+              type={editor?.isActive('italic') ? 'primary' : 'text'}
               disabled={disabled}
               icon={<ItalicOutlined />}
-              onClick={() => handleFormat('*', '*')}
+              onClick={() => editor?.chain().focus().toggleItalic().run()}
               style={{ width: 26, height: 26, padding: 0 }}
+              data-testid="btn-eval-italic"
             />
           </Tooltip>
 
+          {/* Underline */}
+          <Tooltip title={isEnglish ? 'Underline (Ctrl+U)' : 'Gạch chân (Ctrl+U)'}>
+            <Button
+              size="small"
+              type={editor?.isActive('underline') ? 'primary' : 'text'}
+              disabled={disabled}
+              icon={<UnderlineOutlined />}
+              onClick={() => editor?.chain().focus().toggleUnderline().run()}
+              style={{ width: 26, height: 26, padding: 0 }}
+              data-testid="btn-eval-underline"
+            />
+          </Tooltip>
+
+          {/* Bullet List */}
           <Tooltip title={isEnglish ? 'Bullet list' : 'Gạch đầu dòng (Bullet list)'}>
             <Button
               size="small"
-              type="text"
+              type={editor?.isActive('bulletList') ? 'primary' : 'text'}
               disabled={disabled}
               icon={<UnorderedListOutlined />}
-              onClick={() => handleInsertBullet('• ')}
+              onClick={() => editor?.chain().focus().toggleBulletList().run()}
               style={{ width: 26, height: 26, padding: 0 }}
+              data-testid="btn-eval-bullet"
             />
           </Tooltip>
 
+          {/* Numbered List */}
           <Tooltip title={isEnglish ? 'Numbered list' : 'Đánh số (Numbered list)'}>
             <Button
               size="small"
-              type="text"
+              type={editor?.isActive('orderedList') ? 'primary' : 'text'}
               disabled={disabled}
               icon={<OrderedListOutlined />}
-              onClick={() => handleInsertBullet('1. ')}
+              onClick={() => editor?.chain().focus().toggleOrderedList().run()}
               style={{ width: 26, height: 26, padding: 0 }}
+              data-testid="btn-eval-ordered"
             />
           </Tooltip>
 
@@ -189,6 +219,7 @@ export const SimpleEvaluationEditor = React.memo(({
             disabled={disabled}
             onClick={() => handleInsertSnippet(isEnglish ? '• Praise: Fluent pronunciation, active interaction.' : '• Khen ngợi: Phát âm chuẩn, tự tin tương tác.')}
             style={{ fontSize: 11, height: 24, padding: '0 6px', borderRadius: 4 }}
+            data-testid="btn-eval-snippet-praise"
           >
             🌟 {isEnglish ? 'Praise' : 'Khen ngợi'}
           </Button>
@@ -199,6 +230,7 @@ export const SimpleEvaluationEditor = React.memo(({
             disabled={disabled}
             onClick={() => handleInsertSnippet(isEnglish ? '• Focus: Practice word endings and blending.' : '• Cần rèn: Chú ý phát âm âm đuôi và nối từ.')}
             style={{ fontSize: 11, height: 24, padding: '0 6px', borderRadius: 4 }}
+            data-testid="btn-eval-snippet-phonics"
           >
             🔤 {isEnglish ? 'Phonics' : 'Phonics'}
           </Button>
@@ -209,8 +241,9 @@ export const SimpleEvaluationEditor = React.memo(({
             disabled={disabled}
             onClick={() => handleInsertSnippet(isEnglish ? '• Interaction: Actively engaged in class activities.' : '• Tương tác: Tích cực tham gia hoạt động.')}
             style={{ fontSize: 11, height: 24, padding: '0 6px', borderRadius: 4 }}
+            data-testid="btn-eval-snippet-active"
           >
-            🗣️ {isEnglish ? 'Engagement' : 'Tương tác'}
+            🗣️ {isEnglish ? 'Active' : 'Tương tác'}
           </Button>
 
           <Button
@@ -219,6 +252,7 @@ export const SimpleEvaluationEditor = React.memo(({
             disabled={disabled}
             onClick={() => handleInsertSnippet(isEnglish ? '• Homework: Complete Practice Book exercises.' : '• BTVN: Hoàn thành bài tập Practice Book.')}
             style={{ fontSize: 11, height: 24, padding: '0 6px', borderRadius: 4 }}
+            data-testid="btn-eval-snippet-hw"
           >
             📚 {isEnglish ? 'Homework' : 'BTVN'}
           </Button>
@@ -233,59 +267,66 @@ export const SimpleEvaluationEditor = React.memo(({
             icon={<ClearOutlined />}
             onClick={handleClear}
             style={{ width: 26, height: 26, padding: 0 }}
+            data-testid="btn-eval-clear"
           />
         </Tooltip>
       </div>
 
-      {/* 2. Vùng Nhập Liệu Soạn Thảo (Textarea) */}
-      <textarea
-        ref={textareaRef}
-        value={value || ''}
-        onChange={(e) => onChange?.(e.target.value)}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        disabled={disabled}
-        maxLength={maxLength}
-        placeholder={placeholder || (isEnglish ? 'Enter comprehensive evaluation (strengths, pronunciation, homework)...' : 'Nhập nhận xét chi tiết buổi học (khen ngợi, điểm cần cải thiện, bài tập về nhà)...')}
-        data-testid={testId}
-        style={{
-          width: '100%',
-          flex: 1,
-          minHeight: 96,
-          border: 'none',
-          outline: 'none',
-          resize: 'none',
-          padding: '8px 10px',
-          fontSize: 13,
-          lineHeight: '20px',
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-          color: disabled ? '#64748b' : '#1e293b',
-          backgroundColor: 'transparent',
-          boxSizing: 'border-box',
-        }}
-      />
-
-      {/* 3. Chân Trang Thông Tin Đếm Ký Tự (Footer Bar) */}
+      {/* 2. Vùng Nhập Liệu Soạn Thảo WYSIWYG TipTap */}
       <div
         style={{
-          background: '#ffffff',
-          borderTop: '1px dashed #f1f5f9',
+          flex: 1,
+          cursor: disabled ? 'not-allowed' : 'text',
+          overflow: 'hidden',
+          backgroundColor: 'transparent',
+        }}
+        onClick={() => !disabled && editor?.commands.focus()}
+      >
+        <EditorContent editor={editor} />
+      </div>
+
+      {/* 3. Chân Trang: Bộ Đếm Ký Tự & Gợi Ý */}
+      <div
+        style={{
           padding: '2px 8px',
+          background: '#f8fafc',
+          borderTop: '1px solid #f1f5f9',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          height: 22,
-          minHeight: 22,
-          fontSize: 11,
+          fontSize: 10,
           color: '#94a3b8',
         }}
       >
-        <span>{isEnglish ? 'Pedagogical evaluation editor' : 'Trình soạn thảo nhận xét buổi học'}</span>
-        <span style={{ color: currentLength > 900 ? '#ff4d4f' : '#94a3b8' }}>
+        <span>
+          {isEnglish ? 'Pedagogical evaluation editor' : 'Trình soạn thảo nhận xét sư phạm'}
+        </span>
+        <span style={{ color: currentLength > maxLength ? '#ef4444' : '#94a3b8' }}>
           {currentLength}/{maxLength}
         </span>
       </div>
+
+      <style>{`
+        .tiptap-eval-content p {
+          margin: 0 0 4px 0;
+          line-height: 20px;
+        }
+        .tiptap-eval-content ul,
+        .tiptap-eval-content ol {
+          padding-left: 18px;
+          margin: 0 0 4px 0;
+        }
+        .tiptap-eval-content strong {
+          font-weight: 700;
+          color: #0f172a;
+        }
+        .tiptap-eval-content em {
+          font-style: italic;
+        }
+        .tiptap-eval-content u {
+          text-decoration: underline;
+        }
+      `}</style>
     </div>
   );
 });
-

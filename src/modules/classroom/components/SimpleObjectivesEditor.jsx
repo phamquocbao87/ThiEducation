@@ -1,17 +1,100 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
 import { Button, Divider, Space, Tooltip } from 'antd';
 import {
   BoldOutlined,
   ClearOutlined,
   ItalicOutlined,
+  OrderedListOutlined,
+  UnderlineOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 
 /**
- * SimpleObjectivesEditor
- * Trình soạn thảo mục tiêu bài học & ngữ âm đơn giản, chuẩn sư phạm McGraw-Hill Wonders.
- * Tích hợp thanh công cụ định dạng và phím tắt 1-chạm nạp nhanh cấu trúc bài học.
+ * normalizeToHtml
+ * Chuyển đổi dữ liệu đầu vào (Array, Multiline Plaintext, Legacy Markdown) thành HTML chuẩn TipTap.
+ * Tự động sửa chữa lỗi ký tự sao xếp chồng (******bold****** -> <strong>bold</strong>).
+ */
+export const normalizeToHtml = (value) => {
+  if (!value) return '';
+
+  if (Array.isArray(value)) {
+    return value
+      .filter(Boolean)
+      .map((line) => {
+        let l = String(line).trim();
+        // Sửa lỗi xếp chồng dấu sao
+        l = l.replace(/\*{4,}/g, '**');
+        l = l.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        l = l.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+        return `<p>${l}</p>`;
+      })
+      .join('');
+  }
+
+  const str = String(value).trim();
+  if (!str) return '';
+
+  // Sửa lỗi xếp chồng dấu sao
+  let cleanStr = str.replace(/\*{4,}/g, '**');
+  cleanStr = cleanStr.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  cleanStr = cleanStr.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+
+  // Nếu đã chứa các thẻ khối HTML (<p>, <ul>, <ol>, <div>)
+  if (/<(p|ul|ol|div|h[1-6])[\s>]/i.test(cleanStr)) {
+    return cleanStr;
+  }
+
+  // Chuỗi text thông thường phân tách bằng \n
+  return cleanStr
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => `<p>${line}</p>`)
+    .join('');
+};
+
+/**
+ * parseObjectivesList
+ * Tách các khối HTML của TipTap thành mảng chuỗi từng mục tiêu để lưu vào database,
+ * giữ nguyên định dạng inline (<strong>, <em>, <u>).
+ */
+export const parseObjectivesList = (raw) => {
+  if (Array.isArray(raw)) return raw.filter(Boolean);
+  if (!raw || typeof raw !== 'string') return [];
+
+  const text = raw.trim();
+  if (!text) return [];
+
+  // Nếu là HTML có chứa thẻ khối <p> hoặc <li>
+  if (/<(p|li|div)[\s>]/i.test(text)) {
+    const matches = [];
+    const blockRegex = /<(?:p|li|div)[^>]*>(.*?)<\/(?:p|li|div)>/gi;
+    let match;
+    while ((match = blockRegex.exec(text)) !== null) {
+      let content = match[1].trim();
+      content = content.replace(/^(<br\s*\/?>)+|(<br\s*\/?>)+$/gi, '').trim();
+      if (content && content !== '<br>' && content !== '<br/>') {
+        matches.push(content);
+      }
+    }
+    if (matches.length > 0) return matches;
+  }
+
+  // Fallback phân tách bằng \n
+  return text
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+};
+
+/**
+ * SimpleObjectivesEditor — Trình soạn thảo mục tiêu bài học & ngữ âm WYSIWYG
+ * Chuẩn sư phạm McGraw-Hill Wonders (React 19 + TipTap v3).
+ * Định dạng trực quan: B (Bold), I (Italic), U (Underline), Bullet & Numbered List, Wonders Snippets.
  */
 export const SimpleObjectivesEditor = React.memo(({
   value = '',
@@ -22,67 +105,67 @@ export const SimpleObjectivesEditor = React.memo(({
   maxLength = 2000,
 }) => {
   const { isEnglish } = useLanguage();
-  const textareaRef = useRef(null);
   const [isFocused, setIsFocused] = useState(false);
 
-  const handleFormat = (prefix, suffix = '') => {
-    if (disabled) return;
-    const textarea = textareaRef.current;
-    if (!textarea) return;
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: false,
+        codeBlock: false,
+        blockquote: false,
+      }),
+      Underline,
+    ],
+    content: normalizeToHtml(value),
+    editable: !disabled,
+    editorProps: {
+      attributes: {
+        class: 'tiptap-objectives-content',
+        'data-testid': `${testId}-textarea`,
+        style: 'outline: none; min-height: 140px; padding: 10px 12px; font-size: 13px; line-height: 22px; color: #1e293b;',
+      },
+    },
+    onFocus: () => setIsFocused(true),
+    onBlur: () => setIsFocused(false),
+    onUpdate: ({ editor: ed }) => {
+      const html = ed.getHTML();
+      const cleanHtml = ed.isEmpty ? '' : html;
+      onChange?.(cleanHtml);
+    },
+  });
 
-    const start = textarea.selectionStart ?? 0;
-    const end = textarea.selectionEnd ?? 0;
-    const currentVal = value || '';
-    const selectedText = currentVal.substring(start, end);
-
-    let newText = '';
-    let newCursorPos = start + prefix.length;
-
-    if (selectedText) {
-      newText = currentVal.substring(0, start) + prefix + selectedText + suffix + currentVal.substring(end);
-      newCursorPos = start + prefix.length + selectedText.length + suffix.length;
-    } else {
-      const sample = prefix === '**' ? (isEnglish ? 'key objective' : 'mục tiêu chính') : prefix === '*' ? (isEnglish ? 'note' : 'lưu ý') : '';
-      newText = currentVal.substring(0, start) + prefix + sample + suffix + currentVal.substring(end);
-      newCursorPos = start + prefix.length + sample.length;
+  // Đồng bộ nội dung khi `value` từ bên ngoài thay đổi (ví dụ khi chọn template hoặc chuyển session)
+  useEffect(() => {
+    if (editor && value !== undefined) {
+      const currentHtml = editor.getHTML();
+      const normalized = normalizeToHtml(value);
+      if (normalized !== currentHtml && (normalized !== '' || !editor.isEmpty)) {
+        editor.commands.setContent(normalized, false);
+      }
     }
+  }, [value, editor]);
 
-    onChange?.(newText);
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(newCursorPos, newCursorPos);
-    }, 0);
-  };
+  // Cập nhật trạng thái editable khi `disabled` thay đổi
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(!disabled);
+    }
+  }, [disabled, editor]);
 
   const handleInsertSnippet = (snippet) => {
-    if (disabled) return;
-    const textarea = textareaRef.current;
-    const currentVal = value || '';
-    const start = textarea ? textarea.selectionStart ?? currentVal.length : currentVal.length;
-
-    // Thêm xuống dòng nếu trước đó chưa có
-    const needNewlineBefore = start > 0 && currentVal[start - 1] !== '\n';
-    const toInsert = (needNewlineBefore ? '\n' : '') + snippet;
-
-    const newText = currentVal.substring(0, start) + toInsert + currentVal.substring(start);
-    onChange?.(newText);
-
-    setTimeout(() => {
-      if (textarea) {
-        textarea.focus();
-        const nextPos = start + toInsert.length;
-        textarea.setSelectionRange(nextPos, nextPos);
-      }
-    }, 0);
+    if (!editor || disabled) return;
+    editor.chain().focus().insertContent(`<p>${snippet}</p>`).run();
   };
 
   const handleClear = () => {
-    if (disabled) return;
+    if (!editor || disabled) return;
+    editor.commands.clearContent();
     onChange?.('');
-    textareaRef.current?.focus();
   };
 
-  const lineCount = (value || '').split('\n').filter((l) => l.trim()).length;
+  const textContent = editor ? editor.getText() : '';
+  const lineCount = textContent.split('\n').filter((l) => l.trim()).length;
+  const charCount = textContent.length;
 
   return (
     <div
@@ -98,7 +181,7 @@ export const SimpleObjectivesEditor = React.memo(({
       }}
       data-testid={testId}
     >
-      {/* 1. Toolbar */}
+      {/* 1. Thanh Công Cụ Soạn Thảo (Toolbar) */}
       <div
         style={{
           display: 'flex',
@@ -113,36 +196,68 @@ export const SimpleObjectivesEditor = React.memo(({
         }}
       >
         <Space size={4} wrap>
-          <Tooltip title={isEnglish ? 'Bold (**text**)' : 'In đậm (**chữ**)'}>
+          {/* Bold */}
+          <Tooltip title={isEnglish ? 'Bold (Ctrl+B)' : 'In đậm (Ctrl+B)'}>
             <Button
               size="small"
+              type={editor?.isActive('bold') ? 'primary' : 'default'}
               icon={<BoldOutlined />}
               disabled={disabled}
-              onClick={() => handleFormat('**', '**')}
+              onClick={() => editor?.chain().focus().toggleBold().run()}
               style={{ borderRadius: 6, minWidth: 28, height: 26 }}
               data-testid="btn-toolbar-bold"
             />
           </Tooltip>
 
-          <Tooltip title={isEnglish ? 'Italic (*text*)' : 'In nghiêng (*chữ*)'}>
+          {/* Italic */}
+          <Tooltip title={isEnglish ? 'Italic (Ctrl+I)' : 'In nghiêng (Ctrl+I)'}>
             <Button
               size="small"
+              type={editor?.isActive('italic') ? 'primary' : 'default'}
               icon={<ItalicOutlined />}
               disabled={disabled}
-              onClick={() => handleFormat('*', '*')}
+              onClick={() => editor?.chain().focus().toggleItalic().run()}
               style={{ borderRadius: 6, minWidth: 28, height: 26 }}
               data-testid="btn-toolbar-italic"
             />
           </Tooltip>
 
-          <Tooltip title={isEnglish ? 'Bullet point (•)' : 'Dấu đầu dòng (•)'}>
+          {/* Underline */}
+          <Tooltip title={isEnglish ? 'Underline (Ctrl+U)' : 'Gạch chân (Ctrl+U)'}>
             <Button
               size="small"
+              type={editor?.isActive('underline') ? 'primary' : 'default'}
+              icon={<UnderlineOutlined />}
+              disabled={disabled}
+              onClick={() => editor?.chain().focus().toggleUnderline().run()}
+              style={{ borderRadius: 6, minWidth: 28, height: 26 }}
+              data-testid="btn-toolbar-underline"
+            />
+          </Tooltip>
+
+          {/* Bullet List */}
+          <Tooltip title={isEnglish ? 'Bullet list (•)' : 'Dấu đầu dòng (•)'}>
+            <Button
+              size="small"
+              type={editor?.isActive('bulletList') ? 'primary' : 'default'}
               icon={<UnorderedListOutlined />}
               disabled={disabled}
-              onClick={() => handleInsertSnippet('• ')}
+              onClick={() => editor?.chain().focus().toggleBulletList().run()}
               style={{ borderRadius: 6, minWidth: 28, height: 26 }}
               data-testid="btn-toolbar-bullet"
+            />
+          </Tooltip>
+
+          {/* Numbered List */}
+          <Tooltip title={isEnglish ? 'Numbered list (1, 2...)' : 'Đánh số thứ tự (1, 2...)'}>
+            <Button
+              size="small"
+              type={editor?.isActive('orderedList') ? 'primary' : 'default'}
+              icon={<OrderedListOutlined />}
+              disabled={disabled}
+              onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+              style={{ borderRadius: 6, minWidth: 28, height: 26 }}
+              data-testid="btn-toolbar-ordered"
             />
           </Tooltip>
 
@@ -205,7 +320,7 @@ export const SimpleObjectivesEditor = React.memo(({
         </Space>
 
         <Space size={6}>
-          {value && !disabled && (
+          {editor && !editor.isEmpty && !disabled && (
             <Tooltip title={isEnglish ? 'Clear all text' : 'Xóa toàn bộ'}>
               <Button
                 size="small"
@@ -214,6 +329,7 @@ export const SimpleObjectivesEditor = React.memo(({
                 icon={<ClearOutlined />}
                 onClick={handleClear}
                 style={{ fontSize: 11, height: 24, padding: '0 4px' }}
+                data-testid="btn-toolbar-clear"
               >
                 {isEnglish ? 'Clear' : 'Xóa'}
               </Button>
@@ -222,33 +338,17 @@ export const SimpleObjectivesEditor = React.memo(({
         </Space>
       </div>
 
-      {/* 2. Textarea */}
-      <textarea
-        ref={textareaRef}
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange?.(e.target.value)}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        placeholder={placeholder || (isEnglish
-          ? '• 🎯 Essential Question: What makes a community?\n• 📖 Anchor Text: Six Kids\n• 🔤 Phonics: Short i sound blending\n• 💬 High-Frequency Words: down, out, up'
-          : '• 🎯 Essential Question: What makes a community?\n• 📖 Anchor Text: Six Kids\n• 🔤 Phonics: Short i sound blending\n• 💬 High-Frequency Words: down, out, up')}
-        maxLength={maxLength}
+      {/* 2. Khung Soạn Thảo WYSIWYG TipTap */}
+      <div
         style={{
-          width: '100%',
           minHeight: 140,
-          border: 'none',
-          outline: 'none',
-          padding: '10px 12px',
-          fontSize: 13,
-          lineHeight: '22px',
-          fontFamily: 'inherit',
-          resize: 'vertical',
+          cursor: disabled ? 'not-allowed' : 'text',
           backgroundColor: 'transparent',
-          color: disabled ? '#8c8c8c' : '#1e293b',
         }}
-        data-testid={`${testId}-textarea`}
-      />
+        onClick={() => !disabled && editor?.commands.focus()}
+      >
+        <EditorContent editor={editor} />
+      </div>
 
       {/* 3. Footer Counter */}
       <div
@@ -268,9 +368,31 @@ export const SimpleObjectivesEditor = React.memo(({
           🎯 {isEnglish ? `${lineCount} objectives / lines` : `${lineCount} mục tiêu bài học`}
         </span>
         <span>
-          {(value || '').length}/{maxLength}
+          {charCount}/{maxLength}
         </span>
       </div>
+
+      <style>{`
+        .tiptap-objectives-content p {
+          margin: 0 0 6px 0;
+          line-height: 22px;
+        }
+        .tiptap-objectives-content ul,
+        .tiptap-objectives-content ol {
+          padding-left: 20px;
+          margin: 0 0 6px 0;
+        }
+        .tiptap-objectives-content strong {
+          font-weight: 700;
+          color: #0f172a;
+        }
+        .tiptap-objectives-content em {
+          font-style: italic;
+        }
+        .tiptap-objectives-content u {
+          text-decoration: underline;
+        }
+      `}</style>
     </div>
   );
 });

@@ -506,7 +506,16 @@ export const AuthProvider = ({ children }) => {
       );
 
       // 2. Nếu không tìm theo ID, tìm user mẫu/đại diện theo Role (admin, director, academic, teacher, accountant, student)
-      const targetByRole = allSystemUsers.find((u) => (u.role || '').toLowerCase() === targetStr);
+      let targetByRole = null;
+      if (targetStr === 'student' || targetStr === 'hocvien' || targetStr === 'hv') {
+        // Ưu tiên chọn học viên tiêu biểu có dữ liệu lớp học & điểm danh đầy đủ (HV768 - Kenji hoặc HV463 - Minh)
+        targetByRole =
+          allSystemUsers.find((u) => u.id === 'HV768' || u.code === 'HV768') ||
+          allSystemUsers.find((u) => (u.enrolledClassIds || []).length > 0 && (u.role || '').toLowerCase() === 'student') ||
+          allSystemUsers.find((u) => (u.role || '').toLowerCase() === 'student');
+      } else {
+        targetByRole = allSystemUsers.find((u) => (u.role || '').toLowerCase() === targetStr);
+      }
 
       const target = targetById || targetByRole || CORE_ROLE_USERS[targetStr];
       console.log('[impersonateAccount] targetStr:', targetStr, 'target:', target?.name, target?.role);

@@ -111,10 +111,97 @@ export const useAttendanceController = () => {
     [realStudents, selectedClass, currentUser]
   );
 
+  // 7. Dữ liệu rèn luyện & chuyên cần cá nhân dành riêng cho Học viên (Student View)
+  const isStudentRole = role === PermissionService.ROLES.STUDENT;
+  const currentStudentId = currentUser?.id || currentUser?.code || '';
+
+  const myClass = useMemo(() => {
+    if (!isStudentRole) return null;
+    return (
+      scopedClasses[0] ||
+      classes.find((c) => (c.studentIds || []).includes(currentStudentId)) ||
+      null
+    );
+  }, [isStudentRole, scopedClasses, classes, currentStudentId]);
+
+  const myPersonalAttendances = useMemo(() => {
+    if (!isStudentRole) return [];
+    return scopedAttendances.map((rec) => {
+      // Xác định trạng thái điểm danh cá nhân
+      let presence = rec.presence?.[currentStudentId];
+      if (!presence) {
+        if (Array.isArray(rec.presentIds) && rec.presentIds.includes(currentStudentId)) {
+          presence = 'ONLINE';
+        } else if (Array.isArray(rec.absentIds) && rec.absentIds.includes(currentStudentId)) {
+          presence = 'OFFLINE';
+        } else if (Array.isArray(rec.roster)) {
+          const matched = rec.roster.find((r) => r.id === currentStudentId);
+          if (matched) {
+            presence = matched.present ? 'ONLINE' : 'OFFLINE';
+          }
+        }
+      }
+      if (!presence) presence = 'ONLINE'; // Mặc định nếu không ghi nhận vắng
+
+      const myEval = rec.studentEvaluations?.[currentStudentId] || null;
+      const myNote = rec.quickNotes?.[currentStudentId]?.text || '';
+
+      let commentText = '';
+      if (myEval?.comment && myEval.comment.trim()) {
+        commentText = myEval.comment.trim();
+      } else if (rec.teacherFeedback && rec.teacherFeedback.trim()) {
+        commentText = rec.teacherFeedback.trim();
+      } else if (myNote && myNote.trim()) {
+        commentText = myNote.trim();
+      } else if (presence === 'OFFLINE') {
+        commentText = '__ABSENT__';
+      } else {
+        commentText = '__PENDING__';
+      }
+
+      return {
+        ...rec,
+        myPresence: presence,
+        myEvaluation: myEval,
+        myQuickNote: myNote,
+        myStars: myEval?.stars || (presence === 'ONLINE' ? 5 : 0),
+        myComment: commentText,
+        evaluatedByName: myEval?.evaluatedByName || rec.teacherName || 'Teacher Maj',
+        evaluatedAt: myEval?.evaluatedAt || rec.date,
+      };
+    });
+  }, [isStudentRole, scopedAttendances, currentStudentId]);
+
+  const personalStats = useMemo(() => {
+    if (!isStudentRole) return null;
+    const totalSessions = myPersonalAttendances.length;
+    const attendedCount = myPersonalAttendances.filter((a) => a.myPresence === 'ONLINE').length;
+    const absentCount = myPersonalAttendances.filter((a) => a.myPresence === 'OFFLINE').length;
+    const attendanceRate = totalSessions > 0 ? Math.round((attendedCount / totalSessions) * 100) : 100;
+
+    const evaluatedSessions = myPersonalAttendances.filter((a) => a.myEvaluation && a.myEvaluation.stars);
+    const sumStars = evaluatedSessions.reduce((acc, a) => acc + (Number(a.myEvaluation.stars) || 5), 0);
+    const averageStars = evaluatedSessions.length > 0 ? (sumStars / evaluatedSessions.length).toFixed(1) : '5.0';
+
+    const totalHomeworkCount = scopedHomeworks.length;
+    const completedHomeworkCount = scopedHomeworks.filter((h) => h.status === 'submitted' || h.submitted).length;
+
+    return {
+      totalSessions,
+      attendedCount,
+      absentCount,
+      attendanceRate,
+      averageStars,
+      evaluatedCount: evaluatedSessions.length,
+      totalHomeworkCount,
+      completedHomeworkCount,
+    };
+  }, [isStudentRole, myPersonalAttendances, scopedHomeworks]);
+
   const permissions = {
     canCheckIn: PermissionService.canCheckInClass(role),
     canEvaluate: PermissionService.canEvaluateStudents(role),
-    isStudent: role === PermissionService.ROLES.STUDENT,
+    isStudent: isStudentRole,
   };
 
   const handleCheckInClass = (classId) => {
@@ -191,6 +278,10 @@ export const useAttendanceController = () => {
     selectedClass,
     studentRoster,
     permissions,
+    isStudentRole,
+    myClass,
+    myPersonalAttendances,
+    personalStats,
     isEvaluationModalOpen,
     setIsEvaluationModalOpen,
     isProfileDrawerOpen,

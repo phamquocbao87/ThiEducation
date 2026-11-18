@@ -5,6 +5,21 @@ from playwright.async_api import async_playwright
 LOCAL_URL = 'http://127.0.0.1:3000'
 CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
+async def get_editor_val(loc):
+    tag = await loc.evaluate("el => el.tagName.toLowerCase()")
+    if tag in ["textarea", "input"]:
+        return await loc.input_value()
+    return await loc.inner_text()
+
+async def fill_editor_val(page, loc, text):
+    tag = await loc.evaluate("el => el.tagName.toLowerCase()")
+    if tag in ["textarea", "input"]:
+        await loc.fill(text)
+    else:
+        await loc.click()
+        await page.keyboard.press("Meta+A" if sys.platform == "darwin" else "Control+A")
+        await page.keyboard.type(text)
+
 async def test_typing_retention_regression():
     print("=" * 80)
     print("🧪 PHÒNG QC & IT: BỘ KIỂM TOÁN CHỐNG HỒI QUY (ZERO-REOPEN REGRESSION GATE)")
@@ -35,25 +50,37 @@ async def test_typing_retention_regression():
         await tab_eval.click()
         await page.wait_for_timeout(2000)
 
-        textarea = page.locator('textarea[data-testid^="eval-comment-"]').first
-        assert await textarea.is_visible(), "FAIL: Không tìm thấy textarea đánh giá!"
+        # Chọn Buổi 1 (Retroactive Session 1) để mở khóa quyền đánh giá canEvaluate = True
+        select_session = page.locator('[data-testid="select-retroactive-session"]')
+        if await select_session.is_visible():
+            await select_session.click()
+            await page.wait_for_timeout(500)
+            opt_past = page.locator('.ant-select-item-option').filter(has_text='Session 1').or_(
+                page.locator('.ant-select-item-option').filter(has_text='Buổi 1')
+            ).first
+            if await opt_past.is_visible():
+                await opt_past.click()
+                await page.wait_for_timeout(2000)
+
+        textarea = page.locator('[data-testid^="eval-comment-"]').first
+        assert await textarea.is_visible(), "FAIL: Không tìm thấy ô nhập đánh giá!"
 
         test_text = "Thầy Maj nhận xét: Em Tracy học rất tốt, phát âm chuẩn và tự tin tương tác!"
         print(f"3. Gõ văn bản: '{test_text}'")
         await textarea.click()
-        await textarea.fill(test_text)
+        await fill_editor_val(page, textarea, test_text)
 
-        val_immediate = await textarea.input_value()
+        val_immediate = await get_editor_val(textarea)
         print(f"   Giá trị ngay sau khi gõ (t=0s): '{val_immediate}'")
-        assert val_immediate == test_text, f"FAIL: Gõ thất bại! Giá trị: '{val_immediate}'"
+        assert test_text in val_immediate, f"FAIL: Gõ thất bại! Giá trị: '{val_immediate}'"
 
         # Đợi 4 giây mô phỏng con người dừng tay suy nghĩ (vượt qua 4 chu kỳ tick 1s của đồng hồ)
         print("4. Chờ 4 giây (vượt qua 4 nhịp tick 1000ms của useClassroomClock)...")
         for i in range(1, 5):
             await page.wait_for_timeout(1000)
-            val_step = await textarea.input_value()
+            val_step = await get_editor_val(textarea)
             print(f"   ⏳ Sau {i}s: '{val_step}'")
-            assert val_step == test_text, f"🚨 FAIL REOPEN BUG: Bị mất chữ tại giây thứ {i}! Hiện tại: '{val_step}'"
+            assert test_text in val_step, f"🚨 FAIL REOPEN BUG: Bị mất chữ tại giây thứ {i}! Hiện tại: '{val_step}'"
 
         print("   ✅ [PASS] Giữ nguyên chữ 100% sau 4 giây đồng hồ tick!")
         await page.screenshot(path="/Users/baopqmac/.gemini/antigravity/brain/692b2ddb-3a45-4f8d-ba80-85b0fb828fce/qc_typing_retention_live_success.png")
@@ -81,18 +108,18 @@ async def test_typing_retention_regression():
             await page.wait_for_timeout(2000)
 
             # Gõ nhận xét cho buổi học quá khứ này
-            textarea_past = page.locator('textarea[data-testid^="eval-comment-"]').first
+            textarea_past = page.locator('[data-testid^="eval-comment-"]').first
             past_text = "Đánh giá bù: Buổi trước em tham gia tích cực và làm bài tập đầy đủ."
             print(f"  2.4 Gõ nhận xét buổi quá khứ: '{past_text}'")
             await textarea_past.click()
-            await textarea_past.fill(past_text)
+            await fill_editor_val(page, textarea_past, past_text)
 
             # Chờ 4 giây kiểm tra
             print("  2.5 Chờ 4 giây kiểm tra chữ buổi quá khứ...")
             for i in range(1, 5):
                 await page.wait_for_timeout(1000)
-                val_past_step = await textarea_past.input_value()
-                assert val_past_step == past_text, f"🚨 FAIL: Mất chữ buổi quá khứ tại giây thứ {i}!"
+                val_past_step = await get_editor_val(textarea_past)
+                assert past_text in val_past_step, f"🚨 FAIL: Mất chữ buổi quá khứ tại giây thứ {i}!"
 
             print("   ✅ [PASS] Giữ nguyên chữ 100% cho buổi học quá khứ (Retroactive Session)!")
             await page.screenshot(path="/Users/baopqmac/.gemini/antigravity/brain/692b2ddb-3a45-4f8d-ba80-85b0fb828fce/qc_typing_retention_retroactive_success.png")

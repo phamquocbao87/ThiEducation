@@ -1,4 +1,5 @@
 export { BaseRichTextEditor, stripHtml } from './BaseRichTextEditor';
+export { FormattedText } from './FormattedText';
 export { BaseDatePicker } from './BaseDatePicker';
 export { BaseCurrencyInput } from './BaseCurrencyInput';
 export { BaseRangeSelector } from './BaseRangeSelector';

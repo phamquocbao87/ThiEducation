@@ -13,6 +13,7 @@ import {
   PlayCircleOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { FormattedText } from '../../../shared/components/controls';
 import { MaterialPreviewModal } from '../../materials/components/MaterialPreviewModal';
 
 const { Title, Text, Paragraph } = Typography;
@@ -184,7 +185,9 @@ export const StudentRecentEvaluationsCard = ({ evaluations = [] }) => {
                       <Text strong style={{ color: '#0958d9' }}>
                         💬 {isEnglish ? 'Teacher Remarks:' : `Nhận xét từ ${ev.teacherName}:`}{' '}
                       </Text>
-                      <span style={{ fontStyle: 'italic', color: '#1e293b' }}>"{ev.teacherComment}"</span>
+                      <span style={{ color: '#1e293b' }}>
+                        "<FormattedText content={ev.teacherComment} />"
+                      </span>
                     </div>
                     {!isEnglish && ev.teacherCommentVi && ev.teacherCommentVi !== ev.teacherComment && (
                       <div style={{ color: '#475569', fontSize: 12, display: 'flex', alignItems: 'flex-start', gap: 4 }}>
@@ -298,7 +301,7 @@ export const StudentRecentEvaluationsCard = ({ evaluations = [] }) => {
                 💬 {isEnglish ? 'Foreign Teacher Assessment Remarks:' : 'Lời Nhận Xét Của Giáo Viên Bản Xứ:'}
               </div>
               <Paragraph style={{ margin: 0, fontSize: 13, color: '#1e3a8a', lineHeight: 1.5 }}>
-                {selectedEval.teacherComment}
+                <FormattedText content={selectedEval.teacherComment} />
               </Paragraph>
               {selectedEval.teacherCommentVi && (
                 <div style={{ marginTop: 6, fontSize: 12, color: '#3b82f6', fontStyle: 'italic' }}>

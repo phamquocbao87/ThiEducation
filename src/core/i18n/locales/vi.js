@@ -145,6 +145,15 @@ export const vi = {
       'Check-in ca dạy trực tuyến, quản lý hồ sơ từng học viên, điểm danh chuyên cần, đánh giá 4 kỹ năng và giao bài tập.',
     tabEvaluations: 'Điểm Danh & Đánh Giá Ca Dạy',
     tabHomeworks: 'Bài Tập Về Nhà',
+    studentAttendanceTitle: 'Quá Trình Rèn Luyện & Chuyên Cần Cá Nhân',
+    studentAttendanceSub:
+      'Theo dõi quá trình rèn luyện 4 kỹ năng tiếng Anh, điểm danh chuyên cần, lời nhận xét sư phạm từ Giáo viên bản xứ và bài tập về nhà.',
+    tabStudentEvaluations: 'Nhật Ký Rèn Luyện & Điểm Danh Từng Buổi',
+    tabStudentHomeworks: 'Bài Tập Về Nhà Của Bạn',
+    teacherPendingFeedback: 'Đang cập nhật nhận xét',
+    teacherPendingDesc: 'Giáo viên bản xứ đang hoàn thiện nhận xét sau giờ học.',
+    teacherFeedbackCallout: 'Lời Nhận Xét Sư Phạm',
+    studentFeedbacksCount: 'Nhận xét chi tiết',
     tuitionTitleManager: 'Thu Học Phí & Đối Soát Công Nợ',
     tuitionTitleStudent: 'Trạng Thái Đóng Học Phí Cá Nhân',
     tuitionSub:
@@ -226,6 +235,10 @@ export const vi = {
     editorTitle: 'Soạn Giáo Án',
     saveLessonPlanAction: 'Lưu Giáo Án (0ms)',
     saveNoteSuccess: 'Đã lưu ghi chú học viên!',
+    readingSuggestedDailyTime: 'Thời Lượng Đọc Gợi Ý (Reading Daily Time)',
+    writingSuggestedDailyTime: 'Thời Lượng Viết Gợi Ý (Writing Daily Time)',
+    readingDailyBadge: 'Reading Daily',
+    writingDailyBadge: 'Writing Daily',
   },
   dashboard: {
     classTimer: {

@@ -6,6 +6,7 @@ import {
   TranslationOutlined,
   CheckOutlined,
   PlayCircleOutlined,
+  CommentOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 
@@ -75,33 +76,84 @@ export const SessionEvaluationTable = ({ attendances }) => {
       },
       {
         title: isEnglish ? "Teacher's Feedback" : 'Nhận Xét Của Giáo Viên (English Feedback)',
-        dataIndex: 'teacherFeedback',
         key: 'teacherFeedback',
-        width: 260,
-        render: (text) => {
-          if (!text) return <Text type="secondary">—</Text>;
-          const isLong = text.length > 70;
-          if (!isLong) {
-            return <Text style={{ fontSize: 13, fontStyle: 'italic' }}>"{text}"</Text>;
+        width: 280,
+        render: (_, record) => {
+          const text = record.teacherFeedback;
+          if (text) {
+            const isLong = text.length > 70;
+            if (!isLong) {
+              return <Text style={{ fontSize: 13, fontStyle: 'italic' }}>"{text}"</Text>;
+            }
+            return (
+              <Popover
+                title={isEnglish ? "Teacher's Detailed Feedback" : 'Nhận Xét Chi Tiết Của Giáo Viên'}
+                content={
+                  <div style={{ maxWidth: 360, lineHeight: 1.6, fontStyle: 'italic', padding: '4px 0' }}>
+                    "{text}"
+                  </div>
+                }
+                trigger="click"
+              >
+                <div style={{ cursor: 'pointer' }} title={isEnglish ? 'Click to read full feedback' : 'Bấm để đọc toàn bộ nhận xét'}>
+                  <Text style={{ fontSize: 13, fontStyle: 'italic' }}>"{text.slice(0, 65)}..."</Text>
+                  <div style={{ color: '#1890ff', fontSize: 11, fontWeight: 600, marginTop: 2 }}>
+                    {isEnglish ? '🔍 Click for more details' : '🔍 Bấm để xem đầy đủ'}
+                  </div>
+                </div>
+              </Popover>
+            );
           }
-          return (
-            <Popover
-              title={isEnglish ? "Teacher's Detailed Feedback" : 'Nhận Xét Chi Tiết Của Giáo Viên'}
-              content={
-                <div style={{ maxWidth: 360, lineHeight: 1.6, fontStyle: 'italic', padding: '4px 0' }}>
-                  "{text}"
-                </div>
-              }
-              trigger="click"
-            >
-              <div style={{ cursor: 'pointer' }} title={isEnglish ? 'Click to read full feedback' : 'Bấm để đọc toàn bộ nhận xét'}>
-                <Text style={{ fontSize: 13, fontStyle: 'italic' }}>"{text.slice(0, 65)}..."</Text>
-                <div style={{ color: '#1890ff', fontSize: 11, fontWeight: 600, marginTop: 2 }}>
-                  {isEnglish ? '🔍 Click for more details' : '🔍 Bấm để xem đầy đủ'}
-                </div>
-              </div>
-            </Popover>
-          );
+
+          // Fallback: Trích xuất nhận xét từ studentEvaluations của các học viên
+          const studentEvals = record.studentEvaluations || {};
+          const evalEntries = Object.entries(studentEvals).filter(([_, ev]) => ev?.comment && ev.comment.trim());
+          if (evalEntries.length > 0) {
+            return (
+              <Popover
+                title={
+                  <Space>
+                    <CommentOutlined style={{ color: '#1677ff' }} />
+                    <span>
+                      {isEnglish
+                        ? `Native Teacher Feedbacks (${evalEntries.length})`
+                        : `Nhận Xét Từng Học Viên (${evalEntries.length})`}
+                    </span>
+                  </Space>
+                }
+                content={
+                  <div style={{ maxWidth: 420, maxHeight: 320, overflowY: 'auto', padding: '4px 0' }}>
+                    {evalEntries.map(([sid, ev]) => (
+                      <div key={sid} style={{ marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #f0f0f0' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                          <Text strong style={{ fontSize: 12, color: '#1677ff' }}>{sid}</Text>
+                          <Rate disabled value={ev.stars || 5} style={{ fontSize: 11 }} />
+                        </div>
+                        <div style={{ fontSize: 12, color: '#333', fontStyle: 'italic', lineHeight: '18px' }}>
+                          "{ev.comment}"
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                }
+                trigger="click"
+              >
+                <Button
+                  size="small"
+                  type="dashed"
+                  style={{ borderRadius: 6, fontSize: 12, color: '#1677ff', borderColor: '#91caff' }}
+                  data-testid="session-student-feedbacks-btn"
+                >
+                  <Space size={4}>
+                    <CommentOutlined />
+                    <span>{isEnglish ? `${evalEntries.length} Student Feedbacks` : `${evalEntries.length} Nhận xét chi tiết`}</span>
+                  </Space>
+                </Button>
+              </Popover>
+            );
+          }
+
+          return <Text type="secondary">—</Text>;
         },
       },
       {
