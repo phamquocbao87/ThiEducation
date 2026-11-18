@@ -1,7 +1,7 @@
 {
   "name": "lakeducation",
   "private": true,
-  "version": "1.2.180",
+  "version": "1.2.183",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -57,8 +57,8 @@
   },
   "buildMeta": {
     "date": "20261118",
-    "dailySeq": 5,
-    "buildId": "2026111805v",
-    "updatedAt": "2026-11-18T15:45:16.826Z"
+    "dailySeq": 8,
+    "buildId": "2026111808v",
+    "updatedAt": "2026-11-18T15:46:30.792Z"
   }
 }
