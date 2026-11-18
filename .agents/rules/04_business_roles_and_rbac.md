@@ -417,3 +417,20 @@ Dự án **ThiEducation** vận hành theo mô hình **6 Vai Trò (Roles)** tác
    - Đọc toàn bộ các bản ghi `session_evaluations` của học viên, parse timestamp an toàn (hỗ trợ `DD/MM/YYYY` và `YYYY-MM-DD`), loại trừ các buổi tương lai, sắp xếp giảm dần theo thời gian.
    - Lấy chính xác tối đa 10 buổi học gần nhất (`slice(0, 10)`).
    - Hiển thị trực quan số sao, nhận xét sư phạm, bài tập về nhà và trạng thái chuyên cần (`Có mặt` / `Vắng`).
+
+---
+
+## 8. QUY TẮC CÔ LẬP GIAO DIỆN & BẢO VỆ DỮ LIỆU SƯ PHẠM HỌC VIÊN
+
+### 8.1. Quy tắc Ẩn Cấp Độ Giáo Trình Đối Với Học Viên (Student Curriculum Levels Guard)
+- **Phân hệ `/courses-classes`:** Học viên (`role === 'student'`) chỉ thấy 2 Tabs:
+  1. `Class Management & Roster` (Danh sách lớp học trực tuyến của con).
+  2. `Course Programs Catalog` (Danh mục khóa học).
+- **Tuyệt đối ẩn Tab 3 `Curriculum Levels`** đối với học viên vì cấp độ giáo trình, CEFR, units là cấu hình học thuật nội bộ.
+- **Deep-link Fallback:** Truy cập link `?tab=curriculum` tự động chuyển hướng an toàn về `classes`. Trong `PermissionService.js`, loại bỏ `'student'` khỏi module `curriculum`.
+
+### 8.2. Quy tắc Trình Diễn Lời Nhận Xét Sư Phạm & Trạng Thái Chờ (Teacher Feedback Presentation Invariant)
+- **Callout Box Nổi Bật:** Nhận xét của giáo viên bản xứ (`Teacher Maj`) hiển thị trong khung thẻ mềm trang trọng (`#f6f9fe`), viền `#d0e2ff`, icon 💬, huy hiệu tên GV, format chữ in nghiêng kèm emoji 🌟 🌱, nút Popover xem toàn văn nếu dài $\ge 90$ ký tự.
+- **Badge Trạng Thái Chờ:** Khi buổi học đang chờ giáo viên chấm, bắt buộc hiển thị `<Tag color="orange" icon={<ClockCircleOutlined />}>Đang cập nhật nhận xét</Tag>` cùng chú thích minh bạch, tuyệt đối cấm dùng text xám mờ fallback.
+- **View Giáo Viên / Admin (`SessionEvaluationTable.jsx`):** Cung cấp nút `<Button size="small" type="dashed">💬 {X} Nhận xét chi tiết</Button>` mở Popover liệt kê danh sách nhận xét từng học viên trong ca dạy.
+- **Impersonation Học Viên Tiêu Biểu:** Khi Admin chuyển vai trò sang `student`, ưu tiên chọn học viên đã có lớp học và dữ liệu buổi dạy đầy đủ (`HV768` Kenji), không bốc tài khoản rỗng.

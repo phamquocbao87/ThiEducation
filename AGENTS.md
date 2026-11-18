@@ -108,6 +108,28 @@ ThiEducation/
        * Nút liên hệ/gọi Zalo phụ huynh trong phòng học trực tuyến (`StudentSeat.jsx`) chỉ mở cho cán bộ quản lý (`admin`, `director`, `academic`), tuyệt đối ẩn đối với học viên.
        * Quyền xem đầy đủ 5 cột `Parent Contact` và `Tuition Status` thuộc độc quyền của 4 vai trò quản trị điều hành: `admin`, `director`, `academic`, `accountant` (`canViewParentContacts = canManage || ['admin', 'director', 'academic', 'accountant'].includes(userRole)`).
        * Giáo viên bản xứ (`teacher`) tuyệt đối không nhìn thấy học phí (tuân thủ nghiêm ngặt `Teacher Fee Privacy Guard`) và không thấy số điện thoại đầy đủ của phụ huynh (chỉ hỗ trợ nhắn tin nội bộ cho Giáo vụ).
+     - **Quy tắc Ẩn Cấp Độ Giáo Trình & Bảo Vệ Deep-link Đối Với Học Viên (Student Curriculum Levels & Deep-Link Guard):**
+       * Trên màn hình Quản lý Đào tạo Hợp nhất (`/courses-classes`), tài khoản Học viên (`role === 'student'`) **CHỈ ĐƯỢC PHÉP THẤY 2 TABS**:
+         1. Tab 1: `Class Management & Roster` (Danh sách lớp học trực tuyến của con).
+         2. Tab 2: `Course Programs Catalog` (Danh mục khóa học).
+       * **TUYỆT ĐỐI ẨN 100% Tab 3 `Curriculum Levels`** (Cấp độ giáo trình) đối với Học viên. Cấp độ giáo trình, CEFR, số unit, thời lượng và các nút switch trạng thái là cấu hình học thuật nội bộ (dành riêng cho Admin, Director, Academic, Teacher).
+       * **Bảo vệ Deep-link & URL Trực Tiếp:**
+         - Nếu học viên mở link có `?tab=curriculum`, hệ thống cưỡng chế fallback `activeTab` về `'classes'`.
+         - Trong `PermissionService.js`, loại bỏ hoàn toàn `'student'` khỏi module `curriculum` trong `accessMatrix`. Cấm học viên truy cập các route `/curriculum-levels/*`.
+       * 4 vai trò quản trị & đào tạo (`Admin`, `Director`, `Academic`, `Teacher`) vẫn bảo toàn 100% quyền xem và quản lý đầy đủ 3 Tabs.
+     - **Quy tắc Trình Diễn Lời Nhận Xét Sư Phạm & Trạng Thái Chờ Minh Bạch (Teacher Feedback Presentation & Pending Invariant):**
+       * Lời nhận xét sư phạm của giáo viên bản xứ (Native Teacher Feedback) là tài sản giá trị nhất đối với học viên và phụ huynh.
+       * **Kỷ luật CẤM:** TUYỆT ĐỐI CẤM dùng dòng text fallback xám mờ (như *"Học viên tham gia học đầy đủ hôm nay."* hoặc *"Actively participated in class today."*) khi trường `comment` bị rỗng. Điều này gây hiểu lầm nghiêm trọng là tính năng bị lỗi hoặc mất dữ liệu.
+       * **Quy chuẩn hiển thị 3 trạng thái bắt buộc trên View Học Viên (`StudentAttendancePersonalView.jsx`):**
+         1. *Có nhận xét:* Hiển thị **Khung Trích Dẫn Sư Phạm Nổi Bật (Teacher Feedback Callout Box)** (`backgroundColor: '#f6f9fe'`, viền `#d0e2ff`, icon 💬, huy hiệu tên GV `<Tag color="geekblue">Teacher Maj</Tag>`, format chữ in nghiêng thanh lịch kèm emoji 🌟 🌱, nút Popover xem toàn văn nếu dài $\ge 90$ ký tự).
+         2. *Đang chờ chấm (buổi mới diễn ra):* Hiển thị Badge cam rõ ràng `<Tag color="orange" icon={<ClockCircleOutlined />}>Đang cập nhật nhận xét</Tag>` kèm chú thích minh bạch: *"Giáo viên bản xứ đang hoàn thiện nhận xét sau giờ học."*.
+         3. *Vắng mặt:* Hiển thị `<Tag color="default">Vắng mặt buổi học</Tag>`.
+       * **Kỷ luật Đồng Bộ Hiển Thị Trên View Giáo Viên & Admin (`SessionEvaluationTable.jsx`):**
+         - Không để cột nhận xét hiển thị dấu `—` trơ trọi khi ca dạy có dữ liệu nhận xét trong `studentEvaluations`.
+         - BẮT BUỘC hiển thị nút bấm tổng hợp `<Button size="small" type="dashed">💬 {X} Nhận xét chi tiết</Button>`, click mở Popover liệt kê danh sách nhận xét của từng học viên trong ca dạy đó.
+       * **Kỷ luật Chọn Tài Khoản Tiêu Biểu Khi Đóng Vai (Impersonation Enrolled Student Invariant):**
+         - Trong `AuthContext.jsx`, khi Admin chuyển vai trò sang `student` để kiểm thử, hệ thống BẮT BUỘC ưu tiên nạp học viên tiêu biểu đã có dữ liệu thực tế đầy đủ (như `HV768` Kenji có lớp `LH004`, 4 buổi học và đầy đủ nhận xét từ Teacher Maj).
+         - TUYỆT ĐỐI KHÔNG bốc ngẫu nhiên học viên chưa được ghi danh lớp học (`enrolledClassIds: undefined`) gây ra hiện tượng màn hình rỗng trơ trọi (Empty State).
 6. **Kỷ Luật Bất Biến Về Phạm Vi Task, Quy Trình 6 Bước Fix Bug Toàn Diện & Đánh Giá Tác Động (Strict 6-Step Bug-Fixing Protocol & Cross-Screen Audit Invariant):**
    - **🚨 QUY TRÌNH 6 BƯỚC BẮT BUỘC KHI SẾP BẢO NÊU BUG HOẶC YÊU CẦU FIX LỖI (SẾP BẢO DIRECTIVE):**
      * **Bước 1 — Tái hiện lỗi (Reproduce Bug):** Bắt buộc tái hiện chính xác lỗi trên môi trường thực tế (ghi nhận luồng thao tác, ảnh chụp màn hình, log lỗi hoặc viết script Playwright tái hiện), tuyệt đối không suy đoán mò mẫm.
