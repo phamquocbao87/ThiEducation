@@ -84,8 +84,10 @@ export const CoursesPage = () => {
     const classIdParam = searchParams.get('classId');
     const actionParam = searchParams.get('action');
 
-    if (tabParam === 'classes' || tabParam === 'courses' || tabParam === 'curriculum') {
+    if (tabParam === 'classes' || tabParam === 'courses' || (tabParam === 'curriculum' && !isStudentRole)) {
       setActiveTab(tabParam);
+    } else if (tabParam === 'curriculum' && isStudentRole) {
+      setActiveTab('classes');
     }
 
     if (classIdParam && allClasses.length > 0) {
@@ -229,7 +231,7 @@ export const CoursesPage = () => {
         styles={{ body: { padding: isMobile ? '12px 10px 20px' : '12px 20px 24px' } }}
       >
         <Tabs
-          activeKey={activeTab}
+          activeKey={isStudentRole && activeTab === 'curriculum' ? 'classes' : activeTab}
           onChange={handleTabChange}
           items={[
             {
@@ -312,7 +314,7 @@ export const CoursesPage = () => {
                 </div>
               ),
             },
-            {
+            !isStudentRole && {
               key: 'curriculum',
               label: (
                 <span style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600 }}>
@@ -329,7 +331,7 @@ export const CoursesPage = () => {
                 </div>
               ),
             },
-          ]}
+          ].filter(Boolean)}
         />
       </Card>
 

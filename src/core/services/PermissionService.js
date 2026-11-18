@@ -37,7 +37,7 @@ export class PermissionService {
       materials: ['admin', 'director', 'academic', 'teacher', 'student'],
       exercises: ['admin', 'director', 'academic', 'teacher', 'student'],
       materialsManage: ['admin', 'director', 'academic'],
-      curriculum: ['admin', 'director', 'academic', 'teacher', 'student'],
+      curriculum: ['admin', 'director', 'academic', 'teacher'],
       curriculumManage: ['admin', 'director', 'academic'],
       schedules: ['admin', 'director', 'academic', 'teacher', 'student'],
       attendance: ['admin', 'director', 'academic', 'teacher', 'student'],
@@ -91,7 +91,7 @@ export class PermissionService {
       return {
         allowed: this.canAccessModule(role, 'curriculum'),
         reason: 'OK',
-        requiredRoles: ['admin', 'director', 'academic', 'teacher', 'student'],
+        requiredRoles: ['admin', 'director', 'academic', 'teacher'],
       };
     }
 
