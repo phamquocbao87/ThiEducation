@@ -6,6 +6,17 @@ File này quy định **CẤU TRÚC VÀ QUY TẮC BẮT BUỘC** mà mọi AI Ag
 
 ---
 
+## 🏛️ 0. QUY TRÌNH HỘI CHẨN 3 BỘ PHẬN: BA - DEV - QC/AUDIT (MANDATORY TRI-PARTY GATEWAY)
+
+> **Kỷ Luật Bất Biến Của Dự Án (Chỉ Đạo Trực Tiếp Từ Sếp Bảo):**  
+> 1. **BẮT BUỘC CÓ TEST CASE ĐẦY ĐỦ:** Mọi tính năng mới và mọi bug fix bắt buộc phải phát hành tài liệu đặc tả `docs/specs/<tên_task>.spec.md` kèm **Ma Trận Test Case 5 Trục** trước khi đụng vào code.  
+> 2. **CẤM TEST GIẢ ĐỊNH / MOCK TEXT:** Khi có tải file, bắt buộc test bằng tệp nhị phân thật (`.mp4`, `.pdf`, `.xlsx`), assert trên toàn bộ họ domain (`bk.lakeducation.edu.vn`, `dev.lakeducation.edu.vn`, `localhost:3000`), cấm chỉ test nhập chuỗi URL string.  
+> 3. **KIỂM THỬ THỰC TẾ KÉP SAU DEPLOY (DEV + PROD):** Bắt buộc chạy script Playwright E2E (`scripts/qc_<task>_dual_env.py`) trên **CẢ HAI MÔI TRƯỜNG DEV VÀ PROD**. Cả 2 môi trường cùng PASS mới đủ điều kiện nghiệm thu.  
+> 4. **XÓA SẠCH 100% DỮ LIỆU TEST (ZERO-RESIDUE TEARDOWN):** Script QC bắt buộc có khối `finally` tự động xóa toàn bộ file test trên Google Drive và xóa document test trên Firestore.  
+> 5. **CẤM BÁO CÁO "ĐÃ XONG" NẾU THIẾU BẰNG CHỨNG:** Tuyệt đối cấm báo cáo hoàn thành nếu chưa có Biên Bản Nghiệm Thu Kép đính kèm ảnh chụp màn hình chứng minh từ cả DEV và PROD. Chi tiết quy chuẩn xem tại [`.agents/rules/07_qc_and_it_audit_protocol.md`](file:///Volumes/DATA/projects/ThiEducation/.agents/rules/07_qc_and_it_audit_protocol.md) và [`GEMINI.md`](file:///Volumes/DATA/projects/ThiEducation/GEMINI.md).
+
+---
+
 ## 🏗️ 1. Cấu Trúc Dự Án & Design Pattern (Clean Modular Architecture)
 
 Dự án được phân chia thành 3 tầng chính, trong đó **mỗi Phân hệ (`src/modules/<name>/`) bắt buộc tuân thủ cấu trúc 5 lớp tách biệt** (chi tiết tại [`.agents/rules/01_architecture_rules.md`](file:///Volumes/DATA/projects/ThiEducation/.agents/rules/01_architecture_rules.md)):

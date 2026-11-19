@@ -1,12 +1,67 @@
-# QUY TRÌNH BẮT BUỘC CỦA PHÒNG QC & IT KIỂM THỬ TRƯỚC KHI BÀN GIAO (MANDATORY QC & IT AUDIT PROTOCOL)
+# QUY TRÌNH BẮT BUỘC CỦA BỘ BA BA - QC - AUDIT GIÁM SÁT TOÀN DIỆN VÒNG ĐỜI PHÁT TRIỂN & FIX BUG (MANDATORY BA - DEV - QC/AUDIT TRIO PROTOCOL)
 
-> **Kỷ Luật Tối Thượng Của Phòng QC & IT LAK EDUCATION:**  
-> Tuyệt đối **CẤM** báo cáo "Đã hoàn thành" hoặc "Đã sửa xong" cho Sếp Bảo nếu chưa qua **Quy trình Kiểm thử 4 Bước** của Phòng QC trên trình duyệt thật (Desktop & Mobile).  
-> Mọi chức năng mới (function/module) hoặc bản vá lỗi (bugfix) đều phải vượt qua 100% các tiêu chí nghiệm thu dưới đây.
+> **Kỷ Luật Tối Thượng Của Hệ Thống LAK EDUCATION (Chỉ Đạo Bất Biến Từ Sếp Bảo):**  
+> 1. Mỗi chức năng mới (Function) và mỗi lỗi phát sinh (Bug) **BẮT BUỘC PHẢI GEN TÀI LIỆU ĐẶC TẢ BA & MA TRẬN TEST CASE THỰC TẾ** trước khi code.  
+> 2. Nghiêm cấm tuyệt đối việc kiểm thử hời hợt hoặc chỉ test "nhánh dán link / nhánh text lý tưởng" bỏ sót nhánh tải tệp nhị phân thật hoặc lỗi CORS.  
+> 3. **NGAY SAU KHI DEPLOY:** Bắt buộc chạy kiểm thử Playwright E2E thực tế trên **CẢ HAI MÔI TRƯỜNG DEV VÀ PROD** (đóng vai người dùng thật, thao tác tệp thật, đo đạc phản hồi mạng thật) và **XÓA SẠCH 100% DỮ LIỆU TEST (Zero Test-Data Residue Teardown)** ngay sau khi hoàn tất.  
+> 4. Tuyệt đối **CẤM** báo cáo "Đã hoàn thành" hoặc "Đã sửa xong" cho Sếp Bảo nếu chưa có **Biên Bản Nghiệm Thu Kép (Dual-Environment Evidence Report)** đính kèm ảnh chụp màn hình từ cả DEV và PROD.
 
 ---
 
-## 🏛️ 1. Tôn Chỉ & Phạm Vi Trách Nhiệm Của Phòng QC & IT
+## 🏛️ 1. Quy Trình 3 Pha Bắt Buộc (BA Spec ──> DEV Execution ──> QC Dual-Env Audit)
+
+```
+[PHA 1: BA SPECIFICATION]      ──>      [PHA 2: DEV CLEAN CODE]      ──>      [PHA 3: QC DUAL-ENV AUDIT]
+• Tóm tắt nghiệp vụ & User Story        • Clean Modular Code                   • Test E2E trên DEV (dev.lakeducation.edu.vn)
+• Ma Trận Test Case 5 Trục Thực Tế      • Chốt chặn Guard 3 Lớp                 • Deploy & Test E2E trên PROD (bk.lakeducation.edu.vn)
+• Gen file docs/specs/<id>.spec.md     • npm run build = 0 lỗi                • DỌN SẠCH 100% DỮ LIỆU TEST (Zero Residue)
+```
+
+### Pha 1: BA Specification & Ma Trận Kiểm Thử Thực Tế 5 Trục (Bắt Buộc Gen Tài Liệu)
+Mỗi khi có task mới (Feature hoặc Bug), Agent đóng vai trò **BA (Business Analyst)** bắt buộc sinh tài liệu đặc tả tại `docs/specs/<feature_or_bug_id>.spec.md` với **Ma Trận Kiểm Thử Thực Tế 5 Trục (5-Axis Real-World Test Matrix)**:
+1. **Trục 1 — Nhị Phân & Tệp Thật (Binary Payload Axis):**
+   - Nếu tính năng có tải tệp (PDF, MP4, Audio, Avatar): Bắt buộc phải có kịch bản test kéo thả tệp nhị phân thật từ máy tính (dung lượng nhỏ 1MB, trung bình 10MB và lớn > 50MB/200MB).
+   - Tuyệt đối **CẤM** chỉ test nhánh nhập chuỗi URL/dán link để tránh bỏ sót lỗi upload nhị phân!
+2. **Trục 2 — Hạ Tầng Mạng & Cross-Origin (Network & CORS Axis):**
+   - Bắt buộc kiểm tra quyền CORS từ chính các domain thật của trường: `*.lakeducation.edu.vn` (`bk.lakeducation.edu.vn`, `dev.lakeducation.edu.vn`, `erp.lakeducation.edu.vn`).
+   - Kiểm tra mã trạng thái HTTP thực tế (`200 OK`, `206 Partial Content`), không bị chặn `403 Forbidden` hay `NetworkError`.
+3. **Trục 3 — Phân Quyền 6 Roles RBAC (Role Scoping Axis):**
+   - Kiểm tra chuẩn xác theo ma trận quyền hạn: Học viên (`student`), Giáo viên bản xứ (`teacher`), Giáo vụ (`academic`), Giám đốc (`director`), Kế toán (`accountant`), IT Admin (`admin`).
+   - Đảm bảo tính bảo mật PII, ẩn học phí với GV bản xứ, ẩn link Zalo với GV bản xứ, cô lập lớp học của học viên.
+4. **Trục 4 — Thiết Bị Kép Responsive (Desktop & Mobile-First Axis):**
+   - Đo đạc tự động trên cả Desktop (`1366x850`) và Mobile (`390x844`). Assert nghiêm ngặt `Zero Overflow-X`.
+5. **Trục 5 — Bền Vững Trạng Thái (Zero-Refresh & Persistence Axis):**
+   - Thao tác Thêm/Sửa/Xóa cập nhật tức thì trên giao diện (0ms Optimistic UI). Tải lại trang (F5) bảo toàn 100% trạng thái.
+
+---
+
+### Pha 2: DEV Implementation & Kỷ Luật Phòng Vệ 3 Lớp
+- Lập trình viên triển khai mã nguồn bám sát tài liệu đặc tả của BA.
+- Áp dụng **Kỷ Luật Phòng Vệ 3 Lớp (Three-Tier Defensive Architecture)**:
+  1. *Lớp Giao diện (UI Layer):* Form validation, thông báo trạng thái tải lên (`uploadStageText`, tiến trình %), hiển thị lỗi `message.error` rõ ràng, cấm âm thầm giấu lỗi.
+  2. *Lớp Dịch vụ (Service Layer):* Tuyệt đối không fallback ngầm ra các dữ liệu rác/tạm thời (như `blob:` URL, text giả định static). Nếu có lỗi API hoặc timeout, throw Error có chủ đích.
+  3. *Lớp Cơ sở dữ liệu (Database Guard):* Chốt chặn kiểm tra hợp lệ trước khi ghi Firestore (`setDoc`/`updateDoc`). Từ chối ghi các URL tạm thời hoặc payload không hợp lệ.
+- Chạy `npm run build`: Phải đạt **100% PASS** với 0 lỗi cảnh báo cú pháp trước khi bàn giao sang Pha 3.
+
+---
+
+### Pha 3: QC Dual-Environment Post-Deploy Verification & Zero-Residue Teardown
+Ngay sau khi mã nguồn được deploy, Phòng QC bắt buộc thực thi quy trình kiểm thử thực tế **SONG SONG TRÊN CẢ 2 MÔI TRƯỜNG**:
+
+1. **Kiểm thử trên Môi trường DEV (`https://dev.lakeducation.edu.vn` & `http://localhost:3000`):**
+   - Chạy script Playwright E2E đóng vai người dùng thực hiện trọn vẹn luồng thao tác.
+   - Chụp ảnh màn hình bằng chứng lưu vào `test-results/dev/`.
+2. **Kiểm thử trên Môi trường PROD (`https://bk.lakeducation.edu.vn` & `https://erp.lakeducation.edu.vn`):**
+   - Chạy kịch bản Playwright E2E tương ứng trên Production thật với tài khoản thật (hoặc SSO).
+   - Bắt buộc kiểm tra từ đầu đến cuối luồng dữ liệu (End-to-End Live Verification).
+   - Chụp ảnh màn hình bằng chứng lưu vào `test-results/prod/`.
+3. **Kỷ Luật Dọn Rác Test 100% (Strict Zero Test-Data Residue Teardown):**
+   - Mọi tệp video, file PDF, hoặc bản ghi document do script test tạo ra trên cả DEV và PROD **BẮT BUỘC PHẢI ĐƯỢC XÓA SẠCH HOÀN TOÀN (Hard-Delete trên cả Google Drive lẫn Cloud Firestore)** ngay trong khối `finally` của script.
+   - Assert xác nhận số lượng bản ghi test còn lại bằng `0` (`remainingTestDocs === 0`).
+4. **Xuất Trình Biên Bản Nghiệm Thu Kép:**
+   - Trình bày Biên Bản Nghiệm Thu Kép (Dual-Environment Evidence Report) đính kèm đầy đủ ảnh chụp minh chứng cả 2 môi trường cho Sếp Bảo.
+
+---
 
 1. **Hiểu Sâu Nghiệp Vụ Ứng Dụng Trước Khi Test:**
    - Phòng QC không được kiểm thử hời hợt bề mặt. Phải học và hiểu rõ toàn bộ luồng nghiệp vụ:

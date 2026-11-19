@@ -200,11 +200,11 @@ export const MaterialUploadModal = ({
 
           setUploadStatusText(
             isEnglish
-              ? `Uploading file ${i + 1}/${totalFiles}: ${file.name}...`
-              : `Đang tải lên tệp ${i + 1}/${totalFiles}: ${file.name}...`
+              ? `Uploading file ${i + 1}/${totalFiles}: ${file.name} to Google Drive...`
+              : `Đang truyền tải tệp ${i + 1}/${totalFiles}: ${file.name} lên Google Drive...`
           );
 
-          // Upload lên Firebase Storage vào thư mục chỉ định
+          // Upload trực tiếp lên Google Drive Zero-Egress của trường
           const uploadRes = await MaterialService.uploadFileToFirebase(
             file,
             folderName,
@@ -214,7 +214,7 @@ export const MaterialUploadModal = ({
             }
           );
 
-          // Lưu metadata vào Firestore
+          // Lưu metadata vào Firestore với đường dẫn Google Drive vĩnh viễn
           const recordPayload = {
             id: `mat_${Date.now()}_${i}`,
             title: singleTitle,
@@ -222,6 +222,9 @@ export const MaterialUploadModal = ({
             fileSize: formatBytes(file.size),
             type: isMultiple ? detectedType : values.type || detectedType,
             url: uploadRes.downloadURL,
+            downloadUrl: uploadRes.downloadUrl || uploadRes.downloadURL,
+            cdnUrl: uploadRes.cdnUrl || '',
+            driveFileId: uploadRes.driveFileId || '',
             storagePath: uploadRes.storagePath,
             firebaseFolder: folderName,
             courseId: values.courseId,
@@ -235,7 +238,8 @@ export const MaterialUploadModal = ({
             shares: initialShares,
             visibility: finalScope === 'STAFF_ONLY' ? 'TEACHERS_ONLY' : 'ALL',
             description: values.description || '',
-            isFirebaseStorage: true,
+            isFirebaseStorage: false,
+            isGoogleDrive: true,
             uploadedAt: new Date().toISOString(),
           };
 
@@ -247,8 +251,8 @@ export const MaterialUploadModal = ({
         setUploadProgress(100);
         setUploadStatusText(
           isEnglish
-            ? `Successfully uploaded ${totalFiles} file(s)!`
-            : `Đã hoàn tất tải lên ${totalFiles} tài liệu học tập vào hệ thống!`
+            ? `Successfully uploaded ${totalFiles} file(s) to Google Drive!`
+            : `Đã hoàn tất tải lên ${totalFiles} tài liệu học tập lên Google Drive an toàn!`
         );
 
         setTimeout(() => {
@@ -260,9 +264,14 @@ export const MaterialUploadModal = ({
           }
         }, 200);
       } catch (err) {
-        console.error('Firebase Storage upload failed:', err);
+        console.error('Google Drive upload failed:', err);
         setUploading(false);
         setUploadStatusText(isEnglish ? 'Upload failed. Please try again.' : 'Tải lên thất bại. Vui lòng thử lại.');
+        message.error(
+          isEnglish
+            ? `Upload failed: ${err.message || 'Network error'}`
+            : `Tải tài liệu thất bại: ${err.message || 'Lỗi kết nối lưu trữ'}`
+        );
       }
       return;
     }

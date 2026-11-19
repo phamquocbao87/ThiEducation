@@ -72,7 +72,7 @@ export class StudentGoalService extends BaseModuleService {
       milestones: [
         { id: 'M1', sessionIndex: s1, title: 'Làm chủ âm đuôi /s/, /ed/ & 60 từ vựng Unit 1-2', targetSession: s1, status: 'IN_PROGRESS' },
         { id: 'M2', sessionIndex: s2, title: 'Đọc hiểu trôi chảy truyện ngắn Wonders & trả lời câu hỏi', targetSession: s2, status: 'PENDING' },
-        { id: 'M3', sessionIndex: s3, title: 'Hoàn thành bài đánh giá tổng kết cuối khóa đạt $\\ge 85\\%$', targetSession: s3, status: 'PENDING' },
+        { id: 'M3', sessionIndex: s3, title: 'Hoàn thành bài đánh giá tổng kết cuối khóa đạt ≥ 85%', targetSession: s3, status: 'PENDING' },
       ],
       weights: { evaluation: 0.40, attendance: 0.25, homework: 0.20, sessionProgress: 0.15 },
     };

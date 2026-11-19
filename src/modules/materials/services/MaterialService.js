@@ -4,6 +4,7 @@ import { db, storage, IS_FIREBASE_ENABLED } from '../../../core/services/firebas
 import { BaseModuleService } from '../../../shared/services/BaseModuleService';
 import { CourseService } from '../../courses/services/CourseService';
 import { ClassService } from '../../courses/services/ClassService';
+import { DriveStorageService } from '../../../core/services/DriveStorageService';
 import { NotificationService, NOTIFICATION_TYPES } from '../../../core/services/NotificationService';
 import { normalizeMaterialShares, SHARE_SCOPES, TARGET_TYPES } from '../models/material.model';
 
@@ -70,72 +71,42 @@ export class MaterialService extends BaseModuleService {
   }
 
   /**
-   * Tải 1 file lên Firebase Storage theo cấu trúc thư mục quy định
-   * Đường dẫn thư mục: learning_materials/{folderName}/{cleanFileName}
+   * Tải 1 file lên Google Drive lưu trữ chính thức của trường (Zero-Egress via Hosting-Store API)
+   * Tuyệt đối không fallback ra blob: URL để tránh mất liên kết khi làm mới trang.
    */
   static async uploadFileToFirebase(file, folderName = 'general', onProgress) {
     if (!file) throw new Error('FILE_REQUIRED');
 
-    const cleanFolder = String(folderName || 'general')
-      .trim()
-      .replace(/[\\:*?"<>|]/g, '_')
-      .replace(/\s+/g, '_');
-    const safeName = file.name.replace(/[\\:*?"<>|]/g, '_').replace(/\s+/g, '_');
-    const cleanFileName = `${Date.now()}_${safeName}`;
-    const storagePath = `learning_materials/${cleanFolder}/${cleanFileName}`;
+    try {
+      if (typeof onProgress === 'function') onProgress(15);
+      const uploadResult = await DriveStorageService.uploadFile(file, {
+        folderPath: DriveStorageService.FOLDERS.CLASS_RECORDINGS('2026'),
+        tag: 'curriculum_material',
+        title: file.name,
+        notes: `Tài liệu thư mục: ${folderName}`,
+        purpose: 'learning_material',
+        key: folderName || 'general',
+        onProgress: (percent) => {
+          if (typeof onProgress === 'function') onProgress(percent);
+        },
+      });
 
-    if (typeof onProgress === 'function') onProgress(30);
-
-    if (IS_FIREBASE_ENABLED && storage) {
-      try {
-        const fileRef = ref(storage, storagePath);
-
-        // Upload an toàn với timeout 2.5s (tránh kẹt exponential backoff khi localhost bị chặn CORS)
-        const uploadPromise = (async () => {
-          if (typeof onProgress === 'function') onProgress(60);
-          const snapshot = await uploadBytes(fileRef, file, {
-            contentType: file.type || 'application/octet-stream',
-            customMetadata: {
-              originalName: file.name,
-              folder: cleanFolder,
-              uploadedAt: new Date().toISOString(),
-            },
-          });
-          if (typeof onProgress === 'function') onProgress(100);
-          const downloadURL = await getDownloadURL(snapshot.ref);
-          return { downloadURL, storagePath, folder: cleanFolder, fileName: file.name, size: file.size };
-        })();
-
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('STORAGE_TIMEOUT_OR_CORS')), 1200)
-        );
-
-        return await Promise.race([uploadPromise, timeoutPromise]);
-      } catch (err) {
-        console.warn('Firebase Storage upload fallback (CORS / network timeout):', err?.message);
-        if (typeof onProgress === 'function') onProgress(100);
-        const fallbackUrl = typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '#';
-        return {
-          downloadURL: fallbackUrl,
-          storagePath,
-          folder: cleanFolder,
-          fileName: file.name,
-          size: file.size,
-          isLocalFallback: true,
-        };
-      }
+      const effectiveUrl = uploadResult.driveUrl || uploadResult.webViewLink || uploadResult.downloadUrl || '';
+      return {
+        downloadURL: effectiveUrl,
+        storagePath: uploadResult.folderPath || `06_CLASS_RECORDINGS_MATERIALS/2026`,
+        folder: folderName,
+        fileName: file.name,
+        size: file.size,
+        driveFileId: uploadResult.id || uploadResult.fileId || '',
+        cdnUrl: uploadResult.cdnUrl || uploadResult.displayUrl || '',
+        downloadUrl: uploadResult.downloadUrl || effectiveUrl,
+        isGoogleDrive: true,
+      };
+    } catch (err) {
+      console.error('Google Drive upload error:', err);
+      throw new Error(`Tải tệp lên Google Drive thất bại: ${err.message || 'Lỗi kết nối'}`);
     }
-
-    if (typeof onProgress === 'function') onProgress(100);
-    const fallbackUrl = typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '#';
-    return {
-      downloadURL: fallbackUrl,
-      storagePath,
-      folder: cleanFolder,
-      fileName: file.name,
-      size: file.size,
-      isLocalFallback: true,
-    };
   }
 
   /**
@@ -171,6 +142,10 @@ export class MaterialService extends BaseModuleService {
   static async saveMaterial(materialData, actor) {
     if (!materialData.title || !materialData.url) {
       throw new Error('TITLE_AND_URL_REQUIRED');
+    }
+
+    if (typeof materialData.url === 'string' && materialData.url.startsWith('blob:')) {
+      throw new Error('BLOB_URL_NOT_ALLOWED: Không thể lưu URL tạm thời vào cơ sở dữ liệu. Vui lòng tải lại tệp hoặc dán liên kết Google Drive chính thức.');
     }
 
     const materialId = materialData.id || `mat_${Date.now()}`;
