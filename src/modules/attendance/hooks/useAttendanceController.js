@@ -56,8 +56,8 @@ export const useAttendanceController = () => {
         spellingScore: u.spellingScore || 5,
         seriousnessScore: u.seriousnessScore || 5,
         listeningScore: u.listeningScore || 5,
-        attendanceRate: u.attendanceRate || 100,
-        latestTeacherNote: u.latestTeacherNote || 'Học viên tích cực tương tác và phát âm tốt.',
+        attendanceRate: u.attendanceRate !== undefined ? u.attendanceRate : 100,
+        latestTeacherNote: u.latestTeacherNote || '',
       }));
   }, [allSystemUsers]);
 

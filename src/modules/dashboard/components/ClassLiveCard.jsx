@@ -6,6 +6,7 @@ import {
   GlobalOutlined,
   CalendarOutlined,
   ReadOutlined,
+  UserDeleteOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { getClassLiveStatus } from '../utils/classTimeUtils';
@@ -19,7 +20,7 @@ import { generateClassSessionDates } from '../../../shared/utils/classSessionUti
 
 const { Text } = Typography;
 
-export const ClassLiveCard = ({ cls, role = 'academic', onClick }) => {
+export const ClassLiveCard = ({ cls, role = 'academic', excusedAbsences = [], onClick }) => {
   const { isEnglish } = useLanguage();
   const now = useClassTimer();
   const attendance = currentAttendance(cls, now);
@@ -95,7 +96,7 @@ export const ClassLiveCard = ({ cls, role = 'academic', onClick }) => {
         </div>
 
         {/* Hàng 2: Tên lớp & Cấp độ */}
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 8 }}>
           <Text strong style={{ fontSize: 15, color: '#0958d9', display: 'block', lineHeight: 1.3 }}>
             {cls.name}
           </Text>
@@ -103,6 +104,32 @@ export const ClassLiveCard = ({ cls, role = 'academic', onClick }) => {
             {cls.courseLevel || cls.courseName || 'Wonders ELA'}
           </Text>
         </div>
+
+        {/* Huy hiệu Học Viên Vắng Có Phép (Excused Leave) */}
+        {excusedAbsences.length > 0 && (
+          <div style={{ marginBottom: 10 }}>
+            <Tag
+              color="orange"
+              icon={<UserDeleteOutlined />}
+              style={{
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: 11,
+                padding: '2px 8px',
+                margin: 0,
+                whiteSpace: 'nowrap',
+                maxWidth: '100%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+              title={excusedAbsences.map((a) => `${a.userName}: ${a.reason || 'Personal'}`).join('\n')}
+            >
+              {isEnglish
+                ? `${excusedAbsences.length} Excused Leave: ${excusedAbsences.map((a) => a.userName).join(', ')}`
+                : `${excusedAbsences.length} Vắng có phép: ${excusedAbsences.map((a) => a.userName).join(', ')}`}
+            </Tag>
+          </div>
+        )}
 
         <ClassSessionTimer cls={cls} now={now} isUrgent={isUrgent} />
         <ClassAttendanceSummary cls={cls} now={now} />

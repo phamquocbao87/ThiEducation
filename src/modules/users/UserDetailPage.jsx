@@ -98,6 +98,8 @@ const parseDateToDayjs = (str) => {
   return fallback.isValid() ? fallback : null;
 };
 
+import { StudentAcademicTranscriptTab } from '../students/components/StudentAcademicTranscriptTab';
+
 // Định dạng đối tượng dayjs sang chuỗi chuẩn 'DD/MM/YYYY' lưu Firestore
 const formatDateToStr = (val) => {
   if (!val) return '';
@@ -1412,7 +1414,7 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                                   </div>
                                 </Space>
                                 <Tag color="gold" style={{ fontWeight: 600 }}>
-                                  {isEnglish ? 'Periodic Zoom Assessment' : 'Đánh giá định kỳ Zoom'}
+                                  {isEnglish ? 'Periodic Assessment' : 'Đánh giá định kỳ'}
                                 </Tag>
                               </div>
 
@@ -1422,8 +1424,14 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                                   <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 8, border: '1px solid #fde68a' }}>
                                     <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>{isEnglish ? 'Phonics & Pronunciation' : 'Phát âm Phonics'}</div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                                      <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
-                                      <span style={{ fontWeight: 700, color: '#0f172a' }}>5.0 / 5.0</span>
+                                      {user.pronunciationScore ? (
+                                        <>
+                                          <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
+                                          <span style={{ fontWeight: 700, color: '#0f172a' }}>{user.pronunciationScore} / 5.0</span>
+                                        </>
+                                      ) : (
+                                        <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>
+                                      )}
                                     </div>
                                   </div>
                                 </Col>
@@ -1431,8 +1439,14 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                                   <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 8, border: '1px solid #fde68a' }}>
                                     <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>{isEnglish ? 'Spelling & Vocabulary' : 'Chính tả & Từ vựng'}</div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                                      <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
-                                      <span style={{ fontWeight: 700, color: '#0f172a' }}>5.0 / 5.0</span>
+                                      {user.spellingScore ? (
+                                        <>
+                                          <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
+                                          <span style={{ fontWeight: 700, color: '#0f172a' }}>{user.spellingScore} / 5.0</span>
+                                        </>
+                                      ) : (
+                                        <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>
+                                      )}
                                     </div>
                                   </div>
                                 </Col>
@@ -1440,8 +1454,14 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                                   <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 8, border: '1px solid #fde68a' }}>
                                     <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>{isEnglish ? 'Classroom Focus' : 'Mức độ tập trung'}</div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                                      <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
-                                      <span style={{ fontWeight: 700, color: '#0f172a' }}>5.0 / 5.0</span>
+                                      {user.seriousnessScore ? (
+                                        <>
+                                          <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
+                                          <span style={{ fontWeight: 700, color: '#0f172a' }}>{user.seriousnessScore} / 5.0</span>
+                                        </>
+                                      ) : (
+                                        <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>
+                                      )}
                                     </div>
                                   </div>
                                 </Col>
@@ -1449,18 +1469,32 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                                   <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 8, border: '1px solid #fde68a' }}>
                                     <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>{isEnglish ? 'English Comprehension' : 'Nghe hiểu tiếng Anh'}</div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                                      <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
-                                      <span style={{ fontWeight: 700, color: '#0f172a' }}>4.5 / 5.0</span>
+                                      {user.listeningScore ? (
+                                        <>
+                                          <StarFilled style={{ color: '#f59e0b', fontSize: 13 }} />
+                                          <span style={{ fontWeight: 700, color: '#0f172a' }}>{user.listeningScore} / 5.0</span>
+                                        </>
+                                      ) : (
+                                        <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>
+                                      )}
                                     </div>
                                   </div>
                                 </Col>
                               </Row>
 
-                              <div style={{ padding: '10px 14px', background: '#ffffff', borderRadius: 8, border: '1px solid #f3f4f6' }}>
-                                <Text italic style={{ color: '#334155', fontSize: 13, lineHeight: '1.6' }}>
-                                  "{user.academicNotes || (isEnglish ? 'Student actively interacts through Zoom breakout rooms, clearly pronounces ending sounds and blends. Quickly acquires McGraw-Hill Wonders lesson vocabulary and finishes assignments well.' : 'Học viên tích cực tương tác qua Zoom breakout rooms, phát âm chuẩn các âm đuôi và cụm phụ âm. Tiếp thu nhanh từ vựng bài học McGraw-Hill Wonders và hoàn thành tốt bài tập trên lớp.')}"
-                                </Text>
-                              </div>
+                              {user.academicNotes ? (
+                                <div style={{ padding: '10px 14px', background: '#ffffff', borderRadius: 8, border: '1px solid #f3f4f6' }}>
+                                  <Text italic style={{ color: '#334155', fontSize: 13, lineHeight: '1.6' }}>
+                                    "{user.academicNotes}"
+                                  </Text>
+                                </div>
+                              ) : (
+                                <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px dashed #cbd5e1', textAlign: 'center' }}>
+                                  <Text type="secondary" style={{ fontSize: 12 }}>
+                                    {isEnglish ? 'No periodic teacher notes recorded yet.' : 'Chưa có ghi chú nhận xét định kỳ từ giáo viên.'}
+                                  </Text>
+                                </div>
+                              )}
                             </Card>
                           ) : (
                             <Alert
@@ -1593,7 +1627,28 @@ export const UserDetailPage = ({ isSelfProfile = false }) => {
                 ),
               },
 
-              // ================= TAB 3: AUDIT LOGS (ADMIN HOẶC CHÍNH CHỦ TRÊN /my-profile) =================
+              // ================= TAB 3: HỌC BẠ ĐIỆN TỬ & MỤC TIÊU (DÀNH CHO HỌC VIÊN) =================
+              ...(user.role === 'student' ? [{
+                key: 'transcript',
+                label: (
+                  <Space>
+                    <TrophyOutlined style={{ color: '#faad14' }} />
+                    <span style={{ fontWeight: 600 }}>
+                      {isEnglish ? 'Academic Transcript & Goals' : 'Học Bạ Điện Tử & Mục Tiêu'}
+                    </span>
+                  </Space>
+                ),
+                children: (
+                  <StudentAcademicTranscriptTab
+                    student={user}
+                    enrolledClasses={linkedClasses}
+                    currentUser={currentUser}
+                    canManage={canEdit}
+                  />
+                ),
+              }] : []),
+
+              // ================= TAB 4: AUDIT LOGS (ADMIN HOẶC CHÍNH CHỦ TRÊN /my-profile) =================
               ...(canViewAuditLogs ? [{
                 key: 'audit',
                 label: (

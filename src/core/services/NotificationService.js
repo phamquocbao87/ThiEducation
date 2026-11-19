@@ -39,6 +39,11 @@ export const NOTIFICATION_TYPES = {
   ACCOUNT_STATUS_CHANGED: 'ACCOUNT_STATUS_CHANGED',
   MATERIAL_SHARED: 'MATERIAL_SHARED',
   MATERIAL_ACCESS_REVOKED: 'MATERIAL_ACCESS_REVOKED',
+  LESSON_PLAN_DUE_REMINDER: 'LESSON_PLAN_DUE_REMINDER',
+  LESSON_PLAN_MISSING_ALERT: 'LESSON_PLAN_MISSING_ALERT',
+  ABSENCE_REQUEST_SUBMITTED: 'ABSENCE_REQUEST_SUBMITTED',
+  ABSENCE_REQUEST_APPROVED: 'ABSENCE_REQUEST_APPROVED',
+  STUDENT_ABSENCE_EXCUSED: 'STUDENT_ABSENCE_EXCUSED',
   GENERAL: 'GENERAL',
 };
 
@@ -88,10 +93,8 @@ export class NotificationService {
 
     if (recipientId) {
       keys.add(`USER:${recipientId}`);
-    }
-
-    if (!recipientId || recipientRole) {
-      if (recipientRole === 'all' && !recipientId) {
+    } else if (recipientRole) {
+      if (recipientRole === 'all') {
         keys.add('ALL');
       } else if (recipientRole === 'academic') {
         // Giáo vụ, Giám đốc và IT Admin cùng giám sát thông báo điều phối học vụ
@@ -131,6 +134,12 @@ export class NotificationService {
   static isNotificationForUser(item, currentUser) {
     if (!item || !currentUser) return false;
 
+    // 1. Nếu có recipientId đích danh: chỉ người nhận (hoặc Admin kiểm toán) mới nhận
+    if (item.recipientId) {
+      return item.recipientId === currentUser.id || currentUser.role === 'admin';
+    }
+
+    // 2. Nếu là thông báo theo Role hoặc Broadcast toàn trường
     const userKeys = this.buildUserQueryKeys(currentUser);
     if (Array.isArray(item.targetKeys) && item.targetKeys.length > 0) {
       if (item.targetKeys.some((k) => userKeys.includes(k))) {
@@ -138,8 +147,7 @@ export class NotificationService {
       }
     }
 
-    if (item.recipientId && item.recipientId === currentUser.id) return true;
-    if (item.recipientRole === 'all' && !item.recipientId) return true;
+    if (item.recipientRole === 'all') return true;
     if (item.recipientRole && item.recipientRole === currentUser.role) return true;
     if (
       (currentUser.role === 'admin' || currentUser.role === 'director') &&
@@ -175,6 +183,13 @@ export class NotificationService {
 
     normalized.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     return normalized.slice(0, maxItems);
+  }
+
+  /**
+   * Tạo / Gửi một thông báo mới vào Cloud Firestore kèm đầy đủ Audit Trail & Target Keys
+   */
+  static async createNotification(payload) {
+    return this.sendNotification(payload);
   }
 
   /**

@@ -22,6 +22,8 @@ import {
   GlobalOutlined,
   UserOutlined,
   ThunderboltOutlined,
+  CalendarOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../../core/context/AuthContext';
 import { useLanguage } from '../../../core/context/LanguageContext';
@@ -32,6 +34,7 @@ import { StudentLearningCornerCard } from './StudentLearningCornerCard';
 import { StudentClassMaterialsCard } from './StudentClassMaterialsCard';
 import { StudentHomeworkTasksCard } from './StudentHomeworkTasksCard';
 import { StudentRecentEvaluationsCard } from './StudentRecentEvaluationsCard';
+import { ClassAbsenceReportModal } from '../../attendance/components/ClassAbsenceReportModal';
 import { useClassTimer } from '../hooks/useClassTimer';
 import { ClassSessionTimer } from './ClassSessionTimer';
 import { findClassSession, getSessionTimer } from '../../../shared/utils/classSessionUtils';
@@ -64,6 +67,9 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
     nextClass = null,
     enrolledClassesCount = 0,
   } = portalData;
+
+  const [absenceModalOpen, setAbsenceModalOpen] = useState(false);
+  const [selectedClassForAbsence, setSelectedClassForAbsence] = useState(null);
 
   const [homeworks, setHomeworks] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
@@ -361,6 +367,28 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                     {isEnglish ? 'Class Zalo Group' : 'Zalo Lớp'}
                   </Button>
                 )}
+
+                {/* Nút Báo Nghỉ Phép dành cho Học Viên / Phụ Huynh */}
+                <Button
+                  size={isMobile ? 'middle' : 'large'}
+                  icon={<CalendarOutlined />}
+                  style={{
+                    borderRadius: 8,
+                    borderColor: '#fa8c16',
+                    color: '#d46b08',
+                    fontWeight: 600,
+                    backgroundColor: '#fff7e6',
+                    width: isMobile ? '100%' : 'auto',
+                  }}
+                  onClick={() => {
+                    setSelectedClassForAbsence(upcomingClass);
+                    setAbsenceModalOpen(true);
+                  }}
+                  data-testid="btn-student-report-absence"
+                  title={isEnglish ? 'Submit absence request for upcoming class' : 'Gửi đơn báo vắng / xin nghỉ phép cho ca học này'}
+                >
+                  {isEnglish ? 'Request Leave' : 'Báo Nghỉ Phép'}
+                </Button>
               </div>
             </div>
           }
@@ -459,53 +487,75 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                       </div>
                     </div>
 
-                    {(() => {
-                      const clsMeetingUrl = cls.zoomStudentLink || cls.meetingLink || '';
-                      if (!clsMeetingUrl) return null;
-                      const clsPlatform = detectMeetingPlatform(clsMeetingUrl);
-                      const clsPlatformName = getPlatformDisplayName(clsPlatform, isEnglish);
-                      const clsSession = findClassSession(cls, now);
-                      const clsTimer = getSessionTimer(clsSession, now);
-                      const isClsOpen = Boolean(
-                        clsTimer && (clsTimer.state === 'live' || (clsTimer.state === 'upcoming' && clsTimer.startsIn <= 600))
-                      );
+                    <Space size={6} wrap>
+                      {(() => {
+                        const clsMeetingUrl = cls.zoomStudentLink || cls.meetingLink || '';
+                        if (!clsMeetingUrl) return null;
+                        const clsPlatform = detectMeetingPlatform(clsMeetingUrl);
+                        const clsPlatformName = getPlatformDisplayName(clsPlatform, isEnglish);
+                        const clsSession = findClassSession(cls, now);
+                        const clsTimer = getSessionTimer(clsSession, now);
+                        const isClsOpen = Boolean(
+                          clsTimer && (clsTimer.state === 'live' || (clsTimer.state === 'upcoming' && clsTimer.startsIn <= 600))
+                        );
 
-                      if (isClsOpen) {
+                        if (isClsOpen) {
+                          return (
+                            <Button
+                              type="primary"
+                              size="small"
+                              icon={clsPlatform.iconSmall || clsPlatform.icon || <VideoCameraOutlined />}
+                              style={{ backgroundColor: '#16a34a', borderColor: '#16a34a', borderRadius: 6, fontWeight: 600 }}
+                              onClick={() => window.open(clsMeetingUrl, '_blank')}
+                              title={
+                                clsTimer?.state === 'live'
+                                  ? (isEnglish ? `Class is live! Click to join ${clsPlatformName}` : `Buổi học đang diễn ra! Bấm để vào ${clsPlatformName}`)
+                                  : (isEnglish ? `Click to join ${clsPlatformName} now` : `Bấm để vào phòng học ${clsPlatformName} ngay`)
+                              }
+                            >
+                              {clsTimer?.state === 'live'
+                                ? (isEnglish ? `🔴 Join Live ${clsPlatformName}` : `🔴 Vào ${clsPlatformName} (Đang Học)`)
+                                : (isEnglish ? `Join ${clsPlatformName}` : `Vào ${clsPlatformName}`)}
+                            </Button>
+                          );
+                        }
+
                         return (
                           <Button
-                            type="primary"
                             size="small"
-                            icon={clsPlatform.iconSmall || clsPlatform.icon || <VideoCameraOutlined />}
-                            style={{ backgroundColor: '#16a34a', borderColor: '#16a34a', borderRadius: 6, fontWeight: 600 }}
-                            onClick={() => window.open(clsMeetingUrl, '_blank')}
+                            disabled
+                            style={{ borderRadius: 6, fontSize: 11, color: '#64748b' }}
                             title={
-                              clsTimer?.state === 'live'
-                                ? (isEnglish ? `Class is live! Click to join ${clsPlatformName}` : `Buổi học đang diễn ra! Bấm để vào ${clsPlatformName}`)
-                                : (isEnglish ? `Click to join ${clsPlatformName} now` : `Bấm để vào phòng học ${clsPlatformName} ngay`)
+                              isEnglish
+                                ? `Online classroom on ${clsPlatformName} will automatically open 10 minutes before class starts`
+                                : `Phòng học trực tuyến trên ${clsPlatformName} sẽ tự động mở trước giờ học 10 phút`
                             }
                           >
-                            {clsTimer?.state === 'live'
-                              ? (isEnglish ? `🔴 Join Live ${clsPlatformName}` : `🔴 Vào ${clsPlatformName} (Đang Học)`)
-                              : (isEnglish ? `Join ${clsPlatformName}` : `Vào ${clsPlatformName}`)}
+                            {isEnglish ? 'Opens 10m Before' : 'Phòng Mở Trước 10 Phút'}
                           </Button>
                         );
-                      }
+                      })()}
 
-                      return (
-                        <Button
-                          size="small"
-                          disabled
-                          style={{ borderRadius: 6, fontSize: 11, color: '#64748b' }}
-                          title={
-                            isEnglish
-                              ? `Online classroom on ${clsPlatformName} will automatically open 10 minutes before class starts`
-                              : `Phòng học trực tuyến trên ${clsPlatformName} sẽ tự động mở trước giờ học 10 phút`
-                          }
-                        >
-                          {isEnglish ? 'Opens 10m Before' : 'Phòng Mở Trước 10 Phút'}
-                        </Button>
-                      );
-                    })()}
+                      <Button
+                        size="small"
+                        icon={<CalendarOutlined />}
+                        style={{
+                          borderRadius: 6,
+                          fontSize: 11,
+                          borderColor: '#ffd591',
+                          color: '#d46b08',
+                          backgroundColor: '#fffbe6',
+                          fontWeight: 600,
+                        }}
+                        onClick={() => {
+                          setSelectedClassForAbsence(cls);
+                          setAbsenceModalOpen(true);
+                        }}
+                        data-testid={`btn-report-absence-class-${cls.id}`}
+                      >
+                        {isEnglish ? 'Leave' : 'Báo Nghỉ'}
+                      </Button>
+                    </Space>
                   </div>
 
                   {/* Bộ đếm thời gian thực buổi học (Class Session Timer) */}
@@ -658,8 +708,8 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description={
                     isEnglish
-                      ? `Teacher ${activePrepClass?.teacherName || ''} has not prepared the lesson plan for this session of ${activePrepClass?.name || ''} yet.`
-                      : `Giáo viên ${activePrepClass?.teacherName || ''} chưa soạn giáo án cho buổi học này của lớp ${activePrepClass?.name || ''}. Vui lòng quay lại trước giờ học.`
+                      ? `📚 Upcoming lesson materials & Wonders curriculum are being finalized before class. Have a great and engaging session!`
+                      : `📚 Bài học và tài liệu đọc trước cho buổi học đang được hoàn thiện trước giờ học. Chúc con có một buổi học thật vui và bổ ích!`
                   }
                   style={{ padding: '16px 0' }}
                 />
@@ -896,6 +946,17 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
           />
         </Col>
       </Row>
+
+      {/* Modal Báo Vắng Mặt / Xin Nghỉ Phép */}
+      <ClassAbsenceReportModal
+        open={absenceModalOpen}
+        classData={selectedClassForAbsence}
+        availableClasses={myClasses}
+        onClose={() => setAbsenceModalOpen(false)}
+        onSuccess={() => {
+          setAbsenceModalOpen(false);
+        }}
+      />
     </div>
   );
 };

@@ -25,6 +25,9 @@ import {
   DeleteOutlined,
   CalendarOutlined,
   SafetyCertificateOutlined,
+  BookOutlined,
+  AlertOutlined,
+  UserDeleteOutlined,
 } from '@ant-design/icons';
 import { useNotifications } from '../hooks/useNotifications';
 import { useAuth } from '../context/AuthContext';
@@ -68,6 +71,15 @@ const getNotificationIcon = (type) => {
       return <DollarOutlined style={{ color: '#ea580c', fontSize: 16 }} />;
     case NOTIFICATION_TYPES.PAYROLL_DISBURSED:
       return <CalendarOutlined style={{ color: '#2563eb', fontSize: 16 }} />;
+    case NOTIFICATION_TYPES.LESSON_PLAN_DUE_REMINDER:
+      return <BookOutlined style={{ color: '#d97706', fontSize: 16 }} />;
+    case NOTIFICATION_TYPES.LESSON_PLAN_MISSING_ALERT:
+      return <AlertOutlined style={{ color: '#dc2626', fontSize: 16 }} />;
+    case NOTIFICATION_TYPES.ABSENCE_REQUEST_SUBMITTED:
+      return <UserDeleteOutlined style={{ color: '#ea580c', fontSize: 16 }} />;
+    case NOTIFICATION_TYPES.ABSENCE_REQUEST_APPROVED:
+    case NOTIFICATION_TYPES.STUDENT_ABSENCE_EXCUSED:
+      return <CheckCircleOutlined style={{ color: '#16a34a', fontSize: 16 }} />;
     default:
       return <InfoCircleOutlined style={{ color: '#64748b', fontSize: 16 }} />;
   }

@@ -2,6 +2,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../../core/services/firebase';
 import { ClassroomRealtimeService } from '../../../shared/services/ClassroomRealtimeService';
 import { AbsenceRequestService } from '../../attendance/services/AbsenceRequestService';
+import { findClassSession } from '../../../shared/utils/classSessionUtils';
 
 export class AbsentStudentsService {
   /**
@@ -20,19 +21,20 @@ export class AbsentStudentsService {
       if (c.id) classMap.set(c.id, c);
     });
 
-    const todayIso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(Date.now());
+    const now = Date.now();
+    const todayIso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(now);
     const todayDmy = new Intl.DateTimeFormat('vi-VN', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
       timeZone: 'Asia/Ho_Chi_Minh',
-    }).format(Date.now());
+    }).format(now);
 
     const absentRecords = [];
     const seenKeys = new Set();
 
     try {
-      // 1. Quét từ `session_evaluations`
+      // 1. Quét từ `session_evaluations` (các ca học trong quá khứ hoặc hôm nay đã có sổ chấm điểm danh)
       const snap = await getDocs(collection(db, 'session_evaluations'));
       snap.forEach((d) => {
         const data = d.data();
@@ -43,8 +45,11 @@ export class AbsentStudentsService {
         const dateStr = data.date || '';
 
         Object.entries(presence).forEach(([studentId, status]) => {
-          if (status === 'OFFLINE') {
+          if (status === 'absent' || status === 'OFFLINE') {
             const student = userMap.get(studentId) || {};
+            // Chỉ lấy tài khoản là học viên
+            if (student.role && student.role !== 'student') return;
+
             const key = `${dateStr}_${classId}_${studentId}`;
             if (!seenKeys.has(key)) {
               seenKeys.add(key);
@@ -63,6 +68,7 @@ export class AbsentStudentsService {
                 dateIso: data.dateIso || (dateStr.includes('/') ? dateStr.split('/').reverse().join('-') : dateStr),
                 isToday: dateStr === todayIso || dateStr === todayDmy || dateStr.includes(todayIso),
                 note: notes[studentId]?.text || (notes[studentId]?.tags ? notes[studentId].tags.join(', ') : ''),
+                hasOfficialRequest: false,
                 source: 'SESSION_EVALUATION',
               });
             }
@@ -71,6 +77,7 @@ export class AbsentStudentsService {
       });
 
       // 2. Quét từ `classroom_live` (buổi học hôm nay đang diễn ra)
+      // 🚨 KỶ LUẬT CHỐNG BÁO OAN: Ca học phải ĐANG DIỄN RA HOẶC ĐÃ BẮT ĐẦU hôm nay mới tính vắng!
       try {
         const liveSnap = await getDocs(collection(db, 'classroom_live'));
         liveSnap.forEach((d) => {
@@ -80,9 +87,20 @@ export class AbsentStudentsService {
           const presence = liveData.presence || {};
           const notes = liveData.quickNotes || {};
 
+          // Kiểm tra xem ca học hôm nay đã bắt đầu chưa
+          const session = findClassSession(cls, now);
+          const isSessionStarted = Boolean(liveData.isStarted || (session && now >= session.start));
+
+          // Nếu ca học chưa tới giờ bắt đầu -> Bỏ qua, tuyệt đối không tính học sinh vắng!
+          if (!isSessionStarted) {
+            return;
+          }
+
           Object.entries(presence).forEach(([studentId, status]) => {
             if (status === 'OFFLINE') {
               const student = userMap.get(studentId) || {};
+              if (student.role && student.role !== 'student') return;
+
               const key = `${todayIso}_${classId}_${studentId}`;
               if (!seenKeys.has(key)) {
                 seenKeys.add(key);
@@ -101,6 +119,7 @@ export class AbsentStudentsService {
                   dateIso: todayIso,
                   isToday: true,
                   note: notes[studentId]?.text || (notes[studentId]?.tags ? notes[studentId].tags.join(', ') : ''),
+                  hasOfficialRequest: false,
                   source: 'LIVE_ROOM',
                 });
               }
@@ -111,15 +130,33 @@ export class AbsentStudentsService {
         console.warn('[AbsentStudentsService] Lỗi quét live rooms:', err);
       }
 
-      // 3. Quét từ `absence_requests` (đơn xin phép nghỉ học)
+      // 3. Quét từ `absence_requests` (đơn xin phép nghỉ học chính thức)
       try {
         const requests = await AbsenceRequestService.getAllRequests();
         (requests || []).forEach((req) => {
-          if (req.userRole === 'student') {
-            const student = userMap.get(req.userId) || {};
+          const student = userMap.get(req.userId) || {};
+          // Kiểm tra role: Phải là student và không được là staff
+          const isStudent = req.userRole === 'student' || (!req.userRole && student.role === 'student');
+          const validDate = req.absenceDate || req.date;
+
+          // Loại bỏ record không phải học viên hoặc ngày bị undefined
+          if (isStudent && validDate && validDate !== 'undefined') {
             const cls = classMap.get(req.classId) || {};
-            const key = `${req.date}_${req.classId}_${req.userId}`;
-            if (!seenKeys.has(key)) {
+            const key = `${validDate}_${req.classId}_${req.userId}`;
+
+            const isApproved = req.status === 'APPROVED' || req.status === 'ACKNOWLEDGED';
+            const isToday = validDate === todayDmy || validDate === todayIso;
+
+            // Nếu đã có trong seenKeys (ví dụ từ session_evaluations hoặc live_room), cập nhật trạng thái có phép
+            const existingIdx = absentRecords.findIndex((r) => r.id === key);
+            if (existingIdx !== -1) {
+              absentRecords[existingIdx].hasOfficialRequest = true;
+              absentRecords[existingIdx].isExcused = isApproved;
+              absentRecords[existingIdx].requestStatus = req.status;
+              if (req.reason) {
+                absentRecords[existingIdx].note = req.reason + (req.note ? ` (${req.note})` : '');
+              }
+            } else if (!seenKeys.has(key)) {
               seenKeys.add(key);
               absentRecords.push({
                 id: key,
@@ -130,13 +167,14 @@ export class AbsentStudentsService {
                 parentPhone: student.parentPhone || student.phone || '',
                 classId: req.classId,
                 className: req.className || cls.name || req.classId,
-                teacherId: cls.teacherId || '',
-                teacherName: cls.teacherName || 'Teacher',
-                date: req.date,
-                dateIso: req.date ? req.date.split('/').reverse().join('-') : todayIso,
-                isToday: req.date === todayDmy || req.date === todayIso,
-                note: req.reason || 'Có đơn xin phép vắng mặt',
+                teacherId: cls.teacherId || req.teacherId || '',
+                teacherName: cls.teacherName || req.teacherName || 'Teacher',
+                date: validDate,
+                dateIso: validDate.includes('/') ? validDate.split('/').reverse().join('-') : validDate,
+                isToday,
+                note: req.reason || req.note || 'Có đơn xin phép vắng mặt',
                 hasOfficialRequest: true,
+                isExcused: isApproved,
                 requestStatus: req.status,
                 source: 'ABSENCE_REQUEST',
               });

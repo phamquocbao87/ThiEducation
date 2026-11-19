@@ -434,3 +434,39 @@ Dự án **ThiEducation** vận hành theo mô hình **6 Vai Trò (Roles)** tác
 - **Badge Trạng Thái Chờ:** Khi buổi học đang chờ giáo viên chấm, bắt buộc hiển thị `<Tag color="orange" icon={<ClockCircleOutlined />}>Đang cập nhật nhận xét</Tag>` cùng chú thích minh bạch, tuyệt đối cấm dùng text xám mờ fallback.
 - **View Giáo Viên / Admin (`SessionEvaluationTable.jsx`):** Cung cấp nút `<Button size="small" type="dashed">💬 {X} Nhận xét chi tiết</Button>` mở Popover liệt kê danh sách nhận xét từng học viên trong ca dạy.
 - **Impersonation Học Viên Tiêu Biểu:** Khi Admin chuyển vai trò sang `student`, ưu tiên chọn học viên đã có lớp học và dữ liệu buổi dạy đầy đủ (`HV768` Kenji), không bốc tài khoản rỗng.
+
+### 8.3. Quy Chuẩn Cảnh Báo Soạn Giáo Án Trước 24H & Báo Thiếu Giáo Trình (Lesson Plan 24h Alert & Curriculum Readiness Invariant)
+- **Cơ Chế 2 Tầng Cảnh Báo Thông Minh (Two-Tier Alert Engine):**
+  - **TẦNG 1 — Cảnh Báo Khẩn Cấp (Primary Urgent Alert - Mốc 24H):** Quét các ca học diễn ra trong 24 giờ tới (now đến now + 24h) qua LessonPlanAlertService. Phát hiện ca dạy thiếu giáo án (lessonPlans) hoặc thiếu giáo trình Wonders (curriculumId, curriculumSeries, curriculumTextbooks).
+  - **TẦNG 2 — Hồ Sơ Sót Quá Khứ (Archival Backlog):** Các buổi học cũ trong quá khứ (endMs <= now) chưa soạn bài được gom gọn thành 1 dòng lưu ý học thuật nhẹ nhàng, tránh gây bội thực cảnh báo đỏ (Alert Fatigue) làm lu mờ ca dạy ngày mai.
+- **Ma Trận Phân Quyền Theo 4 Vai Trò:**
+  - **Giáo viên bản xứ (teacher — TeacherLessonPlanAlertCard):** 100% Tiếng Anh; banner cam/đỏ mốc 24h kèm đồng hồ đếm ngược; nút bấm 1-Click [Plan Lesson Now] bật trực tiếp LessonPlanEditorModal ngay tại Dashboard, hỗ trợ chọn Wonders template và lưu 0ms.
+  - **Giáo vụ đào tạo (academic — AcademicLessonPlanMonitorCard):** Giám sát toàn trường các ca dạy thiếu giáo án/giáo trình; nút [🔔 Nhắc Giáo Viên] gửi realtime notification chuông tới GV và chuyển nút sang tag Đã nhắc; nút [🔍 Kiểm Tra Ca Học] chuyển thẳng tới xem giáo trình.
+  - **Giám đốc điều hành (director — DirectorCurriculumReadinessCard):** Thẻ KPI đo lường Tỷ lệ sẵn sàng bài học 24h toàn trường (complianceRate %); chạm vào mở Drawer đối soát vận hành chi tiết từng ca học.
+  - **Học viên & Phụ huynh (student — Bảo Mật Uy Tín Sư Phạm):** Tuyệt đối KHÔNG hiển thị cảnh báo tiêu cực "Giáo viên chưa soạn giáo án". Thay vào đó hiển thị thông điệp tích cực, lịch sự: "📚 Bài học và tài liệu đọc trước cho buổi học đang được hoàn thiện trước giờ học. Chúc con có một buổi học thật vui và bổ ích!".
+- **Tích Hợp Chuông Header Toàn Diện (NotificationBellPopover):**
+  - Hỗ trợ 2 mã thông báo mới: LESSON_PLAN_DUE_REMINDER (Icon sách 📖 cho Giáo viên) và LESSON_PLAN_MISSING_ALERT (Icon cảnh báo ⚠️ cho Giáo vụ/Giám đốc), click chuyển hướng trực tiếp tới lớp học.
+
+
+### 8.4. Quy Chuẩn Tính Năng Báo Nghỉ Phép Học Viên Khép Kín 4 Bước & Thuật Toán Triage Sort (`/students`)
+- **Luồng Báo Vắng 4 Bước:**
+  1. *Học viên (`student`):* Nút `[Request Leave / Báo Nghỉ Phép]` trên Dashboard. Form `ClassAbsenceReportModal`: Chọn ngày, Lý do (Optional), Lời nhắn (Optional). Tự động bắn thông báo chuông tới Giáo vụ & Giám đốc.
+  2. *Giáo vụ (`academic`):* Tiếp nhận tại `AcademicOperationsPanel`, nút `[Duyệt & Báo Giáo Viên]` chuyển `APPROVED` 0ms. Bắn thông báo chuông kép tới Học viên và Giáo viên bản xứ.
+  3. *Giáo viên bản xứ (`teacher`):* Thẻ ca dạy hiển thị huy hiệu cam `1 Excused Leave: Kenji`. Trong Live Classroom mang trạng thái vắng có phép, chặn đánh giá `OFFLINE` trốn học oan.
+  4. *Kiểm toán chuyên cần (`AbsentStudentsAuditDrawer`):* Không quét `classroom_live` trước giờ học để chống báo oan; Drawer mở rộng 840px Desktop; Tabs 4 nhóm; Mobile-First Card View.
+- **Thuật Toán Priority Triage Sort Học Viên (`/students`):**
+  - Chấm điểm trọng số $P = W_{\text{absence}} + W_{\text{notes}} + W_{\text{eval}} + W_{\text{status}}$ phản hồi tức thì $< 2\text{ms}$.
+  - Đẩy học sinh có đơn vắng PENDING lên đầu, kèm nút `[Duyệt]` 1-chạm trực tiếp trên Card (0ms Optimistic Update).
+  - Bộ lọc sắp xếp 5 chế độ: `🔥 Ưu Tiên Xử Lý` (Mặc định), `🔴 Đơn Báo Vắng`, `📬 Tin Nhắn GV`, `⭐ Đánh Giá Mới`, `🔤 Tên A - Z`.
+
+### 8.5. Quy Chuẩn Học Bạ Điện Tử & Mục Tiêu Chinh Phục Đa Khóa Học (Cumulative Academic Transcript & Goals Pathway)
+- **Kiến Trúc Đa Khóa Học:**
+  - `StudentGoalService.js`: Sinh Khung mục tiêu mẫu (*Goal Blueprint*) thích ứng riêng theo từng chương trình: McGraw-Hill Wonders ELA (Mỹ), Luyện thi Cambridge Starters/Movers/Flyers, Tiếng Anh Giao Tiếp Phản Xạ.
+  - Thanh chuyển đổi lớp học linh hoạt (`Course & Class Switcher`) nếu học sinh học đồng thời nhiều lớp.
+- **Thuật Toán Phân Tích Tiến Độ Thời Gian Thực:**
+  $$P_{\text{goal}} = 40\% \times S_{\text{eval}} + 25\% \times S_{\text{att}} + 20\% \times S_{\text{hw}} + 15\% \times S_{\text{unit}}$$
+  - 3 Trạng thái tự động: 🟢 Ahead of Track ($\ge 110\%$) | 🟡 On Track ($85\% - 109\%$) | 🔴 At Risk ($< 85\%$).
+- **Ma Trận Phân Quyền Bảo Mật 3 Tầng:**
+  - *Học viên & Phụ huynh:* Thấy mục tiêu, tiến độ %, 4 trụ cột kỹ năng, danh sách cột mốc, lịch sử nhận xét sư phạm từng buổi. **ẨN 100% Sổ ghi chú nghiệp vụ nội bộ**.
+  - *Giáo viên bản xứ:* 100% Tiếng Anh, thấy nhận xét của mình & GV trước, thấy sổ trao đổi với Giáo vụ, cập nhật Milestone. **ẨN 100% Học phí & SĐT đầy đủ của phụ huynh** (Tuân thủ `Teacher Fee Privacy Guard` & `Native Teacher Zalo Isolation Guard`).
+  - *Giáo vụ & Lãnh đạo:* Toàn quyền xem và quản trị đầy đủ cả 6 khối dữ liệu.

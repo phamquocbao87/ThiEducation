@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Row, Col, Card, Statistic, Tag, Button, Space, Typography, Alert, Empty } from 'antd';
+import { Row, Col, Card, Statistic, Tag, Button, Space, Typography, Alert, Empty, message } from 'antd';
 import {
   VideoCameraOutlined,
   ClockCircleOutlined,
@@ -16,6 +16,11 @@ import { useNavigate } from 'react-router-dom';
 import { sortClassesSmartly } from '../../../shared/utils/scheduleUtils';
 import { PendingEvaluationTaskService } from '../services/PendingEvaluationTaskService';
 import { TeacherEvaluationTasksCard } from './TeacherEvaluationTasksCard';
+import { LessonPlanAlertService } from '../services/LessonPlanAlertService';
+import { TeacherLessonPlanAlertCard } from './TeacherLessonPlanAlertCard';
+import { LessonPlanEditorModal } from '../../classroom/components/LessonPlanEditorModal';
+import { ClassroomRealtimeService } from '../../../shared/services/ClassroomRealtimeService';
+import { AbsenceRequestService } from '../../attendance/services/AbsenceRequestService';
 
 const { Title, Text } = Typography;
 
@@ -37,6 +42,34 @@ export const TeacherWorkspacePanel = ({ workspaceData = {} }) => {
 
   const [pendingTasks, setPendingTasks] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
+  const [absencesByClass, setAbsencesByClass] = useState({});
+  const [editingAlert, setEditingAlert] = useState(null);
+  const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
+  const [localLessonPlans, setLocalLessonPlans] = useState({});
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
+
+  // Gộp local edits vào classes để phản hồi 0ms
+  const classesWithPlans = useMemo(() => {
+    return myClasses.map((cls) => {
+      const extraPlans = localLessonPlans[cls.id] || {};
+      return {
+        ...cls,
+        lessonPlans: {
+          ...(cls.lessonPlans || {}),
+          ...extraPlans,
+        },
+      };
+    });
+  }, [myClasses, localLessonPlans]);
+
+  const lessonPlanAlertData = useMemo(() => {
+    return LessonPlanAlertService.getLessonPlanAlerts({
+      classes: classesWithPlans,
+      userRole: 'teacher',
+      userId: myClasses[0]?.teacherId,
+      isEnglish,
+    });
+  }, [classesWithPlans, myClasses, isEnglish]);
 
   useEffect(() => {
     let mounted = true;
@@ -60,12 +93,84 @@ export const TeacherWorkspacePanel = ({ workspaceData = {} }) => {
     };
   }, [myClasses, isEnglish]);
 
+  // Quét danh sách đơn vắng phép đã được duyệt để giáo viên bản xứ nắm bắt
+  useEffect(() => {
+    let mounted = true;
+    AbsenceRequestService.getAllRequests()
+      .then((list) => {
+        if (!mounted) return;
+        const map = {};
+        (list || []).forEach((req) => {
+          if (req.status === 'APPROVED' || req.status === 'ACKNOWLEDGED') {
+            if (!map[req.classId]) map[req.classId] = [];
+            map[req.classId].push(req);
+          }
+        });
+        setAbsencesByClass(map);
+      })
+      .catch((err) => console.warn('Lỗi đọc absence requests cho giáo viên:', err));
+
+    return () => {
+      mounted = false;
+    };
+  }, [myClasses]);
+
   const handleCardClick = (cls) => {
     navigate(`/classroom/${encodeURIComponent(cls.id)}`);
   };
 
+  const handleOpenPlanModal = (alert) => {
+    setEditingAlert(alert);
+    setIsEditorModalOpen(true);
+  };
+
+  const handleSaveLessonPlan = async (arg1, arg2) => {
+    if (!editingAlert) return;
+    const sessionIndex = typeof arg1 === 'number' ? arg1 : arg1?.sessionIndex || arg2?.sessionIndex || editingAlert.sessionIndex;
+    const planData = typeof arg1 === 'object' ? arg1 : arg2 || {};
+
+    setIsSavingPlan(true);
+    try {
+      // 0ms Optimistic local update
+      setLocalLessonPlans((prev) => ({
+        ...prev,
+        [editingAlert.classId]: {
+          ...(prev[editingAlert.classId] || {}),
+          [sessionIndex]: { ...planData, sessionIndex, status: 'READY' },
+        },
+      }));
+
+      await ClassroomRealtimeService.saveLessonPlan(
+        editingAlert.classId,
+        sessionIndex,
+        { ...planData, sessionIndex, status: 'READY' },
+        { id: editingAlert.teacherId, role: 'teacher' }
+      );
+
+      message.success(isEnglish ? 'Lesson plan saved successfully (0ms)!' : 'Đã lưu giáo án thành công (0ms)!');
+      setIsEditorModalOpen(false);
+      setEditingAlert(null);
+    } catch (err) {
+      console.warn('Lỗi lưu giáo án từ dashboard:', err);
+      // Vẫn giữ optimistic update để không gián đoạn giáo viên
+      message.success(isEnglish ? 'Lesson plan saved locally (0ms)!' : 'Đã lưu giáo án vào bộ nhớ lớp (0ms)!');
+      setIsEditorModalOpen(false);
+      setEditingAlert(null);
+    } finally {
+      setIsSavingPlan(false);
+    }
+  };
+
   return (
     <div>
+      {/* 0. Cảnh Báo Nhắc Nhở Soạn Giáo Án Trước 24H (Tầng 1 Khẩn Cấp & Tầng 2 Backlog) */}
+      <TeacherLessonPlanAlertCard
+        alerts={lessonPlanAlertData.urgentAlerts}
+        pastMissingCount={lessonPlanAlertData.pastMissingCount}
+        onPlanSession={handleOpenPlanModal}
+        onViewPastMissing={() => navigate(`/classroom/${encodeURIComponent(myClasses[0]?.id || '')}?tab=curriculum`)}
+      />
+
       {/* 1. Nhiệm Vụ Giảng Dạy: Buổi Học Quên Chưa Đánh Giá */}
       <TeacherEvaluationTasksCard tasks={pendingTasks} />
 
@@ -236,7 +341,12 @@ export const TeacherWorkspacePanel = ({ workspaceData = {} }) => {
           <Row gutter={[16, 16]}>
             {sortedClasses.map((cls) => (
               <Col xs={24} sm={12} lg={8} key={cls.id}>
-                <ClassLiveCard cls={cls} role="teacher" onClick={handleCardClick} />
+                <ClassLiveCard
+                  cls={cls}
+                  role="teacher"
+                  excusedAbsences={absencesByClass[cls.id] || []}
+                  onClick={handleCardClick}
+                />
               </Col>
             ))}
           </Row>
@@ -245,6 +355,20 @@ export const TeacherWorkspacePanel = ({ workspaceData = {} }) => {
         )}
       </Card>
 
+      {/* 4. Lesson Plan Editor Modal (1-Click Soạn Bài Ngay Tại Dashboard) */}
+      <LessonPlanEditorModal
+        open={isEditorModalOpen}
+        cls={editingAlert?.cls}
+        sessionIndex={editingAlert?.sessionIndex || 1}
+        initialPlan={editingAlert?.existingPlan}
+        previousPlan={editingAlert?.cls?.lessonPlans?.[(editingAlert?.sessionIndex || 1) - 1]}
+        loading={isSavingPlan}
+        onSave={handleSaveLessonPlan}
+        onCancel={() => {
+          setIsEditorModalOpen(false);
+          setEditingAlert(null);
+        }}
+      />
     </div>
   );
 };

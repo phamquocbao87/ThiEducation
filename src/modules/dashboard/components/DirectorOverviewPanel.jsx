@@ -17,6 +17,8 @@ import { useIsMobile } from '../../../shared/hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
 import { AbsentStudentsService } from '../services/AbsentStudentsService';
 import { AbsentStudentsAuditDrawer } from './AbsentStudentsAuditDrawer';
+import { LessonPlanAlertService } from '../services/LessonPlanAlertService';
+import { DirectorCurriculumReadinessCard } from './DirectorCurriculumReadinessCard';
 
 const { Title, Text } = Typography;
 
@@ -37,7 +39,16 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
     grossProfit = 0,
     fillRate = 0,
     courseStats = [],
+    allActiveClasses = [],
   } = directorData;
+
+  const lessonPlanAlertData = useMemo(() => {
+    return LessonPlanAlertService.getLessonPlanAlerts({
+      classes: allActiveClasses,
+      userRole: 'director',
+      isEnglish,
+    });
+  }, [allActiveClasses, isEnglish]);
 
   const [absentData, setAbsentData] = useState({ absentRecords: [], todayAbsentCount: 0 });
   const [isAbsentDrawerOpen, setIsAbsentDrawerOpen] = useState(false);
@@ -246,6 +257,16 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
               👉 {isEnglish ? 'Click to inspect list' : 'Chạm để xem chi tiết'}
             </div>
           </Card>
+        </Col>
+
+        {/* Thẻ KPI Sẵn Sàng Bài Học 24H (Lesson Plan & Curriculum Readiness) */}
+        <Col xs={12} sm={12} lg={6}>
+          <DirectorCurriculumReadinessCard
+            alerts={lessonPlanAlertData.urgentAlerts}
+            complianceRate={lessonPlanAlertData.complianceRate}
+            readyCount={lessonPlanAlertData.readyCount}
+            totalUpcoming24h={lessonPlanAlertData.totalUpcoming24h}
+          />
         </Col>
       </Row>
 

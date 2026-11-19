@@ -593,3 +593,54 @@ ThiEducation/
    - **Thanh Tiến Độ Số Buổi Đã Học & Lịch Sử 10 Buổi Đánh Giá:**
      * Thẻ lớp `ClassLiveCard` hiển thị: `Số buổi đã học: X/Y buổi (Z%)`.
      * Cổng học viên `StudentRecentEvaluationsCard` hiển thị tối đa 10 buổi đánh giá gần nhất (parse timestamp an toàn, loại trừ ngày tương lai, sắp xếp giảm dần).
+
+9. **Quy Chuẩn Cảnh Báo Soạn Giáo Án Trước 24H & Báo Thiếu Giáo Trình (Lesson Plan 24h Alert & Curriculum Readiness Invariant)**:
+   - **Cơ chế 2 Tầng Cảnh Báo Thông Minh (Two-Tier Alert Engine):**
+     * **TẦNG 1 — Cảnh Báo Khẩn Cấp (Primary Urgent Alert - Mốc 24H):** Quét các ca học diễn ra trong vòng 24 giờ tới (now đến now + 24h) qua LessonPlanAlertService.getLessonPlanAlerts. Phát hiện ca dạy thiếu giáo án (lessonPlans[sessionIndex]) hoặc thiếu giáo trình Wonders (curriculumId, curriculumSeries, curriculumTextbooks, courseLevel).
+     * **TẦNG 2 — Hồ Sơ Sót Quá Khứ (Archival Backlog):** Các buổi học cũ trong quá khứ (endMs <= now) chưa soạn bài được gom gọn thành 1 dòng lưu ý học thuật nhẹ nhàng, tránh gây bội thực cảnh báo đỏ (Alert Fatigue) làm lu mờ ca dạy ngày mai.
+   - **Ma Trận Phân Quyền & Hành Vi Giao Diện Theo 4 Vai Trò:**
+     * **Giáo viên bản xứ (teacher — TeacherLessonPlanAlertCard):** 100% Tiếng Anh; banner cam/đỏ mốc 24h kèm đồng hồ đếm ngược; nút bấm 1-Click [Plan Lesson Now] bật trực tiếp LessonPlanEditorModal ngay tại Dashboard, hỗ trợ chọn Wonders template và lưu 0ms.
+     * **Giáo vụ đào tạo (academic — AcademicLessonPlanMonitorCard):** Giám sát toàn trường các ca dạy thiếu giáo án/giáo trình; nút [🔔 Nhắc Giáo Viên] gửi realtime notification chuông tới GV và chuyển nút sang tag Đã nhắc; nút [🔍 Kiểm Tra Ca Học] chuyển thẳng tới xem giáo trình.
+     * **Giám đốc điều hành (director — DirectorCurriculumReadinessCard):** Thẻ KPI đo lường Tỷ lệ sẵn sàng bài học 24h toàn trường (complianceRate %); chạm vào mở Drawer đối soát vận hành chi tiết từng ca học.
+     * **Học viên & Phụ huynh (student — Bảo Mật Uy Tín Sư Phạm):** Tuyệt đối KHÔNG hiển thị cảnh báo tiêu cực "Giáo viên chưa soạn giáo án". Thay vào đó hiển thị thông điệp tích cực, lịch sự: "📚 Bài học và tài liệu đọc trước cho buổi học đang được hoàn thiện trước giờ học. Chúc con có một buổi học thật vui và bổ ích!".
+   - **Tích Hợp Chuông Header Toàn Diện (NotificationBellPopover):**
+     * Hỗ trợ 2 mã thông báo mới: LESSON_PLAN_DUE_REMINDER (Icon sách 📖 cho Giáo viên) và LESSON_PLAN_MISSING_ALERT (Icon cảnh báo ⚠️ cho Giáo vụ/Giám đốc), click chuyển hướng trực tiếp tới lớp học.
+
+
+10. **Quy Chuẩn Tính Năng Báo Nghỉ Phép Học Viên & Kiểm Toán Chuyên Cần Khép Kín 4 Bước (Student Absence Request & Attendance Audit Closed-Loop Invariant)**:
+    - **Luồng 4 Bước Khép Kín (4-Step Closed Loop Architecture):**
+      * **Bước 1 — Học viên / Phụ huynh (`student`):**
+        - Nút `[Request Leave / Báo Nghỉ Phép]` hiển thị trực quan tại Banner ca học tiếp theo và trên từng thẻ lớp học đang tham gia (`StudentPortalPanel.jsx`).
+        - Mở form `ClassAbsenceReportModal`: Chọn ngày vắng; trường **Lý do vắng mặt (`reason`) BẮT BUỘC là Tùy chọn (Optional)**; lời nhắn gửi giáo vụ (Optional). Gửi đơn tức thì 0ms.
+        - Hệ thống tự động bắn Realtime Notification (`ABSENCE_REQUEST_SUBMITTED`) đến chuông Giáo vụ (`ROLE:academic` & `ROLE:director`).
+      * **Bước 2 — Bàn tiếp nhận & Phê duyệt của Giáo vụ (`academic`):**
+        - Tại Bàn Giáo Vụ (`AcademicOperationsPanel.jsx`), khối "Danh Sách Đơn Báo Vắng Mặt" hiển thị các đơn `PENDING` kèm thông tin lớp, ngày và lời nhắn.
+        - Nút `[✅ Duyệt & Báo Giáo Viên]` (`Approve & Notify`) chuyển trạng thái sang `APPROVED`, đồng thời kích hoạt gửi thông báo chuông kép:
+          1. Gửi thông báo đến Học viên (`ABSENCE_REQUEST_APPROVED`): Xác nhận đơn xin nghỉ buổi học đã được Giáo vụ phê duyệt.
+          2. Gửi thông báo đến Giáo viên bản xứ (`STUDENT_ABSENCE_EXCUSED`): Báo đích danh tên học sinh và lớp xin nghỉ có phép.
+      * **Bước 3 — Đồng bộ góc nhìn Giáo viên bản xứ (`teacher`):**
+        - Nhận thông báo chuông đích danh kèm link mở lớp học.
+        - Trên Dashboard Giáo Viên (`TeacherWorkspacePanel.jsx`), Thẻ ca dạy `ClassLiveCard` tự động hiển thị huy hiệu cam nổi bật: `<Tag color="orange" icon={<UserDeleteOutlined />}>1 Excused Leave: Kenji (HV768)</Tag>`.
+        - Trong phòng học trực tuyến Live Classroom (`StudentSeat.jsx`) và Bàn chấm điểm danh sau giờ học (`SessionEvaluationModal.jsx`), học sinh có đơn được duyệt sẽ mang trạng thái `Excused Leave` (Vắng có phép), bảo vệ danh dự học sinh, chặn đứng việc bị đánh giá `OFFLINE` trốn học oan.
+      * **Bước 4 — Kiểm toán chuyên cần & Tối ưu UI/UX Drawer (`AbsentStudentsAuditDrawer`):**
+        - **Kỷ Luật Chống Báo Oan Tuyệt Đối (Anti-False-Positive Invariant):** Tuyệt đối KHÔNG quét doc `classroom_live` để đếm học sinh `OFFLINE` khi ca học hôm nay chưa đến giờ bắt đầu (`now < session.start`). Chỉ tính vắng hôm nay khi ca học đang diễn ra hoặc đã kết thúc hôm nay.
+        - Lọc sạch 100% chỉ tài khoản Học viên (`role === 'student'`), loại bỏ triệt để cán bộ/giáo vụ và các bản ghi ngày `undefined`.
+        - Drawer mở rộng `840px` trên Desktop, triệt tiêu hoàn toàn thanh cuộn ngang xám xịt (100% Zero Overflow-X).
+        - Bộ lọc Segmented Tabs 4 nhóm: `[🔴 Hôm Nay]` | `[📅 Toàn Bộ Lịch Sử]` | `[📝 Có Đơn Xin Nghỉ]` | `[⚠️ Không Phép]`.
+        - Số điện thoại phụ huynh hiển thị đầy đủ định dạng chuẩn (`0908 xxx 6333`) kèm nút Gọi và Zalo to rõ; trên Mobile ($\le 768\text{px}$) tự động chuyển sang Mobile-First Card View với các nút hành động đạt chuẩn công thái học $\ge 38\text{px}$.
+
+
+11. **Quy Chuẩn Học Bạ Điện Tử & Mục Tiêu Học Tập Chinh Phục Đa Khóa Học (Cumulative Academic Transcript & Multi-Course Goal Engine Invariant)**:
+    - **Kiến Trúc Học Bạ Toàn Diện (All-in-One Digital Academic Transcript):**
+      * Tích hợp trực tiếp vào Tab `[Học Bạ Điện Tử & Mục Tiêu]` trên trang hồ sơ học viên (`/user-management/:id` và `/my-profile`).
+      * Hỗ trợ thanh chuyển đổi linh hoạt theo Khóa học / Lớp học (`enrolledClasses`) khi học viên học đồng thời nhiều lớp (chính khóa Wonders + giao tiếp phản xạ + luyện thi Cambridge).
+    - **Cơ Chế Khung Mục Tiêu Mẫu (Course-Level Goal Blueprint):**
+      * Quản lý qua `StudentGoalService.js` (Firestore `student_goals`).
+      * Tự động khởi tạo theo template chuẩn của khóa học: Wonders ELA (Mỹ), Cambridge Test Prep (Starters/Movers/Flyers), Spoken English Fluency.
+      * Thuật toán phân tích tiến độ tự động thời gian thực:
+        $$P_{\text{goal}} = 40\% \times S_{\text{eval}} + 25\% \times S_{\text{att}} + 20\% \times S_{\text{hw}} + 15\% \times S_{\text{unit}}$$
+      * 3 Trạng thái tự động: 🟢 Ahead of Track ($\ge 110\%$) | 🟡 On Track ($85\% - 109\%$) | 🔴 At Risk ($< 85\%$).
+    - **Ma Trận Phân Quyền Bảo Mật 3 Góc Nhìn (3-Party Privacy Matrix):**
+      * **Học viên & Phụ huynh (`student`):** Thấy mục tiêu, tiến độ %, 4 trụ cột kỹ năng, danh sách cột mốc, lịch sử nhận xét sư phạm từng buổi từ GV bản xứ, nút đổi nguyện vọng gia đình. **TUYỆT ĐỐI ẨN 100%** Sổ ghi chú nghiệp vụ nội bộ (`student_notes`).
+      * **Giáo viên bản xứ (`teacher`):** 100% Tiếng Anh, thấy nhận xét của mình và các GV trước đó, thấy sổ ghi chú trao đổi với Giáo vụ, có quyền cập nhật trạng thái Milestone. **TUYỆT ĐỐI ẨN 100%** Học phí & SĐT đầy đủ của phụ huynh (tuân thủ `Teacher Fee Privacy Guard` & `Native Teacher Zalo Isolation Guard`).
+      * **Giáo vụ (`academic`) & Lãnh đạo (`director`/`admin`):** Toàn quyền xem & cập nhật đầy đủ cả 6 khối dữ liệu.

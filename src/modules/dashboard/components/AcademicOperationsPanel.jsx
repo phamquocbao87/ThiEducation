@@ -15,6 +15,7 @@ import {
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { useAuth } from '../../../core/context/AuthContext';
 import { useIsMobile } from '../../../shared/hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
 import { ClassLiveCard } from './ClassLiveCard';
@@ -24,13 +25,17 @@ import { PendingEvaluationTaskService } from '../services/PendingEvaluationTaskS
 import { PendingEvaluationTasksCard } from './PendingEvaluationTasksCard';
 import { AbsentStudentsService } from '../services/AbsentStudentsService';
 import { AbsentStudentsAuditDrawer } from './AbsentStudentsAuditDrawer';
+import { LessonPlanAlertService } from '../services/LessonPlanAlertService';
+import { AcademicLessonPlanMonitorCard } from './AcademicLessonPlanMonitorCard';
 
 const { Title, Text } = Typography;
 
 export const AcademicOperationsPanel = ({ academicData = {} }) => {
   const { isEnglish, t } = useLanguage();
+  const { currentUser } = useAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const [approvingAbsenceId, setApprovingAbsenceId] = useState(null);
 
   const [filterTab, setFilterTab] = useState('all'); // Mặc định hiển thị tất cả các lớp ('all' | 'today' | 'upcoming')
 
@@ -114,19 +119,37 @@ export const AcademicOperationsPanel = ({ academicData = {} }) => {
 
   const handleAcknowledgeAbsence = async (reqId) => {
     try {
-      await AbsenceRequestService.updateRequestStatus(reqId, 'ACKNOWLEDGED');
-      message.success(isEnglish ? 'Absence notice acknowledged!' : 'Đã tiếp nhận đơn báo vắng!');
+      setApprovingAbsenceId(reqId);
+      await AbsenceRequestService.updateRequestStatus(reqId, 'APPROVED', {
+        id: currentUser?.id || currentUser?.code || 'ACA001',
+        name: currentUser?.name || currentUser?.displayName || 'Academic Advisor',
+      });
+      message.success(
+        isEnglish
+          ? 'Absence request approved! Teacher and student have been notified.'
+          : 'Đã phê duyệt đơn xin nghỉ! Giáo viên và học viên đã nhận được thông báo.'
+      );
       setAbsenceRequests((prev) =>
-        prev.map((r) => (r.id === reqId ? { ...r, status: 'ACKNOWLEDGED' } : r))
+        prev.map((r) => (r.id === reqId ? { ...r, status: 'APPROVED' } : r))
       );
     } catch (err) {
-      message.error(err.message);
+      message.error(err.message || 'Lỗi phê duyệt đơn xin nghỉ');
+    } finally {
+      setApprovingAbsenceId(null);
     }
   };
 
   const handleCardClick = (cls) => {
     navigate(`/classroom/${encodeURIComponent(cls.id)}`);
   };
+
+  const lessonPlanAlertData = useMemo(() => {
+    return LessonPlanAlertService.getLessonPlanAlerts({
+      classes: allActiveClasses,
+      userRole: 'academic',
+      isEnglish,
+    });
+  }, [allActiveClasses, isEnglish]);
 
   return (
     <div>
@@ -282,6 +305,12 @@ export const AcademicOperationsPanel = ({ academicData = {} }) => {
       {/* 2. Nhiệm Vụ Giáo Vụ Cần Xử Lý: Giáo Viên Chưa Hoàn Tất Đánh Giá */}
       <PendingEvaluationTasksCard tasks={pendingEvaluationTasks} />
 
+      {/* 2b. Đôn Đốc Soạn Giáo Án Trước 24H & Báo Thiếu Giáo Trình */}
+      <AcademicLessonPlanMonitorCard
+        alerts={lessonPlanAlertData.urgentAlerts}
+        pastMissingCount={lessonPlanAlertData.pastMissingCount}
+      />
+
       {/* Thông Báo Đơn Báo Vắng Mặt Mới Cần Giáo Vụ Tiếp Nhận */}
       {pendingAbsences.length > 0 && (
         <Card
@@ -344,10 +373,12 @@ export const AcademicOperationsPanel = ({ academicData = {} }) => {
                   size="small"
                   type="primary"
                   icon={<CheckCircleOutlined />}
-                  style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', borderRadius: 6, fontWeight: 600 }}
+                  loading={approvingAbsenceId === req.id}
+                  style={{ backgroundColor: '#16a34a', borderColor: '#16a34a', borderRadius: 6, fontWeight: 600 }}
                   onClick={() => handleAcknowledgeAbsence(req.id)}
+                  data-testid={`btn-approve-absence-${req.id}`}
                 >
-                  {isEnglish ? 'Acknowledge' : 'Đã Tiếp Nhận'}
+                  {isEnglish ? 'Approve & Notify' : 'Duyệt & Báo Giáo Viên'}
                 </Button>
               </div>
             ))}

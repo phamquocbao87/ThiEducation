@@ -17,6 +17,7 @@ import {
   Tooltip,
   Statistic,
   message,
+  Rate,
 } from 'antd';
 import {
   SearchOutlined,
@@ -34,6 +35,10 @@ import {
   DollarOutlined,
   UserOutlined,
   SendOutlined,
+  FireOutlined,
+  StarFilled,
+  ExclamationCircleOutlined,
+  SortAscendingOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { PermissionService } from '../../../core/services/PermissionService';
@@ -41,6 +46,9 @@ import { matchesMultiFields } from '../../../shared/utils/searchUtils';
 import { TeacherContactAcademicModal } from '../../students/components/TeacherContactAcademicModal';
 import { AcademicStudentNotesDrawer } from '../../students/components/AcademicStudentNotesDrawer';
 import { StudentNoteService } from '../../students/services/StudentNoteService';
+import { AbsenceRequestService } from '../../attendance/services/AbsenceRequestService';
+import { collection, getDocs } from 'firebase/firestore';
+import { db, IS_FIREBASE_ENABLED } from '../../../core/services/firebase';
 
 const { Text, Title } = Typography;
 
@@ -62,6 +70,7 @@ export const StudentCardGrid = ({
   const [searchText, setSearchText] = useState('');
   const [selectedClassFilter, setSelectedClassFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [sortMode, setSortMode] = useState('PRIORITY'); // 'PRIORITY' | 'ABSENCE' | 'NOTES' | 'EVALUATION' | 'NAME'
   const [statusOverrides, setStatusOverrides] = useState({});
 
   // Phân quyền bảo mật SĐT học viên & nhắn tin giáo vụ
@@ -70,19 +79,64 @@ export const StudentCardGrid = ({
   const [activeContactStudent, setActiveContactStudent] = useState(null);
   const [activeNotesStudent, setActiveNotesStudent] = useState(null);
   const [notesList, setNotesList] = useState([]);
+  const [absenceRequests, setAbsenceRequests] = useState([]);
+  const [evaluationsByStudent, setEvaluationsByStudent] = useState({});
+  const [approvingAbsenceId, setApprovingAbsenceId] = useState(null);
 
-  const loadNotesStats = async () => {
+  const loadOperationalData = async () => {
     try {
-      const all = await StudentNoteService.getAllNotes();
-      setNotesList(all || []);
+      const [allNotes, allAbsences, evalSnap] = await Promise.all([
+        StudentNoteService.getAllNotes().catch(() => []),
+        AbsenceRequestService.getAllRequests().catch(() => []),
+        (IS_FIREBASE_ENABLED && db) ? getDocs(collection(db, 'session_evaluations')).catch(() => ({ forEach: () => {} })) : Promise.resolve({ forEach: () => {} }),
+      ]);
+      setNotesList(allNotes || []);
+      setAbsenceRequests(allAbsences || []);
+
+      const evalMap = {};
+      evalSnap.forEach?.((d) => {
+        const data = d.data();
+        const studentEvals = data.studentEvaluations || {};
+        Object.entries(studentEvals).forEach(([stdId, ev]) => {
+          if (!evalMap[stdId] || new Date(data.dateIso || 0) > new Date(evalMap[stdId].dateIso || 0)) {
+            evalMap[stdId] = {
+              stars: ev.stars || ev.rating || 5,
+              comment: ev.comment || '',
+              date: data.date || '',
+              dateIso: data.dateIso || '',
+              className: data.className || '',
+            };
+          }
+        });
+      });
+      setEvaluationsByStudent(evalMap);
     } catch (e) {
-      console.warn('[StudentCardGrid] Lỗi đọc danh sách notes:', e);
+      console.warn('[StudentCardGrid] Lỗi đọc dữ liệu vận hành:', e);
     }
   };
 
   useEffect(() => {
-    loadNotesStats();
+    loadOperationalData();
   }, []);
+
+  const handleQuickApproveAbsence = async (absence) => {
+    const requestId = absence.id;
+    try {
+      setApprovingAbsenceId(requestId);
+      await AbsenceRequestService.updateRequestStatus(requestId, 'APPROVED', {
+        id: currentUser?.id || 'ACA001',
+        name: currentUser?.name || currentUser?.displayName || 'Academic Staff',
+      });
+      message.success(isEnglish ? 'Absence request approved!' : 'Đã duyệt đơn nghỉ phép của học viên!');
+      setAbsenceRequests((prev) =>
+        prev.map((r) => (r.id === requestId ? { ...r, status: 'APPROVED' } : r))
+      );
+    } catch (err) {
+      message.error(err.message || 'Lỗi duyệt đơn');
+    } finally {
+      setApprovingAbsenceId(null);
+    }
+  };
 
   const handleToggle = async (student, checked) => {
     const studentCode = student.code || student.id;
@@ -192,6 +246,113 @@ export const StudentCardGrid = ({
     });
   }, [students, statusFilter, selectedClassFilter, searchText, allClasses, classMap, statusOverrides]);
 
+  // Lấy ngày hôm nay định dạng DD/MM/YYYY
+  const todayDmy = useMemo(() => {
+    return new Intl.DateTimeFormat('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'Asia/Ho_Chi_Minh',
+    }).format(Date.now());
+  }, []);
+
+  // Tính điểm ưu tiên và sắp xếp danh sách học viên
+  const sortedStudents = useMemo(() => {
+    const list = [...filteredStudents];
+
+    const getStudentAbsences = (s) => {
+      const sCode = s.code || s.id;
+      return (absenceRequests || []).filter(
+        (r) => r.userId === s.id || r.userId === s.code || r.userId === sCode
+      );
+    };
+
+    const getStudentNotes = (s) => {
+      const sCode = s.code || s.id;
+      return (notesList || []).filter(
+        (n) =>
+          String(n.studentId || '').toUpperCase() === String(sCode).toUpperCase() ||
+          String(n.studentCode || '').toUpperCase() === String(sCode).toUpperCase()
+      );
+    };
+
+    // Hàm tính điểm trọng số Priority Score
+    const getPriorityScore = (s) => {
+      let score = 0;
+      const absences = getStudentAbsences(s);
+      const pendingAbsences = absences.filter((r) => r.status === 'PENDING');
+      const todayPending = pendingAbsences.filter((r) => r.absenceDate === todayDmy || r.date === todayDmy);
+
+      if (todayPending.length > 0) score += 1000 * todayPending.length;
+      else if (pendingAbsences.length > 0) score += 500 * pendingAbsences.length;
+
+      const notes = getStudentNotes(s);
+      const pendingNotes = notes.filter((n) => n.status === 'PENDING');
+      if (pendingNotes.length > 0) score += 300 * pendingNotes.length;
+
+      const ev = evaluationsByStudent[s.id] || evaluationsByStudent[s.code];
+      if (ev && ev.stars <= 3) score += 100;
+
+      const approvedAbsences = absences.filter((r) => r.status === 'APPROVED');
+      if (approvedAbsences.length > 0) score += 10;
+
+      if ((s.status || 'Active').toLowerCase() === 'active') score += 5;
+
+      return score;
+    };
+
+    list.sort((a, b) => {
+      if (sortMode === 'PRIORITY') {
+        const scoreA = getPriorityScore(a);
+        const scoreB = getPriorityScore(b);
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return (a.name || '').localeCompare(b.name || '');
+      }
+
+      if (sortMode === 'ABSENCE') {
+        const absA = getStudentAbsences(a);
+        const absB = getStudentAbsences(b);
+        const pendingA = absA.some((r) => r.status === 'PENDING');
+        const pendingB = absB.some((r) => r.status === 'PENDING');
+        if (pendingA && !pendingB) return -1;
+        if (!pendingA && pendingB) return 1;
+        if (absA.length !== absB.length) return absB.length - absA.length;
+        return (a.name || '').localeCompare(b.name || '');
+      }
+
+      if (sortMode === 'NOTES') {
+        const notesA = getStudentNotes(a);
+        const notesB = getStudentNotes(b);
+        const pendingA = notesA.filter((n) => n.status === 'PENDING').length;
+        const pendingB = notesB.filter((n) => n.status === 'PENDING').length;
+        if (pendingB !== pendingA) return pendingB - pendingA;
+        if (notesA.length !== notesB.length) return notesB.length - notesA.length;
+        return (a.name || '').localeCompare(b.name || '');
+      }
+
+      if (sortMode === 'EVALUATION') {
+        const evA = evaluationsByStudent[a.id] || evaluationsByStudent[a.code];
+        const evB = evaluationsByStudent[b.id] || evaluationsByStudent[b.code];
+        if (evA && !evB) return -1;
+        if (!evA && evB) return 1;
+        if (evA && evB) {
+          return (evB.dateIso || '').localeCompare(evA.dateIso || '');
+        }
+        return (a.name || '').localeCompare(b.name || '');
+      }
+
+      if (sortMode === 'NAME') {
+        const nameA = a.englishName || a.name || '';
+        const nameB = b.englishName || b.name || '';
+        return nameA.localeCompare(nameB);
+      }
+
+      return 0;
+    });
+
+    return list;
+  }, [filteredStudents, sortMode, absenceRequests, notesList, evaluationsByStudent, todayDmy]);
+
   // Màu sắc ngẫu nhiên hoặc theo ID cho Avatar
   const getAvatarColor = (idOrCode = '') => {
     const colors = ['#f56a00', '#7265e6', '#ffbf00', '#00a2ae', '#87d068', '#108ee9', '#722ed1'];
@@ -249,7 +410,7 @@ export const StudentCardGrid = ({
         </Col>
       </Row>
 
-      {/* 2. Thanh Công Cụ: Tìm Kiếm, Bộ Lọc Theo Lớp & Nút Thêm Mới */}
+      {/* 2. Thanh Công Cụ: Tìm Kiếm, Bộ Lọc Theo Lớp, Trạng Thái, Bộ Lọc Sắp Xếp & Nút Thêm Mới */}
       <Card
         bordered={false}
         style={{
@@ -261,7 +422,7 @@ export const StudentCardGrid = ({
         styles={{ body: { padding: isMobile ? '12px 10px' : '14px 16px' } }}
       >
         <Row gutter={[12, 12]} align="middle" justify="space-between">
-          <Col xs={24} md={10}>
+          <Col xs={24} md={7}>
             <Input
               prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
               placeholder={
@@ -308,7 +469,22 @@ export const StudentCardGrid = ({
             </Select>
           </Col>
 
-          <Col xs={24} md={5} style={{ textAlign: isMobile ? 'left' : 'right' }}>
+          <Col xs={12} sm={6} md={4}>
+            <Select
+              value={sortMode}
+              onChange={setSortMode}
+              style={{ width: '100%', height: 40 }}
+              data-testid="select-sort-students"
+            >
+              <Select.Option value="PRIORITY">🔥 {isEnglish ? 'Priority Action' : 'Ưu Tiên Xử Lý'}</Select.Option>
+              <Select.Option value="ABSENCE">🔴 {isEnglish ? 'Absence Notices' : 'Đơn Báo Vắng'}</Select.Option>
+              <Select.Option value="NOTES">📬 {isEnglish ? 'Teacher Notes' : 'Tin Nhắn GV'}</Select.Option>
+              <Select.Option value="EVALUATION">⭐ {isEnglish ? 'Recent Rating' : 'Đánh Giá Mới'}</Select.Option>
+              <Select.Option value="NAME">🔤 {isEnglish ? 'Name A - Z' : 'Tên A - Z'}</Select.Option>
+            </Select>
+          </Col>
+
+          <Col xs={12} sm={6} md={4} style={{ textAlign: isMobile ? 'left' : 'right' }}>
             {canManage && (
               <Button
                 type="primary"
@@ -327,7 +503,7 @@ export const StudentCardGrid = ({
                   backgroundColor: '#722ed1',
                   borderColor: '#722ed1',
                   fontWeight: 600,
-                  width: isMobile ? '100%' : 'auto',
+                  width: '100%',
                 }}
               >
                 {isEnglish ? '+ New Student' : '+ Thêm Học Viên'}
@@ -338,7 +514,7 @@ export const StudentCardGrid = ({
       </Card>
 
       {/* 3. Lưới Card Học Viên (Responsive 3 Cột trên Desktop, 1 Cột trên Mobile) */}
-      {filteredStudents.length === 0 ? (
+      {sortedStudents.length === 0 ? (
         <Empty
           description={
             isEnglish
@@ -349,7 +525,7 @@ export const StudentCardGrid = ({
         />
       ) : (
         <Row gutter={[16, 16]}>
-          {filteredStudents.map((student) => {
+          {sortedStudents.map((student) => {
             const studentCode = student.code || student.id;
             const currentStatus = statusOverrides[studentCode] || student.status || 'Active';
             const isActive = currentStatus.toLowerCase() === 'active';
@@ -378,6 +554,15 @@ export const StudentCardGrid = ({
                 String(n.studentCode || '').toUpperCase() === String(studentCode).toUpperCase()
             );
             const pendingNotesCount = studentNotes.filter((n) => n.status === 'PENDING').length;
+
+            // Đơn xin nghỉ phép của học viên này
+            const studentAbsences = (absenceRequests || []).filter(
+              (r) => r.userId === student.id || r.userId === student.code || r.userId === studentCode
+            );
+            const latestAbsence = studentAbsences.length > 0 ? studentAbsences[0] : null;
+
+            // Đánh giá mới nhất của giáo viên
+            const studentEval = evaluationsByStudent[student.id] || evaluationsByStudent[student.code];
 
             return (
               <Col xs={24} sm={12} lg={8} key={student.id || studentCode}>
@@ -440,6 +625,127 @@ export const StudentCardGrid = ({
                         {isActive ? (isEnglish ? 'Active' : 'Đang học') : (isEnglish ? 'Inactive' : 'Tạm dừng')}
                       </Tag>
                     </div>
+
+                    {/* Khối Cảnh Báo Vận Hành: Đơn Nghỉ Phép & Đánh Giá Mới Nhất */}
+                    {latestAbsence && latestAbsence.status === 'PENDING' && (
+                      <div
+                        data-testid={`card-pending-absence-${studentCode}`}
+                        style={{
+                          backgroundColor: '#fff7ed',
+                          border: '1px solid #fed7aa',
+                          borderRadius: 8,
+                          padding: '8px 10px',
+                          marginBottom: 10,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 8,
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+                          <ExclamationCircleOutlined style={{ color: '#ea580c', fontSize: 14, flexShrink: 0 }} />
+                          <div style={{ fontSize: 11, lineHeight: 1.2, minWidth: 0 }}>
+                            <div>
+                              <span style={{ fontWeight: 700, color: '#c2410c' }}>
+                                {isEnglish ? 'Leave Notice: ' : 'Báo Nghỉ: '}
+                              </span>
+                              <span style={{ color: '#7c2d12', fontWeight: 600 }}>
+                                {latestAbsence.absenceDate || latestAbsence.date}
+                              </span>
+                            </div>
+                            {latestAbsence.reason && (
+                              <div
+                                style={{
+                                  color: '#9a3412',
+                                  fontSize: 10,
+                                  whiteSpace: 'nowrap',
+                                  textOverflow: 'ellipsis',
+                                  overflow: 'hidden',
+                                  maxWidth: 160,
+                                }}
+                              >
+                                {latestAbsence.reason}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {canManage && (
+                          <Button
+                            type="primary"
+                            size="small"
+                            loading={approvingAbsenceId === latestAbsence.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleQuickApproveAbsence(latestAbsence);
+                            }}
+                            data-testid={`btn-quick-approve-absence-${studentCode}`}
+                            style={{
+                              backgroundColor: '#ea580c',
+                              borderColor: '#ea580c',
+                              borderRadius: 6,
+                              height: 24,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              padding: '0 8px',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {isEnglish ? 'Approve' : 'Duyệt'}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+
+                    {latestAbsence && latestAbsence.status === 'APPROVED' && (
+                      <div
+                        data-testid={`card-approved-absence-${studentCode}`}
+                        style={{
+                          backgroundColor: '#f0fdf4',
+                          border: '1px solid #bbf7d0',
+                          borderRadius: 8,
+                          padding: '6px 10px',
+                          marginBottom: 10,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontSize: 11,
+                        }}
+                      >
+                        <Tag color="success" style={{ margin: 0, borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
+                          {isEnglish ? 'Excused' : 'Đã duyệt vắng'}
+                        </Tag>
+                        <span style={{ color: '#166534', fontWeight: 600 }}>
+                          {latestAbsence.absenceDate || latestAbsence.date}
+                        </span>
+                      </div>
+                    )}
+
+                    {studentEval && (
+                      <div
+                        data-testid={`card-eval-rating-${studentCode}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          backgroundColor: '#faf5ff',
+                          border: '1px solid #f3e8ff',
+                          borderRadius: 6,
+                          padding: '4px 8px',
+                          marginBottom: 10,
+                          fontSize: 11,
+                        }}
+                      >
+                        <span style={{ color: '#6b21a8', fontWeight: 600 }}>
+                          ⭐ {isEnglish ? 'Latest Rating:' : 'Đánh giá gần nhất:'}
+                        </span>
+                        <Space size={4}>
+                          <Rate disabled value={studentEval.stars || 5} style={{ fontSize: 11, color: '#f59e0b' }} />
+                          <span style={{ color: '#7e22ce', fontSize: 10, fontWeight: 500 }}>
+                            ({studentEval.date || 'Gần đây'})
+                          </span>
+                        </Space>
+                      </div>
+                    )}
 
                     {/* Khối 2: Lớp học đang tham gia */}
                     <div
