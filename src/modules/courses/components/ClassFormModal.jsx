@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Form, Input, Select, Row, Col, Space, Avatar, Typography } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, Row, Col, Space, Avatar, Typography } from 'antd';
 import { UserOutlined, VideoCameraOutlined, BookOutlined } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 
@@ -11,7 +11,10 @@ export const ClassFormModal = ({ open, courses, teachers, students, onCancel, on
   const { isEnglish } = useLanguage();
 
   const handleFinish = (values) => {
-    onSubmit(values);
+    onSubmit({
+      ...values,
+      totalSessions: Number(values.totalSessions) || 12,
+    });
     form.resetFields();
   };
 
@@ -36,6 +39,7 @@ export const ClassFormModal = ({ open, courses, teachers, students, onCancel, on
         initialValues={{
           courseId: courses[0]?.id,
           teacherId: teachers[0]?.id,
+          totalSessions: 12,
           platform: 'Zoom Meeting',
           schedule: 'Thứ 2, Thứ 4, Thứ 6 (18:00 - 20:00)',
           meetingId: '888 999 111',
@@ -43,10 +47,10 @@ export const ClassFormModal = ({ open, courses, teachers, students, onCancel, on
         }}
       >
         <Row gutter={16}>
-          <Col xs={24} sm={12}>
+          <Col xs={24} sm={8}>
             <Form.Item
               name="courseId"
-              label={isEnglish ? 'Select Course Program' : 'Khóa Học Trực Thuộc'}
+              label={isEnglish ? 'Course Program' : 'Khóa Học'}
               rules={[{ required: true, message: isEnglish ? 'Please select course' : 'Vui lòng chọn khóa học' }]}
             >
               <Select style={{ borderRadius: 8 }}>
@@ -59,13 +63,24 @@ export const ClassFormModal = ({ open, courses, teachers, students, onCancel, on
             </Form.Item>
           </Col>
 
-          <Col xs={24} sm={12}>
+          <Col xs={24} sm={10}>
             <Form.Item
               name="name"
               label={isEnglish ? 'Class Name' : 'Tên Lớp Học'}
               rules={[{ required: true, message: isEnglish ? 'Please enter class name' : 'Vui lòng nhập tên lớp học' }]}
             >
               <Input placeholder={isEnglish ? 'e.g. Class 10A2 - Wonders G2 (Zoom)' : 'VD: Class 10A2 - Wonders G2 (Zoom)'} style={{ borderRadius: 8 }} />
+            </Form.Item>
+          </Col>
+
+          <Col xs={24} sm={6}>
+            <Form.Item
+              name="totalSessions"
+              label={isEnglish ? 'Total Sessions' : 'Số Buổi'}
+              rules={[{ required: true, message: isEnglish ? 'Required' : 'Bắt buộc' }]}
+              extra={<span style={{ fontSize: 10, color: '#64748b' }}>{isEnglish ? 'Def: 12' : 'Mặc định: 12'}</span>}
+            >
+              <InputNumber min={1} max={100} placeholder="12" style={{ width: '100%', borderRadius: 8 }} />
             </Form.Item>
           </Col>
         </Row>

@@ -80,9 +80,12 @@ export const MaterialsPage = () => {
     loadData();
   }, [loadData]);
 
-  // Bộ lọc dữ liệu bảo đảm đúng phân quyền Invariant
+  // Bộ lọc dữ liệu bảo đảm đúng phân quyền Invariant (Kho tài liệu số chung, lọc riêng video ghi hình buổi học lẻ của từng lớp)
   const filteredMaterials = useMemo(() => {
-    return MaterialService.filterMaterials(materials, {
+    const generalMaterials = (materials || []).filter(
+      (m) => !m.isSessionRecording && m.targetType !== 'session_recording'
+    );
+    return MaterialService.filterMaterials(generalMaterials, {
       searchTerm,
       courseId: selectedCourseId,
       type: selectedType,

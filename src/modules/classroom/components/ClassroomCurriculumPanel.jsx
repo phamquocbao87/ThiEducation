@@ -40,9 +40,9 @@ export const ClassroomCurriculumPanel = ({
 }) => {
   const { t, isEnglish } = useLanguage();
 
-  // 1. Tự động tính toán các buổi học thực tế của lớp theo thời khóa biểu (hỗ trợ quy mô 60-100+ buổi)
+  // 1. Tự động tính toán các buổi học thực tế của lớp theo thời khóa biểu (hỗ trợ nhập động số buổi hoặc mặc định 12 buổi)
   const totalSessionsCount = useMemo(() => {
-    return Math.max(Number(cls?.totalSessions) || 60, 60);
+    return Math.max(1, Number(cls?.totalSessions) || 12);
   }, [cls?.totalSessions]);
 
   const scheduleSessions = useMemo(() => {
@@ -202,14 +202,22 @@ export const ClassroomCurriculumPanel = ({
                   const hasPlan = Boolean(p);
                   const isToday = currentSessionIndex && idx === currentSessionIndex;
                   const statusIcon = isToday ? '🟢 ' : hasPlan ? '📘 ' : '⚪ ';
-                  const statusText = hasPlan
-                    ? `[${isEnglish ? 'Planned' : 'Đã soạn'}]`
-                    : `[${isEnglish ? 'Unplanned' : 'Chưa soạn'}]`;
                   const dateText = sched?.date ? `• ${sched.date}` : '';
-                  const unitText = sched?.unitWeek ? `— ${sched.unitWeek}` : '';
+
+                  let titleOrStatus = '';
+                  if (hasPlan && p?.lessonTitle) {
+                    const rawTitle = String(p.lessonTitle).trim();
+                    const truncated = rawTitle.length > 35 ? `${rawTitle.slice(0, 35)}...` : rawTitle;
+                    titleOrStatus = `: ${truncated}`;
+                  } else if (hasPlan) {
+                    titleOrStatus = ` [${isEnglish ? 'Planned' : 'Đã soạn'}]`;
+                  } else {
+                    titleOrStatus = ` [${isEnglish ? 'Unplanned' : 'Chưa soạn'}]`;
+                  }
+
                   return {
                     value: idx,
-                    label: `${statusIcon}${isEnglish ? `Session ${idx}` : `Buổi ${idx}`} ${dateText} ${statusText} ${unitText}`,
+                    label: `${statusIcon}${isEnglish ? `Session ${idx}` : `Buổi ${idx}`} ${dateText}${titleOrStatus}`,
                   };
                 })}
               />

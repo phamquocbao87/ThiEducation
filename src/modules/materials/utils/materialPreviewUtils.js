@@ -163,8 +163,8 @@ export function resolveEmbedUrl(url = '', kind = PREVIEW_KINDS.GENERIC) {
     return `https://www.youtube-nocookie.com/embed/${ytId}?rel=0&modestbranding=1&enablejsapi=1`;
   }
 
-  // Google Drive File
-  if (trimmed.includes('drive.google.com/file/d/')) {
+  // Google Drive File (Video, Audio, Docs, Sheets, PDF...)
+  if (isGoogleDriveUrl(trimmed) || trimmed.includes('drive.google.com')) {
     const fileId = extractGoogleDriveId(trimmed);
     if (fileId) {
       return `https://drive.google.com/file/d/${fileId}/preview`;

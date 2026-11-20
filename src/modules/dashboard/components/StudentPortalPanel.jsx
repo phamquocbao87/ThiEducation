@@ -437,8 +437,8 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                   </Title>
                   <Text type="secondary" style={{ fontSize: 12 }}>
                     {isEnglish
-                      ? 'Target curriculum, reading passages & key vocabulary before live Zoom'
-                      : 'Nội dung giáo trình McGraw-Hill, bài đọc & từ vựng cần chuẩn bị trước giờ học'}
+                      ? 'View your class schedule, lesson plans, and preparation tasks before each live Zoom session.'
+                      : 'Xem thời khóa biểu, kế hoạch bài học và nhiệm vụ chuẩn bị trước mỗi ca học trực tuyến qua Zoom.'}
                   </Text>
                 </div>
               </Space>
@@ -719,7 +719,7 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                     <Space size={6}>
                       <BookOutlined style={{ color: '#9333ea', fontSize: 16 }} />
                       <Text strong style={{ fontSize: 14, color: '#581c87' }}>
-                        {isEnglish ? 'Teacher Lesson Plan for this Session:' : 'Giáo Án Giáo Viên Đã Soạn Cho Bài Học:'}
+                        {isEnglish ? 'Lesson Overview:' : 'Tổng Quan Bài Học (Lesson Overview):'}
                       </Text>
                     </Space>
                     <Space size={6} wrap>
@@ -776,7 +776,8 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                               backgroundColor: '#faf5ff',
                               borderRadius: 6,
                               borderLeft: '3px solid #9333ea',
-                              lineHeight: 1.4,
+                              lineHeight: 1.5,
+                              whiteSpace: 'pre-line',
                             }}
                           >
                             <FormattedText content={obj} />
@@ -822,7 +823,7 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                           {lessonPrep.readingDailyTime || '60+ mins'}
                         </span>
                         <span style={{ fontSize: 12, fontWeight: 600, color: '#1e40af' }}>
-                          {isEnglish ? 'Reading Suggested Daily Time' : 'Đọc Gợi Ý / Ngày'}
+                          {isEnglish ? 'Reading Lesson Goals' : 'Mục Tiêu Đọc Hiểu (Reading Goals)'}
                         </span>
                       </div>
 
@@ -848,7 +849,7 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                           {lessonPrep.writingDailyTime || '30+ mins'}
                         </span>
                         <span style={{ fontSize: 12, fontWeight: 600, color: '#166534' }}>
-                          {isEnglish ? 'Writing Suggested Daily Time' : 'Viết Gợi Ý / Ngày'}
+                          {isEnglish ? 'Writing Lesson Goals' : 'Mục Tiêu Viết & Ngữ Pháp (Writing Goals)'}
                         </span>
                       </div>
                     </div>

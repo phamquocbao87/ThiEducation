@@ -141,6 +141,30 @@ ThiEducation/
        * **Kỷ luật Chọn Tài Khoản Tiêu Biểu Khi Đóng Vai (Impersonation Enrolled Student Invariant):**
          - Trong `AuthContext.jsx`, khi Admin chuyển vai trò sang `student` để kiểm thử, hệ thống BẮT BUỘC ưu tiên nạp học viên tiêu biểu đã có dữ liệu thực tế đầy đủ (như `HV768` Kenji có lớp `LH004`, 4 buổi học và đầy đủ nhận xét từ Teacher Maj).
          - TUYỆT ĐỐI KHÔNG bốc ngẫu nhiên học viên chưa được ghi danh lớp học (`enrolledClassIds: undefined`) gây ra hiện tượng màn hình rỗng trơ trọi (Empty State).
+     - **Quy chuẩn Số Buổi Học Toàn Khóa Động & Tự Chủ Nhập Tiến Độ Giáo Án (Dynamic Class Sessions & Lesson Plan Invariant):**
+       * Khi tạo / chỉnh sửa Lớp học (`ClassFormDrawer`, `ClassFormModal`), số buổi học (`totalSessions`) được nhập động theo nhu cầu thực tế của từng lớp.
+       * **Giá trị mặc định:** Nếu để trống / chưa nhập, hệ thống tự động gán **12 sessions**, thời lượng mỗi buổi mặc định **2 giờ** (khung giờ `19:00 - 21:00`).
+       * **Bỏ ép cứng 60 buổi & công thức máy móc Unit/Week:**
+         - Danh sách buổi học trong Classroom (`ClassroomCurriculumPanel`) sinh ra đúng bằng `cls.totalSessions` (mặc định 12 buổi nếu chưa cấu hình).
+         - Dropdown chọn buổi học hiển thị tinh gọn: `📘 Session X • DD/MM/YYYY: [Lesson Title]` (nếu đã soạn bài) hoặc `⚪ Session X • DD/MM/YYYY [Chưa soạn]` / `[Unplanned]`. Bỏ 100% phần đuôi tự động `— Unit 1 Week 1 · Lesson 1`.
+         - Trong Form soạn bài (`LessonPlanEditorModal`), ô `Unit / Week` và `Lesson Title` hiển thị trực tiếp và để trống cho Giáo viên / Giáo vụ tự gõ theo tiến độ thực tế bài giảng của lớp.
+      - **Quy chuẩn Đánh Giá 4 Kỹ Năng ELA Cốt Lõi & Tính Điểm Tự Động (4 Core ELA Skills Rating Invariant):**
+        * Trong bảng đánh giá buổi học trực tuyến (`SessionEvaluationModal.jsx`) và thẻ đánh giá học viên (`StudentRecentEvaluationsCard.jsx`), đánh giá sư phạm chuẩn quốc tế phân tách rõ 4 kỹ năng: **`Listening`**, **`Speaking`**, **`Reading`**, **`Writing`** (chấm từ 1 - 5 ⭐).
+        * Cột đánh giá mang tiêu đề `4 Core Skills (1-5 ⭐)` (VI: `4 Kỹ Năng ELA (1-5 ⭐)`), hiển thị 4 mini-rate cho từng kỹ năng kèm thanh tổng kết điểm sao trung bình.
+        * **Cơ chế tính điểm tự động 2 chiều:**
+          - Khi giáo viên chấm 1 trong 4 kỹ năng, hệ thống tự động tính điểm tổng thể: `stars = Math.max(1, Math.min(5, Math.round((L + S + R + W) / 4)))`.
+          - Khi giáo viên dùng phím chấm nhanh 1-chạm (`5⭐`, `4⭐`, `3⭐`, `1⭐`), hệ thống tự động gán đồng bộ cả 4 kỹ năng về cùng mức điểm đó.
+        * Trên giao diện di động (`isMobile`), hiển thị dạng lưới 2x2 công thái học trực quan, chống tràn viền.
+      - **Quy tắc Bảo Toàn Trạng Thái Điểm Danh Buổi Học Cũ (Historical Session Attendance Retention Guard):**
+        * Khi Ban Giám hiệu hoặc Giáo viên xem lại đánh giá các buổi học trong quá khứ (Retroactive Session Selection như Buổi 1, Buổi 2), trạng thái tham gia tuyệt đối không được đọc thuần túy từ state realtime của ca học hôm nay (`attendance.presence?.[id]`).
+        * BẮT BUỘC kiểm tra theo thứ tự ưu tiên: `const p = item.presence || item.attendanceStatus || (item.stars || item.comment ? 'ONLINE' : undefined) || attendance.presence?.[record.id] || cls?.liveAttendance?.presence?.[record.id];`
+        * Chặn đứng 100% lỗi học viên đã được chấm sao hoặc có nhận xét sư phạm lại bị hiển thị nhầm thành `Unmarked` (Chưa điểm danh).
+      - **Quy chuẩn Link Nhúng Video Google Drive > 100MB (Google Drive Large File Embed Invariant):**
+        * Với các tệp video bài giảng lớn (> 100MB), link tải direct (`/uc?id={fileId}&export=download` hoặc `/open?id=...`) bị Google Drive kích hoạt trang cảnh báo virus scan *"Download anyway"*, làm hỏng khung iframe xem trước.
+        * Trong `materialPreviewUtils.js` và toàn bộ hệ thống, BẮT BUỘC chuẩn hóa 100% mọi URL Google Drive (bất kể định dạng gốc) sang URL nhúng chuẩn: `https://drive.google.com/file/d/{fileId}/preview`.
+      - **Quy chuẩn Tách Biệt Video Ghi Hình Lớp Học Khỏi Thư Viện Chung (Class Recording vs General Materials Isolation Guard):**
+        * Video ghi hình buổi học lẻ (`isSessionRecording: true` hoặc `targetType === 'class'`) là tài sản riêng tư của từng lớp học, chỉ hiển thị cho học viên và giáo viên của đúng lớp đó trên Dashboard và Thẻ tài liệu lớp.
+        * Trong `MaterialsPage.jsx` (Thư viện học liệu chung `/learning-materials`), BẮT BUỘC lọc bỏ 100% các tệp có `isSessionRecording: true` (`mat.isSessionRecording !== true`) để giữ kho tài liệu công khai luôn tinh gọn và bảo mật tuyệt đối.
 6. **Kỷ Luật Bất Biến Về Phạm Vi Task, Quy Trình 6 Bước Fix Bug Toàn Diện & Đánh Giá Tác Động (Strict 6-Step Bug-Fixing Protocol & Cross-Screen Audit Invariant):**
    - **🚨 QUY TRÌNH 6 BƯỚC BẮT BUỘC KHI SẾP BẢO NÊU BUG HOẶC YÊU CẦU FIX LỖI (SẾP BẢO DIRECTIVE):**
      * **Bước 1 — Tái hiện lỗi (Reproduce Bug):** Bắt buộc tái hiện chính xác lỗi trên môi trường thực tế (ghi nhận luồng thao tác, ảnh chụp màn hình, log lỗi hoặc viết script Playwright tái hiện), tuyệt đối không suy đoán mò mẫm.

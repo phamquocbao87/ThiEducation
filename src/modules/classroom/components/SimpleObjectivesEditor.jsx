@@ -77,6 +77,7 @@ export const parseObjectivesList = (raw) => {
     while ((match = blockRegex.exec(text)) !== null) {
       let content = match[1].trim();
       content = content.replace(/^(<br\s*\/?>)+|(<br\s*\/?>)+$/gi, '').trim();
+      content = content.replace(/<br\s*\/?>/gi, '\n');
       if (content && content !== '<br>' && content !== '<br/>') {
         matches.push(content);
       }

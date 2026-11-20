@@ -11,6 +11,7 @@ import {
   CustomerServiceOutlined,
   VideoCameraOutlined,
   PlayCircleOutlined,
+  TranslationOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { FormattedText } from '../../../shared/components/controls';
@@ -22,6 +23,7 @@ export const StudentRecentEvaluationsCard = ({ evaluations = [] }) => {
   const { isEnglish } = useLanguage();
   const [selectedEval, setSelectedEval] = useState(null);
   const [playingVideo, setPlayingVideo] = useState(null);
+  const [showTranslation, setShowTranslation] = useState(false);
 
   return (
     <>
@@ -233,8 +235,10 @@ export const StudentRecentEvaluationsCard = ({ evaluations = [] }) => {
                     👨‍🏫 {isEnglish ? 'Teacher:' : 'Giáo viên:'} {selectedEval.teacherName} • 📅 {selectedEval.sessionDate}
                   </div>
                 </div>
-                <Tag color="green" style={{ fontSize: 12, padding: '4px 8px', borderRadius: 4, margin: 0 }}>
-                  {selectedEval.attendance || 'Present'}
+                <Tag color={selectedEval.isOffline ? 'error' : 'green'} style={{ fontSize: 12, padding: '4px 8px', borderRadius: 4, margin: 0 }}>
+                  {isEnglish
+                    ? (selectedEval.isOffline ? 'Absent' : 'Present (On Time)')
+                    : (selectedEval.attendanceVi || (selectedEval.isOffline ? 'Vắng mặt' : 'Có mặt đúng giờ'))}
                 </Tag>
               </div>
             </div>
@@ -248,7 +252,7 @@ export const StudentRecentEvaluationsCard = ({ evaluations = [] }) => {
                 <Col span={12}>
                   <div style={{ padding: '10px 12px', borderRadius: 8, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b' }}>
-                      <CustomerServiceOutlined style={{ color: '#0ea5e9' }} /> {isEnglish ? 'Listening (Nghe hiểu)' : 'Kỹ Năng Nghe'}
+                      <CustomerServiceOutlined style={{ color: '#0ea5e9' }} /> {isEnglish ? 'Listening' : 'Kỹ Năng Nghe'}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
                       <Rate disabled allowHalf value={selectedEval.listeningScore || 5} style={{ fontSize: 13, color: '#f59e0b' }} />
@@ -260,7 +264,7 @@ export const StudentRecentEvaluationsCard = ({ evaluations = [] }) => {
                 <Col span={12}>
                   <div style={{ padding: '10px 12px', borderRadius: 8, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b' }}>
-                      <SoundOutlined style={{ color: '#10b981' }} /> {isEnglish ? 'Speaking (Giao tiếp & Phát âm)' : 'Kỹ Năng Nói & Phát Âm'}
+                      <SoundOutlined style={{ color: '#10b981' }} /> {isEnglish ? 'Speaking' : 'Kỹ Năng Nói & Phát Âm'}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
                       <Rate disabled allowHalf value={selectedEval.speakingScore || 4.5} style={{ fontSize: 13, color: '#f59e0b' }} />
@@ -272,7 +276,7 @@ export const StudentRecentEvaluationsCard = ({ evaluations = [] }) => {
                 <Col span={12}>
                   <div style={{ padding: '10px 12px', borderRadius: 8, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b' }}>
-                      <ReadOutlined style={{ color: '#8b5cf6' }} /> {isEnglish ? 'Reading (Đọc hiểu)' : 'Kỹ Năng Đọc Hiểu'}
+                      <ReadOutlined style={{ color: '#8b5cf6' }} /> {isEnglish ? 'Reading' : 'Kỹ Năng Đọc Hiểu'}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
                       <Rate disabled allowHalf value={selectedEval.readingScore || 5} style={{ fontSize: 13, color: '#f59e0b' }} />
@@ -284,7 +288,7 @@ export const StudentRecentEvaluationsCard = ({ evaluations = [] }) => {
                 <Col span={12}>
                   <div style={{ padding: '10px 12px', borderRadius: 8, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b' }}>
-                      <EditOutlined style={{ color: '#ec4899' }} /> {isEnglish ? 'Writing (Viết & Ngữ pháp)' : 'Kỹ Năng Viết'}
+                      <EditOutlined style={{ color: '#ec4899' }} /> {isEnglish ? 'Writing' : 'Kỹ Năng Viết'}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
                       <Rate disabled allowHalf value={selectedEval.writingScore || 4} style={{ fontSize: 13, color: '#f59e0b' }} />
@@ -297,15 +301,27 @@ export const StudentRecentEvaluationsCard = ({ evaluations = [] }) => {
 
             {/* Nhận xét sư phạm chi tiết */}
             <div style={{ backgroundColor: '#eff6ff', padding: '12px 14px', borderRadius: 8, border: '1px solid #bfdbfe' }}>
-              <div style={{ fontWeight: 700, color: '#1e40af', fontSize: 13, marginBottom: 4 }}>
-                💬 {isEnglish ? 'Foreign Teacher Assessment Remarks:' : 'Lời Nhận Xét Của Giáo Viên Bản Xứ:'}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <div style={{ fontWeight: 700, color: '#1e40af', fontSize: 13 }}>
+                  💬 {isEnglish ? 'Teacher Assessment Remarks:' : 'Lời Nhận Xét Của Giáo Viên Bản Xứ:'}
+                </div>
+                <Button
+                  size="small"
+                  type="link"
+                  icon={<TranslationOutlined />}
+                  onClick={() => setShowTranslation((prev) => !prev)}
+                  style={{ fontSize: 12, padding: 0, height: 'auto', color: '#2563eb' }}
+                  data-testid="btn-toggle-translation"
+                >
+                  {showTranslation ? (isEnglish ? 'Hide Vietnamese' : 'Ẩn bản dịch') : (isEnglish ? '🌐 Translate to Vietnamese' : '🌐 Dịch sang Tiếng Việt')}
+                </Button>
               </div>
               <Paragraph style={{ margin: 0, fontSize: 13, color: '#1e3a8a', lineHeight: 1.5 }}>
                 <FormattedText content={selectedEval.teacherComment} />
               </Paragraph>
-              {selectedEval.teacherCommentVi && (
-                <div style={{ marginTop: 6, fontSize: 12, color: '#3b82f6', fontStyle: 'italic' }}>
-                  🇻🇳 Dịch: {selectedEval.teacherCommentVi}
+              {showTranslation && (
+                <div style={{ marginTop: 8, padding: '8px 10px', backgroundColor: '#ffffff', borderRadius: 6, border: '1px solid #dbeafe', fontSize: 12, color: '#1d4ed8', fontStyle: 'italic' }}>
+                  🇻🇳 <strong>{isEnglish ? 'Vietnamese Translation:' : 'Bản dịch Tiếng Việt:'}</strong> {selectedEval.teacherCommentVi || selectedEval.teacherComment}
                 </div>
               )}
             </div>

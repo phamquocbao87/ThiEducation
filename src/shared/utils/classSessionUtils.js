@@ -103,14 +103,15 @@ const EN_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday
 /**
  * Tự động tính toán danh sách N buổi học thực tế của lớp học dựa trên thời khóa biểu & ngày bắt đầu
  */
-export const generateClassSessionDates = (cls, totalCount = 20, isEnglish = false) => {
+export const generateClassSessionDates = (cls, totalCount = null, isEnglish = false) => {
   if (!cls) return [];
+  const effectiveTotal = Math.max(1, Number(totalCount) || Number(cls?.totalSessions) || 12);
   const classStart = dateKey(cls.startDate) || Date.now();
   const classEnd = dateKey(cls.endDate) || (classStart + 365 * DAY);
   const data = cls.scheduleData || {};
   const range = String(cls.schedule || '').match(/(\d{1,2}:\d{2})\s*(?:[-–~]|to|đến)\s*(\d{1,2}:\d{2})/i);
   const startMinutes = minutes(data.startTime || range?.[1]) ?? (19 * 60);
-  const endMinutes = minutes(data.endTime || range?.[2]) ?? (21 * 60 + 10);
+  const endMinutes = minutes(data.endTime || range?.[2]) ?? (21 * 60);
   const days = parseDaysOfWeek(cls.schedule, data);
   const activeDays = days.length ? days : [1, 3, 5];
   const offset = Number.isFinite(Number(data.baseTimezoneOffset)) ? Number(data.baseTimezoneOffset) : 7;
@@ -120,7 +121,7 @@ export const generateClassSessionDates = (cls, totalCount = 20, isEnglish = fals
   const maxDay = classStart + 365 * DAY;
   let sessionIndex = 1;
 
-  while (result.length < totalCount && currentDay <= maxDay && currentDay <= classEnd) {
+  while (result.length < effectiveTotal && currentDay <= maxDay && currentDay <= classEnd) {
     const checkDate = new Date(currentDay);
     const dayOfWeek = checkDate.getUTCDay();
     if (activeDays.includes(dayOfWeek)) {
@@ -132,9 +133,8 @@ export const generateClassSessionDates = (cls, totalCount = 20, isEnglish = fals
       const dateFormatted = `${dayStr}/${monthStr}/${yearStr}`;
       const dayName = isEnglish ? EN_DAYS[dayOfWeek] : VI_DAYS[dayOfWeek];
 
-      const weekNum = Math.ceil(sessionIndex / 2);
-      const unitNum = Math.ceil(sessionIndex / 6);
-      const unitWeek = `Unit ${unitNum} Week ${weekNum} · Lesson ${sessionIndex}`;
+      const savedPlan = cls?.lessonPlans?.[sessionIndex];
+      const unitWeek = savedPlan?.unitWeek || '';
 
       result.push({
         sessionIndex,
@@ -143,11 +143,11 @@ export const generateClassSessionDates = (cls, totalCount = 20, isEnglish = fals
         endMs,
         dayOfWeek,
         dayName,
-        timeRange: `${data.startTime || '19:00'} - ${data.endTime || '21:10'}`,
+        timeRange: `${data.startTime || '19:00'} - ${data.endTime || '21:00'}`,
         unitWeek,
         label: isEnglish
-          ? `Session ${sessionIndex}: ${dayName}, ${dateFormatted} — ${unitWeek}`
-          : `Buổi ${sessionIndex}: ${dayName}, ${dateFormatted} — ${unitWeek}`,
+          ? `Session ${sessionIndex}: ${dayName}, ${dateFormatted}${savedPlan?.lessonTitle ? ` — ${savedPlan.lessonTitle}` : ''}`
+          : `Buổi ${sessionIndex}: ${dayName}, ${dateFormatted}${savedPlan?.lessonTitle ? ` — ${savedPlan.lessonTitle}` : ''}`,
       });
       sessionIndex += 1;
     }

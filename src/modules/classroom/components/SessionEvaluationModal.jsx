@@ -226,14 +226,24 @@ export const SessionEvaluationPanel = ({
         }
 
         if (existing[s.id]) {
+          const sStars = existing[s.id].stars || (isOffline ? 1 : 5);
           nextMap[s.id] = {
-            stars: existing[s.id].stars || (isOffline ? 1 : 5),
+            stars: sStars,
+            listeningScore: Number(existing[s.id].listeningScore) || sStars,
+            speakingScore: Number(existing[s.id].speakingScore) || sStars,
+            readingScore: Number(existing[s.id].readingScore) || sStars,
+            writingScore: Number(existing[s.id].writingScore) || sStars,
             comment: existing[s.id].comment ?? noteComment,
             tags: existing[s.id].tags || note?.tags || [],
           };
         } else if (isDifferentSession || !nextMap[s.id]) {
+          const sStars = isOffline ? 1 : 5;
           nextMap[s.id] = {
-            stars: isOffline ? 1 : 5,
+            stars: sStars,
+            listeningScore: sStars,
+            speakingScore: sStars,
+            readingScore: sStars,
+            writingScore: sStars,
             comment: noteComment,
             tags: note?.tags || [],
           };
@@ -252,17 +262,33 @@ export const SessionEvaluationPanel = ({
   ]);
 
   const handleUpdateStudent = (studentId, field, value) => {
-    localEditsRef.current[studentId] = {
-      ...(localEditsRef.current[studentId] || {}),
-      [field]: value,
-    };
-    setEvaluations((prev) => ({
-      ...prev,
-      [studentId]: {
-        ...(prev[studentId] || {}),
-        [field]: value,
-      },
-    }));
+    setEvaluations((prev) => {
+      const current = prev[studentId] || {};
+      const updated = { ...current, [field]: value };
+
+      if (['listeningScore', 'speakingScore', 'readingScore', 'writingScore'].includes(field)) {
+        const l = Number(field === 'listeningScore' ? value : (current.listeningScore || current.stars || 5));
+        const s = Number(field === 'speakingScore' ? value : (current.speakingScore || current.stars || 5));
+        const r = Number(field === 'readingScore' ? value : (current.readingScore || current.stars || 5));
+        const w = Number(field === 'writingScore' ? value : (current.writingScore || current.stars || 5));
+        updated.stars = Math.max(1, Math.min(5, Math.round((l + s + r + w) / 4)));
+      } else if (field === 'stars') {
+        updated.listeningScore = value;
+        updated.speakingScore = value;
+        updated.readingScore = value;
+        updated.writingScore = value;
+      }
+
+      localEditsRef.current[studentId] = {
+        ...(localEditsRef.current[studentId] || {}),
+        ...updated,
+      };
+
+      return {
+        ...prev,
+        [studentId]: updated,
+      };
+    });
   };
 
   const handleInsertTag = (studentId, snippetText) => {
@@ -664,7 +690,8 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
       width: 135,
       onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 12 } }),
       render: (_, record) => {
-        const p = attendance.presence?.[record.id];
+        const item = evaluations[record.id] || {};
+        const p = item.presence || item.attendanceStatus || (item.stars || item.comment ? 'ONLINE' : undefined) || attendance.presence?.[record.id] || cls?.liveAttendance?.presence?.[record.id];
         const isOnline = p === 'ONLINE';
         const isOffline = p === 'OFFLINE';
         const isDistracted = attendance.attentionFlags?.[record.id] === 'DISTRACTED';
@@ -722,15 +749,19 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
       },
     },
     {
-      title: isEnglish ? 'Rating (⭐)' : 'Đánh Giá (⭐)',
+      title: isEnglish ? '4 Core Skills (1-5 ⭐)' : '4 Kỹ Năng ELA (1-5 ⭐)',
       key: 'stars',
-      width: 175,
+      width: 220,
       onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 12 } }),
       render: (_, record) => {
         const item = evaluations[record.id] || {};
-        const p = attendance.presence?.[record.id];
+        const p = item.presence || item.attendanceStatus || (item.stars || item.comment ? 'ONLINE' : undefined) || attendance.presence?.[record.id] || cls?.liveAttendance?.presence?.[record.id];
         const isOffline = p === 'OFFLINE';
         const stars = item.stars || (isOffline ? 1 : 5);
+        const listening = item.listeningScore ?? stars;
+        const speaking = item.speakingScore ?? stars;
+        const reading = item.readingScore ?? stars;
+        const writing = item.writingScore ?? stars;
 
         const ratingLabel = stars === 5
           ? (isEnglish ? 'Excellent' : 'Xuất sắc')
@@ -742,51 +773,66 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
           ? (isEnglish ? 'Weak' : 'Còn yếu')
           : (isEnglish ? 'Absent' : 'Vắng học');
 
+        const skillItem = (label, icon, val, keyField) => (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+            <span style={{ fontSize: 11, color: '#475569', display: 'flex', alignItems: 'center', gap: 3 }}>
+              <span>{icon}</span> {label}:
+            </span>
+            <Rate
+              value={val}
+              disabled={!canEvaluate}
+              character={<StarFilled />}
+              style={{ fontSize: 11 }}
+              onChange={(v) => handleUpdateStudent(record.id, keyField, v)}
+              data-testid={`eval-${keyField}-${record.id}`}
+            />
+          </div>
+        );
+
         return (
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 160, justifyContent: 'space-between' }}>
-            <div>
-              <Rate
-                value={stars}
-                disabled={!canEvaluate}
-                character={<StarFilled />}
-                style={{ fontSize: 14 }}
-                onChange={(val) => handleUpdateStudent(record.id, 'stars', val)}
-                data-testid={`eval-rate-${record.id}`}
-              />
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: '4px 6px', marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#1e293b' }}>
+                  {isEnglish ? 'Overall:' : 'Tổng kết:'}
+                </span>
+                <Text strong style={{ fontSize: 11, color: stars >= 4 ? '#faad14' : stars === 3 ? '#fa8c16' : '#ff4d4f', whiteSpace: 'nowrap' }}>
+                  {stars}/5 ⭐ • {ratingLabel}
+                </Text>
+              </div>
+              {skillItem(isEnglish ? 'Listening' : 'Nghe', '🎧', listening, 'listeningScore')}
+              {skillItem(isEnglish ? 'Speaking' : 'Nói', '🗣️', speaking, 'speakingScore')}
+              {skillItem(isEnglish ? 'Reading' : 'Đọc', '📖', reading, 'readingScore')}
+              {skillItem(isEnglish ? 'Writing' : 'Viết', '✍️', writing, 'writingScore')}
             </div>
 
             <div
               style={{
-                marginTop: 6,
-                padding: '6px 8px',
+                padding: '4px 8px',
                 background: '#f8fafc',
                 border: '1px solid #e2e8f0',
                 borderRadius: 6,
-                minHeight: 88,
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
               }}
             >
-              <div>
-                <Text strong style={{ fontSize: 11, color: stars >= 4 ? '#faad14' : stars === 3 ? '#fa8c16' : '#ff4d4f', display: 'block', whiteSpace: 'nowrap' }}>
-                  {stars}/5 ⭐ • {ratingLabel}
-                </Text>
-              </div>
-
               {isTeacher && canEvaluate && (
-                <div style={{ display: 'flex', gap: 3, marginTop: 4 }}>
-                  {[5, 4, 3, 1].map((sVal) => (
-                    <Button
-                      key={sVal}
-                      size="small"
-                      type={stars === sVal ? 'primary' : 'default'}
-                      style={{ fontSize: 10, height: 20, padding: '0 4px', borderRadius: 4, minWidth: 24, whiteSpace: 'nowrap' }}
-                      onClick={() => handleUpdateStudent(record.id, 'stars', sVal)}
-                    >
-                      {sVal}⭐
-                    </Button>
-                  ))}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 3 }}>
+                  <span style={{ fontSize: 10, color: '#64748b' }}>{isEnglish ? 'Quick All:' : 'Chấm nhanh:'}</span>
+                  <div style={{ display: 'flex', gap: 2 }}>
+                    {[5, 4, 3, 1].map((sVal) => (
+                      <Button
+                        key={sVal}
+                        size="small"
+                        type={stars === sVal ? 'primary' : 'default'}
+                        style={{ fontSize: 10, height: 20, padding: '0 4px', borderRadius: 4, minWidth: 24, whiteSpace: 'nowrap' }}
+                        onClick={() => handleUpdateStudent(record.id, 'stars', sVal)}
+                      >
+                        {sVal}⭐
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -1135,10 +1181,14 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
         <div data-testid="mobile-evaluation-card-list">
           {roster.map((record) => {
             const item = evaluations[record.id] || {};
-            const p = attendance.presence?.[record.id];
+            const p = item.presence || item.attendanceStatus || (item.stars || item.comment ? 'ONLINE' : undefined) || attendance.presence?.[record.id] || cls?.liveAttendance?.presence?.[record.id];
             const isOnline = p === 'ONLINE';
             const isOffline = p === 'OFFLINE';
             const stars = item.stars || (isOffline ? 1 : 5);
+            const listening = item.listeningScore ?? stars;
+            const speaking = item.speakingScore ?? stars;
+            const reading = item.readingScore ?? stars;
+            const writing = item.writingScore ?? stars;
             const studentCode = record.code || record.id;
             const primaryName = record.englishName || record.name;
             const secondaryName = record.englishName && record.name !== record.englishName ? record.name : '';
@@ -1222,36 +1272,80 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
                   </div>
                 )}
 
-                {/* Đánh Giá Sao & Nút Chấm Sao Nhanh */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Rate
-                      value={stars}
-                      disabled={!canEvaluate}
-                      character={<StarFilled />}
-                      style={{ fontSize: 18 }}
-                      onChange={(val) => handleUpdateStudent(record.id, 'stars', val)}
-                      data-testid={`eval-rate-mobile-${record.id}`}
-                    />
-                    <Text strong style={{ fontSize: 12, color: '#faad14', whiteSpace: 'nowrap' }}>
-                      ({stars}/5 ⭐)
-                    </Text>
+                {/* Đánh Giá 4 Kỹ Năng ELA & Nút Chấm Sao Nhanh */}
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#1e293b' }}>
+                        {isEnglish ? '4 Core Skills:' : '4 Kỹ Năng ELA:'}
+                      </span>
+                      <Text strong style={{ fontSize: 12, color: '#faad14', whiteSpace: 'nowrap' }}>
+                        {stars}/5 ⭐
+                      </Text>
+                    </div>
+                    {isTeacher && canEvaluate && (
+                      <Space size={3}>
+                        {[5, 4, 3, 1].map((sVal) => (
+                          <Button
+                            key={sVal}
+                            size="small"
+                            type={stars === sVal ? 'primary' : 'default'}
+                            style={{ fontSize: 10, height: 22, minWidth: 26, padding: '0 4px', borderRadius: 4, whiteSpace: 'nowrap' }}
+                            onClick={() => handleUpdateStudent(record.id, 'stars', sVal)}
+                          >
+                            {sVal}⭐
+                          </Button>
+                        ))}
+                      </Space>
+                    )}
                   </div>
-                  {isTeacher && canEvaluate && (
-                    <Space size={3}>
-                      {[5, 4, 3, 1].map((sVal) => (
-                        <Button
-                          key={sVal}
-                          size="small"
-                          type={stars === sVal ? 'primary' : 'default'}
-                          style={{ fontSize: 11, height: 26, minWidth: 28, padding: '0 4px', borderRadius: 4, whiteSpace: 'nowrap' }}
-                          onClick={() => handleUpdateStudent(record.id, 'stars', sVal)}
-                        >
-                          {sVal}⭐
-                        </Button>
-                      ))}
-                    </Space>
-                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 11, color: '#475569' }}>🎧 {isEnglish ? 'Listening' : 'Nghe'}:</span>
+                      <Rate
+                        value={listening}
+                        disabled={!canEvaluate}
+                        character={<StarFilled />}
+                        style={{ fontSize: 11 }}
+                        onChange={(val) => handleUpdateStudent(record.id, 'listeningScore', val)}
+                        data-testid={`eval-listeningScore-mobile-${record.id}`}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 11, color: '#475569' }}>🗣️ {isEnglish ? 'Speaking' : 'Nói'}:</span>
+                      <Rate
+                        value={speaking}
+                        disabled={!canEvaluate}
+                        character={<StarFilled />}
+                        style={{ fontSize: 11 }}
+                        onChange={(val) => handleUpdateStudent(record.id, 'speakingScore', val)}
+                        data-testid={`eval-speakingScore-mobile-${record.id}`}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 11, color: '#475569' }}>📖 {isEnglish ? 'Reading' : 'Đọc'}:</span>
+                      <Rate
+                        value={reading}
+                        disabled={!canEvaluate}
+                        character={<StarFilled />}
+                        style={{ fontSize: 11 }}
+                        onChange={(val) => handleUpdateStudent(record.id, 'readingScore', val)}
+                        data-testid={`eval-readingScore-mobile-${record.id}`}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 11, color: '#475569' }}>✍️ {isEnglish ? 'Writing' : 'Viết'}:</span>
+                      <Rate
+                        value={writing}
+                        disabled={!canEvaluate}
+                        character={<StarFilled />}
+                        style={{ fontSize: 11 }}
+                        onChange={(val) => handleUpdateStudent(record.id, 'writingScore', val)}
+                        data-testid={`eval-writingScore-mobile-${record.id}`}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Hàng Quick Tags 1-Chạm Mẫu */}

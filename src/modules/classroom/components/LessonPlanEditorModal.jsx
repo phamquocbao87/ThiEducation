@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Form, Input, Modal, Radio, Select, Space, Tag, Typography } from 'antd';
+import { Button, Form, Input, Modal, Radio, Select, Space, Tag, Typography, Row, Col } from 'antd';
 import { BookOutlined, CalendarOutlined, CopyOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { LESSON_PLAN_STATUS } from '../../../shared/models/classroom.model';
@@ -56,7 +56,7 @@ export const LessonPlanEditorModal = ({
         form.setFieldsValue({
           sessionIndex: targetSession,
           date: matchedSchedule?.date || '',
-          unitWeek: matchedSchedule?.unitWeek || `Unit 1 Week ${Math.ceil(targetSession / 2)} · Lesson ${targetSession}`,
+          unitWeek: matchedSchedule?.unitWeek || '',
           lessonTitle: '',
           objectives: '',
           studentPrep: '',
@@ -97,7 +97,7 @@ export const LessonPlanEditorModal = ({
       form.setFieldsValue({
         sessionIndex: val,
         date: matched?.date || '',
-        unitWeek: matched?.unitWeek || `Unit 1 Week ${Math.ceil(val / 2)} · Lesson ${val}`,
+        unitWeek: matched?.unitWeek || '',
         lessonTitle: '',
         objectives: '',
         studentPrep: '',
@@ -114,7 +114,7 @@ export const LessonPlanEditorModal = ({
   const handleApplyWondersTemplate = () => {
     const matched = scheduleSessions.find((s) => s.sessionIndex === selectedSessionVal);
     form.setFieldsValue({
-      unitWeek: matched?.unitWeek || `Unit 1 Week ${Math.ceil(selectedSessionVal / 2)} · Lesson ${selectedSessionVal}`,
+      unitWeek: form.getFieldValue('unitWeek') || matched?.unitWeek || 'Unit 1 Week 1 · Lesson 1',
       date: matched?.date || form.getFieldValue('date') || '',
       lessonTitle: 'Where I Live — Communities and Homes',
       objectives: [
@@ -259,8 +259,8 @@ export const LessonPlanEditorModal = ({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
               <span style={{ fontSize: 11, color: '#8c8c8c' }}>
                 {isEnglish
-                  ? 'Auto-populates session number, date, and unit/week from the class timetable.'
-                  : 'Tự động tính số buổi, ngày dạy và Unit/Week từ thời khóa biểu lớp học.'}
+                  ? 'Select session from class timetable to link date automatically.'
+                  : 'Chọn buổi học từ thời khóa biểu để tự động liên kết ngày dạy.'}
               </span>
               <Button
                 type="link"
@@ -271,7 +271,7 @@ export const LessonPlanEditorModal = ({
               >
                 {isManualSchedule
                   ? (isEnglish ? '← Choose from Timetable' : '← Chọn từ Thời Khóa Biểu')
-                  : (isEnglish ? '✏️ Custom manual input' : '✏️ Tùy chỉnh thủ công')}
+                  : (isEnglish ? '✏️ Custom manual date' : '✏️ Tùy chỉnh ngày thủ công')}
               </Button>
             </div>
           }
@@ -289,28 +289,53 @@ export const LessonPlanEditorModal = ({
               data-testid="select-schedule-session"
             />
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0 12px' }}>
-              <Form.Item name="unitWeek" style={{ marginBottom: 0 }}>
-                <Input placeholder={isEnglish ? 'Unit & Week (e.g. Unit 1 Week 1 · Lesson 1)' : 'Unit & Week (Ví dụ: Unit 1 Week 1 · Lesson 1)'} style={{ height: 38, borderRadius: 8 }} />
-              </Form.Item>
-              <Form.Item name="date" style={{ marginBottom: 0 }}>
-                <Input placeholder="DD/MM/YYYY (Ví dụ: 16/11/2026)" style={{ height: 38, borderRadius: 8 }} />
-              </Form.Item>
-            </div>
+            <Form.Item name="date" style={{ marginBottom: 0 }}>
+              <Input placeholder="DD/MM/YYYY (Ví dụ: 16/11/2026)" style={{ height: 38, borderRadius: 8 }} />
+            </Form.Item>
           )}
         </Form.Item>
 
-        <Form.Item
-          name="lessonTitle"
-          label={
-            <span style={{ fontWeight: 600 }}>
-              {isEnglish ? 'Lesson Topic & Title' : 'Chủ Đề & Tiêu Đề Bài Học (Lesson Title)'}
-            </span>
-          }
-          rules={[{ required: true, message: isEnglish ? 'Please enter lesson title' : 'Vui lòng nhập tiêu đề bài học' }]}
-        >
-          <Input placeholder="Ví dụ: People in My Neighborhood — Community Helpers" style={{ height: 38, borderRadius: 8 }} />
-        </Form.Item>
+        <Row gutter={16}>
+          <Col xs={24} sm={10}>
+            <Form.Item
+              name="unitWeek"
+              label={
+                <span style={{ fontWeight: 600 }}>
+                  {isEnglish ? 'Unit & Week Progress' : 'Tiến Độ Unit & Week'}
+                </span>
+              }
+              extra={
+                <span style={{ fontSize: 10, color: '#8c8c8c' }}>
+                  {isEnglish ? 'Teacher/Staff custom input' : 'GV/Giáo vụ tự nhập theo lớp'}
+                </span>
+              }
+            >
+              <Input
+                placeholder={isEnglish ? 'e.g. Unit 1 Week 1 or Review...' : 'VD: Unit 1 Week 1 hoặc Ôn tập...'}
+                data-testid="input-lesson-plan-unit-week"
+                style={{ height: 38, borderRadius: 8 }}
+              />
+            </Form.Item>
+          </Col>
+
+          <Col xs={24} sm={14}>
+            <Form.Item
+              name="lessonTitle"
+              label={
+                <span style={{ fontWeight: 600 }}>
+                  {isEnglish ? 'Lesson Topic & Title' : 'Chủ Đề & Tiêu Đề Bài Học (Lesson Title)'}
+                </span>
+              }
+              rules={[{ required: true, message: isEnglish ? 'Please enter lesson title' : 'Vui lòng nhập tiêu đề bài học' }]}
+            >
+              <Input
+                placeholder={isEnglish ? 'e.g. Where I Live — Communities' : 'Ví dụ: People in My Neighborhood — Community Helpers'}
+                data-testid="input-lesson-plan-title"
+                style={{ height: 38, borderRadius: 8 }}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
 
         {/* 2. MỤC TIÊU BÀI HỌC & NGỮ ÂM (TRÌNH SOẠN THẢO ĐƠN GIẢN) */}
         <Form.Item

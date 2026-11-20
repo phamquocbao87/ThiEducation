@@ -3,6 +3,7 @@ import {
   Drawer,
   Form,
   Input,
+  InputNumber,
   Select,
   Row,
   Col,
@@ -61,9 +62,9 @@ export const ClassFormDrawer = ({
   );
 
   // Live schedule state to drive real-time Teacher & Student conflict detection
-  const [liveSchedule, setLiveSchedule] = useState('Thứ 2, Thứ 4 (18:00 - 19:30)');
+  const [liveSchedule, setLiveSchedule] = useState('Thứ 2, Thứ 4 (19:00 - 21:00)');
   const [liveScheduleData, setLiveScheduleData] = useState(() =>
-    parseScheduleToStructured('Thứ 2, Thứ 4 (18:00 - 19:30)')
+    parseScheduleToStructured('Thứ 2, Thứ 4 (19:00 - 21:00)')
   );
 
   const hostLinkVal = Form.useWatch('zoomHostLink', form);
@@ -104,6 +105,7 @@ export const ClassFormDrawer = ({
           courseId: editingClass.courseId || courses[0]?.id,
           name: editingClass.name,
           startDate: editingClass.startDate || '04/02/2026',
+          totalSessions: Number(editingClass.totalSessions) || 12,
           operationStatus: editingClass.operationStatus || 'Đang học ổn định',
           teacherId: editingClass.teacherId || '',
           studentIds: currentStudentIds,
@@ -118,7 +120,7 @@ export const ClassFormDrawer = ({
             editingClass.zaloGroupLink || 'https://zalo.me/g/lakeducation_class',
         });
       } else {
-        const defaultSched = 'Thứ 2, Thứ 4 (18:00 - 19:30)';
+        const defaultSched = 'Thứ 2, Thứ 4 (19:00 - 21:00)';
         setLiveSchedule(defaultSched);
         setLiveScheduleData(parseScheduleToStructured(defaultSched));
         form.resetFields();
@@ -131,6 +133,7 @@ export const ClassFormDrawer = ({
             courseId: initialCourseId,
             operationStatus: 'Đang học ổn định',
             startDate: '04/02/2026',
+            totalSessions: 12,
             schedule: defaultSched,
           });
         }
@@ -142,6 +145,7 @@ export const ClassFormDrawer = ({
   const handleFinish = (values) => {
     onSubmit({
       ...values,
+      totalSessions: Number(values.totalSessions) || 12,
       meetingLink: values.zoomStudentLink || values.meetingLink,
       scheduleData: liveScheduleData,
     });
@@ -311,15 +315,15 @@ export const ClassFormDrawer = ({
           </Col>
         </Row>
 
-        {/* Hàng 2: Ngày Khai Giảng / Bắt Đầu Lớp Học & Trạng Thái Vận Hành (50% / 50%) */}
+        {/* Hàng 2: Ngày Khai Giảng / Số Buổi Toàn Khóa / Trạng Thái Vận Hành */}
         <Row gutter={16}>
-          <Col xs={24} sm={12}>
+          <Col xs={24} sm={8}>
             <Form.Item
               name="startDate"
               label={
                 <Space>
                   <CalendarOutlined style={{ color: '#1890ff' }} />
-                  <Text strong>{isEnglish ? 'Class Start Date' : 'Ngày Bắt Đầu Lớp Học'}</Text>
+                  <Text strong>{isEnglish ? 'Class Start Date' : 'Ngày Bắt Đầu'}</Text>
                 </Space>
               }
               rules={[
@@ -333,7 +337,38 @@ export const ClassFormDrawer = ({
             </Form.Item>
           </Col>
 
-          <Col xs={24} sm={12}>
+          <Col xs={24} sm={8}>
+            <Form.Item
+              name="totalSessions"
+              label={
+                <Space>
+                  <BookOutlined style={{ color: '#1890ff' }} />
+                  <Text strong>{isEnglish ? 'Total Sessions' : 'Số Buổi Toàn Khóa'}</Text>
+                </Space>
+              }
+              rules={[
+                {
+                  required: true,
+                  message: isEnglish ? 'Please enter total sessions' : 'Vui lòng nhập số buổi',
+                },
+              ]}
+              extra={
+                <span style={{ fontSize: 11, color: '#64748b' }}>
+                  {isEnglish ? 'Default: 12 sessions' : 'Mặc định 12 buổi (hoặc nhập)'}
+                </span>
+              }
+            >
+              <InputNumber
+                min={1}
+                max={100}
+                placeholder="12"
+                data-testid="input-class-total-sessions"
+                style={{ width: '100%', height: 40, borderRadius: 8, display: 'flex', alignItems: 'center' }}
+              />
+            </Form.Item>
+          </Col>
+
+          <Col xs={24} sm={8}>
             <Form.Item
               name="operationStatus"
               label={<Text strong>{isEnglish ? 'Operation Status' : 'Trạng Thái Vận Hành'}</Text>}
