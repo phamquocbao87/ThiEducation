@@ -565,6 +565,66 @@ export class MaterialService extends BaseModuleService {
   }
 
   /**
+   * Lọc danh sách học liệu ĐÃ ĐƯỢC CHIA SẺ cho một lớp học cụ thể (dùng cho ô Autocomplete Soạn Giáo Án)
+   * - Ưu tiên 1: Tài liệu chia sẻ trực tiếp cho lớp (`sharedClassIds` chứa `cls.id`)
+   * - Ưu tiên 2: Tài liệu chia sẻ theo khóa học của lớp (`sharedCourseIds` chứa `cls.courseId`, không bị giới hạn lớp khác)
+   * - Ưu tiên 3: Tài liệu công khai toàn trường (`shareScope === 'ALL'`, không giới hạn lớp/học viên)
+   * - Loại trừ: Tài liệu đã xóa, video ghi hình buổi học cũ (`isSessionRecording`), và tài liệu nội bộ chỉ dành cho GV (`STAFF_ONLY` / `TEACHERS_ONLY`)
+   */
+  static getMaterialsSharedForClass(allMaterials = [], cls = null) {
+    if (!Array.isArray(allMaterials) || !cls) return [];
+    const classId = String(cls.id || cls.code || '').trim();
+    const courseId = String(cls.courseId || '').trim();
+    if (!classId) return [];
+
+    const matched = [];
+    const seenIds = new Set();
+
+    allMaterials.forEach((raw) => {
+      if (!raw || raw.isDeleted || raw.isSessionRecording) return;
+      const item = normalizeMaterialShares(raw);
+      if (item.shareScope === SHARE_SCOPES.STAFF_ONLY.key || item.visibility === 'TEACHERS_ONLY') {
+        return;
+      }
+
+      const id = String(item.id || '');
+      if (!id || seenIds.has(id)) return;
+
+      const sharedClasses = (item.sharedClassIds || []).map((x) => String(x).trim());
+      const sharedCourses = (item.sharedCourseIds || []).map((x) => String(x).trim());
+      const sharedStudents = (item.sharedStudentIds || []).map((x) => String(x).trim());
+
+      const isDirectClassShare = sharedClasses.includes(classId);
+      const isRestrictedToOtherClasses = sharedClasses.length > 0 && !isDirectClassShare;
+      const isRestrictedToSpecificStudents = sharedStudents.length > 0 && !isDirectClassShare;
+
+      if (isRestrictedToOtherClasses || isRestrictedToSpecificStudents) return;
+
+      const isCourseShare =
+        Boolean(courseId) &&
+        (sharedCourses.includes(courseId) || String(item.courseId || '').trim() === courseId);
+      const isGlobalPublic =
+        item.shareScope === SHARE_SCOPES.ALL.key &&
+        sharedClasses.length === 0 &&
+        sharedStudents.length === 0;
+
+      if (isDirectClassShare || isCourseShare || isGlobalPublic) {
+        seenIds.add(id);
+        matched.push({
+          ...item,
+          matchScope: isDirectClassShare ? 'CLASS' : isCourseShare ? 'COURSE' : 'ALL',
+          matchPriority: isDirectClassShare ? 0 : isCourseShare ? 1 : 2,
+        });
+      }
+    });
+
+    return matched.sort((a, b) => {
+      if (a.matchPriority !== b.matchPriority) return a.matchPriority - b.matchPriority;
+      return String(a.title || '').localeCompare(String(b.title || ''));
+    });
+  }
+
+  /**
    * Bộ lọc đa chiều cho tài liệu (Tìm kiếm, Khóa học, Định dạng, Quyền xem)
    */
   static filterMaterials(materials = [], { searchTerm = '', courseId = 'ALL', type = 'ALL', user = null, userRole = 'admin', userClasses = [] } = {}) {

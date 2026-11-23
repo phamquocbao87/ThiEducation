@@ -20,6 +20,8 @@ export const MODULE_SLUGS = {
   students: 'students',
   materials: 'learning-materials',
   exercises: 'english-exercises',
+  lessonQa: 'lesson-qa',
+  preClassPrep: 'pre-class-prep',
   curriculum: 'curriculum-levels',
   schedules: 'zoom-schedules',
   attendance: 'class-attendance-evaluation',

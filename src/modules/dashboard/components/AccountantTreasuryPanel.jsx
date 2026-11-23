@@ -181,7 +181,7 @@ export const AccountantTreasuryPanel = ({ accountantData = {} }) => {
     <div>
       {/* 1. Hàng Thống Kê Dòng Tiền & Quỹ Lương */}
       <Row gutter={[isMobile ? 8 : 16, isMobile ? 8 : 16]} style={{ marginBottom: isMobile ? 12 : 20 }}>
-        <Col xs={12} sm={12} lg={6}>
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
           <Card
             bordered={false}
             style={{
@@ -190,14 +190,14 @@ export const AccountantTreasuryPanel = ({ accountantData = {} }) => {
               borderTop: '3px solid #16a34a',
               height: '100%',
             }}
-            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 20px' } }}
+            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 18px' } }}
           >
             <Statistic
               title={<Text strong style={{ fontSize: isMobile ? 11 : 13, display: 'block', lineHeight: 1.3 }}>{isEnglish ? 'Tuition Collected' : 'Học Phí Đã Thu'}</Text>}
               value={totalCollected}
               formatter={(v) => formatCurrency(v)}
-              prefix={<DollarOutlined style={{ color: '#16a34a', fontSize: isMobile ? 14 : 18 }} />}
-              styles={{ content: { color: '#16a34a', fontWeight: 700, fontSize: isMobile ? 16 : 22, whiteSpace: 'nowrap' } }}
+              prefix={<DollarOutlined style={{ color: '#16a34a', fontSize: isMobile ? 14 : 17 }} />}
+              styles={{ content: { color: '#16a34a', fontWeight: 700, fontSize: isMobile ? 15 : 'clamp(15px, 1.35vw, 21px)', whiteSpace: 'nowrap' } }}
             />
             <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 12, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {isEnglish ? 'Paid:' : 'Biên lai:'} <Text strong>{paidCount}</Text>
@@ -205,7 +205,7 @@ export const AccountantTreasuryPanel = ({ accountantData = {} }) => {
           </Card>
         </Col>
 
-        <Col xs={12} sm={12} lg={6}>
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
           <Card
             bordered={false}
             style={{
@@ -214,14 +214,14 @@ export const AccountantTreasuryPanel = ({ accountantData = {} }) => {
               borderTop: '3px solid #ff4d4f',
               height: '100%',
             }}
-            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 20px' } }}
+            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 18px' } }}
           >
             <Statistic
               title={<Text strong style={{ fontSize: isMobile ? 11 : 13, display: 'block', lineHeight: 1.3 }}>{isEnglish ? 'Pending Tuition' : 'Công Nợ Học Phí'}</Text>}
               value={totalPending}
               formatter={(v) => formatCurrency(v)}
-              prefix={<ExclamationCircleOutlined style={{ color: '#ff4d4f', fontSize: isMobile ? 14 : 18 }} />}
-              styles={{ content: { color: '#ff4d4f', fontWeight: 700, fontSize: isMobile ? 16 : 22, whiteSpace: 'nowrap' } }}
+              prefix={<ExclamationCircleOutlined style={{ color: '#ff4d4f', fontSize: isMobile ? 14 : 17 }} />}
+              styles={{ content: { color: '#ff4d4f', fontWeight: 700, fontSize: isMobile ? 15 : 'clamp(15px, 1.35vw, 21px)', whiteSpace: 'nowrap' } }}
             />
             <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 12, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {isEnglish ? 'Unpaid:' : 'Chưa đóng:'} <Text strong>{unpaidCount}</Text>
@@ -229,7 +229,7 @@ export const AccountantTreasuryPanel = ({ accountantData = {} }) => {
           </Card>
         </Col>
 
-        <Col xs={12} sm={12} lg={6}>
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
           <Card
             bordered={false}
             style={{
@@ -238,20 +238,20 @@ export const AccountantTreasuryPanel = ({ accountantData = {} }) => {
               borderTop: '3px solid #1890ff',
               height: '100%',
             }}
-            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 20px' } }}
+            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 18px' } }}
           >
             <Statistic
               title={<Text strong style={{ fontSize: isMobile ? 11 : 13, display: 'block', lineHeight: 1.3 }}>{isEnglish ? 'Collection Rate' : 'Tỷ Lệ Thu Kỳ Này'}</Text>}
               value={collectionRate}
               suffix={<span style={{ fontSize: isMobile ? 12 : 14 }}>%</span>}
-              prefix={<CheckCircleOutlined style={{ color: '#1890ff', fontSize: isMobile ? 14 : 18 }} />}
+              prefix={<CheckCircleOutlined style={{ color: '#1890ff', fontSize: isMobile ? 14 : 17 }} />}
               styles={{ content: { color: '#1890ff', fontWeight: 700, fontSize: isMobile ? 18 : 22 } }}
             />
             <Progress percent={collectionRate} strokeColor="#1890ff" size="small" showInfo={false} style={{ marginTop: 4 }} />
           </Card>
         </Col>
 
-        <Col xs={12} sm={12} lg={6}>
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
           <Card
             bordered={false}
             style={{
@@ -260,14 +260,14 @@ export const AccountantTreasuryPanel = ({ accountantData = {} }) => {
               borderTop: '3px solid #722ed1',
               height: '100%',
             }}
-            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 20px' } }}
+            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 18px' } }}
           >
             <Statistic
               title={<Text strong style={{ fontSize: isMobile ? 11 : 13, display: 'block', lineHeight: 1.3 }}>{isEnglish ? 'Pending Payroll' : 'Lương Chờ Chi'}</Text>}
               value={totalPayrollToDisburse}
               formatter={(v) => formatCurrency(v)}
-              prefix={<AuditOutlined style={{ color: '#722ed1', fontSize: isMobile ? 14 : 18 }} />}
-              styles={{ content: { color: '#722ed1', fontWeight: 700, fontSize: isMobile ? 16 : 22, whiteSpace: 'nowrap' } }}
+              prefix={<AuditOutlined style={{ color: '#722ed1', fontSize: isMobile ? 14 : 17 }} />}
+              styles={{ content: { color: '#722ed1', fontWeight: 700, fontSize: isMobile ? 15 : 'clamp(15px, 1.35vw, 21px)', whiteSpace: 'nowrap' } }}
             />
             <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 12, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {isEnglish ? 'Slips:' : 'Phiếu duyệt:'} <Text strong>{pendingPayrolls.length}</Text>
@@ -278,7 +278,7 @@ export const AccountantTreasuryPanel = ({ accountantData = {} }) => {
 
       {/* 2. Bảng Công Nợ Học Phí & Bảng Kê Giải Ngân Lương */}
       <Row gutter={[16, 16]}>
-        <Col xs={24} lg={14}>
+        <Col xs={24} xl={14}>
           <Card
             title={
               <Space>
@@ -297,20 +297,67 @@ export const AccountantTreasuryPanel = ({ accountantData = {} }) => {
             }
             bordered={false}
             style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
-            styles={{ body: { padding: isMobile ? '12px 12px' : '20px 24px' } }}
+            styles={{ body: { padding: isMobile ? '12px' : '20px 24px' } }}
           >
-            <Table
-              dataSource={agingTuitionList}
-              columns={tuitionColumns}
-              rowKey="id"
-              pagination={{ pageSize: 5 }}
-              size="small"
-              scroll={{ x: 700 }}
-            />
+            {isMobile ? (
+              agingTuitionList.length === 0 ? (
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  {isEnglish ? 'No pending tuition bills.' : 'Không có công nợ học phí.'}
+                </Text>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {agingTuitionList.slice(0, 5).map((r) => (
+                    <div
+                      key={r.id}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 10,
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <Tag color="blue" style={{ fontWeight: 700, margin: 0 }}>{r.id}</Tag>
+                        <Text strong style={{ color: '#cf1322', whiteSpace: 'nowrap' }}>{formatCurrency(r.amountDue)}</Text>
+                      </div>
+                      <Text strong style={{ color: '#0958d9', fontSize: 13 }}>{r.name}</Text>
+                      <div style={{ fontSize: 12, color: '#64748b' }}>
+                        {r.studentCode || r.studentId} • {r.className}
+                      </div>
+                      {r.phone && (
+                        <div style={{ fontSize: 12, color: '#0284c7' }}>
+                          <PhoneOutlined /> {r.parentName || 'Phụ huynh'}: {r.phone}
+                        </div>
+                      )}
+                      <Button
+                        type="primary"
+                        block
+                        style={{ borderRadius: 8, backgroundColor: '#1890ff', height: 38, fontWeight: 600 }}
+                        onClick={() => navigate('/tuition-fees')}
+                      >
+                        {isEnglish ? 'Reconcile' : 'Đối Soát Thu'}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : (
+              <Table
+                dataSource={agingTuitionList}
+                columns={tuitionColumns}
+                rowKey="id"
+                pagination={{ pageSize: 5 }}
+                size="small"
+                scroll={{ x: 700 }}
+              />
+            )}
           </Card>
         </Col>
 
-        <Col xs={24} lg={10}>
+        <Col xs={24} xl={10}>
           <Card
             title={
               <Space>
@@ -329,16 +376,54 @@ export const AccountantTreasuryPanel = ({ accountantData = {} }) => {
             }
             bordered={false}
             style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
-            styles={{ body: { padding: isMobile ? '12px 12px' : '20px 24px' } }}
+            styles={{ body: { padding: isMobile ? '12px' : '20px 24px' } }}
           >
-            <Table
-              dataSource={pendingPayrolls}
-              columns={payrollColumns}
-              rowKey="id"
-              pagination={{ pageSize: 5 }}
-              size="small"
-              scroll={{ x: 700 }}
-            />
+            {isMobile ? (
+              pendingPayrolls.length === 0 ? (
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  {isEnglish ? 'No pending payroll slips.' : 'Không có bảng lương chờ chi.'}
+                </Text>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {pendingPayrolls.slice(0, 5).map((r) => (
+                    <div
+                      key={r.id}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 10,
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                        <Tag color="purple" style={{ fontWeight: 700, margin: 0 }}>{r.id}</Tag>
+                        <Text strong style={{ color: '#16a34a', whiteSpace: 'nowrap' }}>{formatCurrency(r.totalSalary)}</Text>
+                      </div>
+                      <Text strong style={{ fontSize: 13 }}>{r.teacherName || r.name}</Text>
+                      <Button
+                        block
+                        style={{ borderRadius: 8, height: 38, fontWeight: 600 }}
+                        onClick={() => navigate('/contracts-payroll')}
+                      >
+                        {isEnglish ? 'Disburse' : 'Chi Lương'}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : (
+              <Table
+                dataSource={pendingPayrolls}
+                columns={payrollColumns}
+                rowKey="id"
+                pagination={{ pageSize: 5 }}
+                size="small"
+                scroll={{ x: 700 }}
+              />
+            )}
           </Card>
         </Col>
       </Row>

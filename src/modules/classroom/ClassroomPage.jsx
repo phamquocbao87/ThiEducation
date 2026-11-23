@@ -9,6 +9,7 @@ import {
 } from '@ant-design/icons';
 import { useAuth } from '../../core/context/AuthContext';
 import { useLanguage } from '../../core/context/LanguageContext';
+import { useIsMobile } from '../../shared/hooks/useIsMobile';
 import { localizeSystemMessage } from '../../core/i18n/i18n';
 import { BaseFormPageLayout } from '../../shared/components/layout/BaseFormPageLayout';
 import { FormSectionCard } from '../../shared/components/layout/FormSectionCard';
@@ -28,6 +29,8 @@ import './classroom.css';
 
 export default function ClassroomPage() {
   const { t, language } = useLanguage();
+  const isEnglish = language === 'en';
+  const isMobile = useIsMobile();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const c = useClassroomController();
@@ -170,10 +173,16 @@ export default function ClassroomPage() {
     {
       key: 'seating',
       label: (
-        <span data-testid="tab-seating">
-          <Space size={6}>
+        <span data-testid="tab-seating" style={{ fontSize: isMobile ? 12 : undefined }}>
+          <Space size={isMobile ? 4 : 6}>
             <DesktopOutlined />
-            <span>{t('classroom.tabSeating') || 'Sơ Đồ Lớp & Note Nhanh'}</span>
+            <span>
+              {isMobile
+                ? isEnglish
+                  ? 'Seating'
+                  : 'Sơ đồ'
+                : t('classroom.tabSeating') || 'Sơ Đồ Lớp & Note Nhanh'}
+            </span>
           </Space>
         </span>
       ),
@@ -268,10 +277,24 @@ export default function ClassroomPage() {
     {
       key: 'curriculum',
       label: (
-        <span data-testid="tab-curriculum">
-          <Space size={6}>
+        <span data-testid="tab-curriculum" style={{ fontSize: isMobile ? 12 : undefined }}>
+          <Space size={isMobile ? 4 : 6}>
             <BookOutlined />
-            <span>{t('classroom.tabCurriculum') || 'Soạn Giáo Án & Học Liệu'}</span>
+            <span>
+              {userRole === 'student'
+                ? isMobile
+                  ? isEnglish
+                    ? 'Lessons'
+                    : 'Bài học'
+                  : isEnglish
+                  ? 'Lessons & Materials'
+                  : 'Bài Học & Tài Liệu'
+                : isMobile
+                ? isEnglish
+                  ? 'Lesson Plan'
+                  : 'Giáo án'
+                : t('classroom.tabCurriculum') || 'Soạn Giáo Án & Học Liệu'}
+            </span>
           </Space>
         </span>
       ),
@@ -282,6 +305,7 @@ export default function ClassroomPage() {
             lessonPlans={c.lessonPlans}
             currentSessionIndex={activeSessionIndex}
             userRole={userRole}
+            currentUser={currentUser}
             courseMaterials={c.courseMaterials}
             onOpenEditor={(plan) => {
               setEditingPlan(plan);
@@ -295,10 +319,24 @@ export default function ClassroomPage() {
     {
       key: 'evaluation',
       label: (
-        <span data-testid="tab-evaluation">
-          <Space size={6}>
+        <span data-testid="tab-evaluation" style={{ fontSize: isMobile ? 12 : undefined }}>
+          <Space size={isMobile ? 4 : 6}>
             <StarFilled />
-            <span>{t('classroom.tabEvaluation') || 'Đánh Giá Sau Giờ & Chăm Sóc PH'}</span>
+            <span>
+              {userRole === 'student'
+                ? isMobile
+                  ? isEnglish
+                    ? 'Eval'
+                    : 'Đánh giá'
+                  : isEnglish
+                  ? 'Session Evaluations'
+                  : 'Đánh Giá Buổi Học'
+                : isMobile
+                ? isEnglish
+                  ? 'Eval'
+                  : 'Đánh giá'
+                : t('classroom.tabEvaluation') || 'Đánh Giá Sau Giờ & Chăm Sóc PH'}
+            </span>
           </Space>
         </span>
       ),
@@ -359,6 +397,8 @@ export default function ClassroomPage() {
                 onChange={setActiveTab}
                 items={tabItems}
                 type="card"
+                size={isMobile ? 'small' : 'middle'}
+                tabBarGutter={isMobile ? 4 : 8}
                 className="classroom-tabs"
               />
             </FormSectionCard>

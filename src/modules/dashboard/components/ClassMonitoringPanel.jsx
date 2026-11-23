@@ -8,7 +8,7 @@ export const ClassMonitoringPanel = ({ classes = [], role }) => {
   const navigate = useNavigate();
   return <Card title={t('classroom.monitoring')} style={{ marginTop: 20 }}>
     {classes.length ? <Row gutter={[16, 16]}>
-      {classes.map((cls) => <Col key={cls.id} xs={24} md={12} lg={8}>
+      {classes.map((cls) => <Col key={cls.id} xs={24} sm={12} md={12} lg={12} xl={8} xxl={6}>
         <ClassLiveCard cls={cls} role={role} onClick={() => navigate(`/classroom/${encodeURIComponent(cls.id)}`)} />
       </Col>)}
     </Row> : <Empty description={t('classroom.noSession')} />}

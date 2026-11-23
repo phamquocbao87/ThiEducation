@@ -27,6 +27,10 @@ import { AbsentStudentsService } from '../services/AbsentStudentsService';
 import { AbsentStudentsAuditDrawer } from './AbsentStudentsAuditDrawer';
 import { LessonPlanAlertService } from '../services/LessonPlanAlertService';
 import { AcademicLessonPlanMonitorCard } from './AcademicLessonPlanMonitorCard';
+import { AcademicPreClassPrepMonitorCard } from './AcademicPreClassPrepMonitorCard';
+import { DashboardNewQuestionsPreviewCard } from './DashboardNewQuestionsPreviewCard';
+import { PreClassPrepReportService } from '../../lesson-reader';
+import { LessonQaManagementService } from '../../lesson-qa/services/LessonQaManagementService';
 
 const { Title, Text } = Typography;
 
@@ -91,6 +95,9 @@ export const AcademicOperationsPanel = ({ academicData = {} }) => {
   const [pendingEvaluationTasks, setPendingEvaluationTasks] = useState([]);
   const [absentData, setAbsentData] = useState({ absentRecords: [], todayAbsentCount: 0 });
   const [isAbsentDrawerOpen, setIsAbsentDrawerOpen] = useState(false);
+  const [prepReportData, setPrepReportData] = useState(null);
+  const [loadingPrepReport, setLoadingPrepReport] = useState(false);
+  const [schoolQuestions, setSchoolQuestions] = useState([]);
 
   useEffect(() => {
     let mounted = true;
@@ -111,6 +118,27 @@ export const AcademicOperationsPanel = ({ academicData = {} }) => {
         if (mounted) setAbsentData(res || { absentRecords: [], todayAbsentCount: 0 });
       })
       .catch((err) => console.warn('Lỗi quét absent students:', err));
+
+    setLoadingPrepReport(true);
+    PreClassPrepReportService.buildPrepReport({
+      classes: allActiveClasses,
+      users: academicData.allUsers || [],
+      userRole: 'academic',
+      isEnglish,
+    })
+      .then((res) => {
+        if (mounted) setPrepReportData(res);
+      })
+      .catch((err) => console.warn('Lỗi tổng hợp báo cáo chuẩn bị bài cho giáo vụ:', err))
+      .finally(() => {
+        if (mounted) setLoadingPrepReport(false);
+      });
+
+    LessonQaManagementService.getScopedQaDataset(currentUser)
+      .then((res) => {
+        if (mounted) setSchoolQuestions(res?.questions || []);
+      })
+      .catch(() => {});
 
     return () => {
       mounted = false;
@@ -155,7 +183,7 @@ export const AcademicOperationsPanel = ({ academicData = {} }) => {
     <div>
       {/* 1. Hàng Thống Kê 4 Chỉ Số Vận Hành Giáo Vụ */}
       <Row gutter={[isMobile ? 8 : 16, isMobile ? 8 : 16]} style={{ marginBottom: isMobile ? 12 : 20 }}>
-        <Col xs={12} sm={12} lg={6}>
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
           <Card
             bordered={false}
             style={{
@@ -183,7 +211,7 @@ export const AcademicOperationsPanel = ({ academicData = {} }) => {
           </Card>
         </Col>
 
-        <Col xs={12} sm={12} lg={6}>
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
           <Card
             bordered={false}
             style={{
@@ -211,7 +239,7 @@ export const AcademicOperationsPanel = ({ academicData = {} }) => {
           </Card>
         </Col>
 
-        <Col xs={12} sm={12} lg={6}>
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
           <Card
             bordered={false}
             style={{
@@ -239,7 +267,7 @@ export const AcademicOperationsPanel = ({ academicData = {} }) => {
           </Card>
         </Col>
 
-        <Col xs={12} sm={12} lg={6}>
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
           <Card
             bordered={false}
             style={{
@@ -268,7 +296,7 @@ export const AcademicOperationsPanel = ({ academicData = {} }) => {
         </Col>
 
         {/* Thẻ KPI Học Viên Vắng Học Hôm Nay */}
-        <Col xs={12} sm={12} lg={6}>
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
           <Card
             hoverable
             onClick={() => setIsAbsentDrawerOpen(true)}
@@ -309,6 +337,20 @@ export const AcademicOperationsPanel = ({ academicData = {} }) => {
       <AcademicLessonPlanMonitorCard
         alerts={lessonPlanAlertData.urgentAlerts}
         pastMissingCount={lessonPlanAlertData.pastMissingCount}
+      />
+
+      {/* 2b-2. Preview 1–2 Câu Hỏi Học Viên Mới Nhất Toàn Trường -> Mở /lesson-qa */}
+      <DashboardNewQuestionsPreviewCard
+        questions={schoolQuestions}
+        userRole="academic"
+        maxItems={2}
+      />
+
+      {/* 2c. Giám Sát Học Viên Chuẩn Bị Bài Trước Giờ Học Toàn Trường */}
+      <AcademicPreClassPrepMonitorCard
+        reportData={prepReportData}
+        loading={loadingPrepReport}
+        currentUser={currentUser}
       />
 
       {/* Thông Báo Đơn Báo Vắng Mặt Mới Cần Giáo Vụ Tiếp Nhận */}
@@ -457,7 +499,7 @@ export const AcademicOperationsPanel = ({ academicData = {} }) => {
         {displayClasses.length > 0 ? (
           <Row gutter={[16, 16]}>
             {displayClasses.map((cls) => (
-              <Col xs={24} sm={12} lg={8} key={cls.id}>
+              <Col xs={24} sm={12} md={12} lg={12} xl={8} xxl={6} key={cls.id}>
                 <ClassLiveCard cls={cls} role="academic" onClick={handleCardClick} />
               </Col>
             ))}

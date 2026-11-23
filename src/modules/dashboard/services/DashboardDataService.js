@@ -90,6 +90,7 @@ export class DashboardDataService extends BaseModuleService {
       fillRate,
       courseStats,
       allActiveClasses: activeClasses,
+      allUsers: activeUsers,
     };
   }
 

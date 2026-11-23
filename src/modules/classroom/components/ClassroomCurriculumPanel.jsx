@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Card,
   Col,
+  Progress,
   Row,
   Segmented,
   Select,
@@ -12,20 +13,35 @@ import {
 } from 'antd';
 import {
   BookOutlined,
+  ClockCircleOutlined,
   CustomerServiceOutlined,
   EditOutlined,
+  ExpandOutlined,
+  EyeOutlined,
   FilePdfOutlined,
   FolderOpenOutlined,
   LeftOutlined,
   LinkOutlined,
   PlusOutlined,
+  ReadOutlined,
   RightOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { useIsMobile } from '../../../shared/hooks/useIsMobile';
 import { FormattedText } from '../../../shared/components/controls';
 import { LESSON_PLAN_STATUS } from '../../../shared/models/classroom.model';
 import { generateClassSessionDates } from '../../../shared/utils/classSessionUtils';
+import { MaterialPreviewModal } from '../../materials/components/MaterialPreviewModal';
+import { StudentDashboardService } from '../../dashboard/services/StudentDashboardService';
+import {
+  LessonBookReaderModal,
+  LessonReadingTrackerService,
+  PREP_STATUS,
+  computeMinRequiredSeconds,
+  formatHumanDuration,
+  getPrepStatusMeta,
+} from '../../lesson-reader';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -34,11 +50,13 @@ export const ClassroomCurriculumPanel = ({
   lessonPlans = {},
   currentSessionIndex = null,
   userRole = 'teacher',
+  currentUser = null,
   courseMaterials = [],
   onOpenEditor,
   onOpenCourseUpload,
 }) => {
   const { t, isEnglish } = useLanguage();
+  const isMobile = useIsMobile();
 
   // 1. Tự động tính toán các buổi học thực tế của lớp theo thời khóa biểu (hỗ trợ nhập động số buổi hoặc mặc định 12 buổi)
   const totalSessionsCount = useMemo(() => {
@@ -49,51 +67,110 @@ export const ClassroomCurriculumPanel = ({
     return generateClassSessionDates(cls, totalSessionsCount, isEnglish);
   }, [cls, totalSessionsCount, isEnglish]);
 
-  // 2. Danh sách toàn bộ các số buổi (kết hợp các buổi đã soạn và toàn bộ TKB)
-  const allSessionIndices = useMemo(() => {
-    const planKeys = Object.keys(lessonPlans).map(Number).filter((n) => !Number.isNaN(n) && n > 0);
-    const schedIndices = scheduleSessions.map((s) => s.sessionIndex);
-    const merged = Array.from(new Set([...planKeys, ...schedIndices, 1])).sort((a, b) => a - b);
-    return merged;
-  }, [lessonPlans, scheduleSessions]);
-
-  // Mặc định chọn buổi hôm nay nếu có, hoặc buổi 1 (khai giảng)
-  const [selectedSession, setSelectedSession] = useState(currentSessionIndex || 1);
-
-  // Bộ lọc trạng thái: 'all' | 'planned' | 'unplanned'
-  const [statusFilter, setStatusFilter] = useState('all');
-
   const isTeacherOrAcademic = ['teacher', 'academic', 'admin', 'director'].includes(userRole);
   const isStudent = userRole === 'student';
 
+  // Học viên chỉ thấy các buổi READY (ẩn bản nháp DRAFT của giáo viên)
+  const visibleLessonPlans = useMemo(() => {
+    if (!isStudent) return lessonPlans || {};
+    const filtered = {};
+    Object.entries(lessonPlans || {}).forEach(([k, p]) => {
+      if (p && p.status !== LESSON_PLAN_STATUS.DRAFT) {
+        filtered[k] = p;
+      }
+    });
+    return filtered;
+  }, [lessonPlans, isStudent]);
+
+  // 2. Danh sách toàn bộ các số buổi (kết hợp các buổi đã soạn và toàn bộ TKB)
+  const allSessionIndices = useMemo(() => {
+    const planKeys = Object.keys(visibleLessonPlans).map(Number).filter((n) => !Number.isNaN(n) && n > 0);
+    const schedIndices = scheduleSessions.map((s) => s.sessionIndex);
+    const merged = Array.from(new Set([...planKeys, ...schedIndices, 1])).sort((a, b) => a - b);
+    return merged;
+  }, [visibleLessonPlans, scheduleSessions]);
+
+  // Mặc định ưu tiên buổi hôm nay (nếu đã có giáo án), ngược lại chọn giáo án thông minh theo ngày dạy thực tế (VD: Buổi 3 ngày 23/11)
+  const smartDefaultSession = useMemo(() => {
+    if (currentSessionIndex && visibleLessonPlans[currentSessionIndex]) {
+      return currentSessionIndex;
+    }
+    if (cls) {
+      const smartPlan = StudentDashboardService.getLessonPreparationGuide({
+        ...cls,
+        lessonPlans: visibleLessonPlans,
+      });
+      if (smartPlan?.sessionIndex) return smartPlan.sessionIndex;
+    }
+    return currentSessionIndex || 1;
+  }, [currentSessionIndex, cls, visibleLessonPlans]);
+
+  const [selectedSession, setSelectedSession] = useState(smartDefaultSession);
+  const [userHasManuallySwitched, setUserHasManuallySwitched] = useState(false);
+
+  useEffect(() => {
+    if (!userHasManuallySwitched && smartDefaultSession && smartDefaultSession !== selectedSession) {
+      setSelectedSession(smartDefaultSession);
+    }
+  }, [smartDefaultSession, userHasManuallySwitched, selectedSession]);
+
+  // Bộ lọc trạng thái: 'all' | 'planned' | 'unplanned'
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [previewMaterial, setPreviewMaterial] = useState(null);
+  const [bookReaderOpen, setBookReaderOpen] = useState(false);
+  const [readingLogsMap, setReadingLogsMap] = useState(() =>
+    isStudent ? LessonReadingTrackerService.getLocalCacheMap(currentUser?.id || currentUser?.code) : {}
+  );
+
+  // Nạp nhật ký đọc bài thực tế của học viên (đồng bộ 100% cùng bản ghi với Dashboard)
+  useEffect(() => {
+    if (!isStudent) return;
+    const studentUid = currentUser?.id || currentUser?.code;
+    if (!studentUid) return;
+    let mounted = true;
+    LessonReadingTrackerService.getStudentReadingLogs(studentUid)
+      .then((logs) => {
+        if (mounted && logs) setReadingLogsMap(logs);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [isStudent, currentUser?.id, currentUser?.code]);
+
   // Đếm số buổi đã soạn và chưa soạn
   const plannedCount = useMemo(() => {
-    return allSessionIndices.filter((idx) => Boolean(lessonPlans[idx])).length;
-  }, [allSessionIndices, lessonPlans]);
+    return allSessionIndices.filter((idx) => Boolean(visibleLessonPlans[idx])).length;
+  }, [allSessionIndices, visibleLessonPlans]);
   const unplannedCount = Math.max(0, allSessionIndices.length - plannedCount);
 
   // Danh sách buổi hiển thị trên timeline carousel theo bộ lọc
   const visiblePillIndices = useMemo(() => {
     if (statusFilter === 'planned') {
-      return allSessionIndices.filter((idx) => Boolean(lessonPlans[idx]));
+      return allSessionIndices.filter((idx) => Boolean(visibleLessonPlans[idx]));
     }
     if (statusFilter === 'unplanned') {
-      return allSessionIndices.filter((idx) => !lessonPlans[idx]);
+      return allSessionIndices.filter((idx) => !visibleLessonPlans[idx]);
     }
     return allSessionIndices;
-  }, [allSessionIndices, statusFilter, lessonPlans]);
+  }, [allSessionIndices, statusFilter, visibleLessonPlans]);
 
   // Điều hướng 1-chạm Buổi Trước / Buổi Sau
   const currentPos = allSessionIndices.indexOf(selectedSession);
   const hasPrev = currentPos > 0;
   const hasNext = currentPos >= 0 && currentPos < allSessionIndices.length - 1;
 
+  const handleSelectSession = (val) => {
+    setUserHasManuallySwitched(true);
+    setSelectedSession(val);
+  };
+
   const handlePrevSession = () => {
-    if (hasPrev) setSelectedSession(allSessionIndices[currentPos - 1]);
+    if (hasPrev) handleSelectSession(allSessionIndices[currentPos - 1]);
   };
 
   const handleNextSession = () => {
-    if (hasNext) setSelectedSession(allSessionIndices[currentPos + 1]);
+    if (hasNext) handleSelectSession(allSessionIndices[currentPos + 1]);
   };
 
   // 3. 100% Real Database: Duyệt danh sách tài liệu thực tế của khóa học (loại bỏ hoàn toàn link dummy)
@@ -119,15 +196,58 @@ export const ClassroomCurriculumPanel = ({
   }, [courseMaterials, isEnglish]);
 
   // 4. Lấy dữ liệu giáo án THỰC TẾ của buổi đang chọn (TUYỆT ĐỐI KHÔNG FAKE DỮ LIỆU)
-  const realPlan = lessonPlans[selectedSession] || null;
+  const realPlan = visibleLessonPlans[selectedSession] || null;
   const selectedSched = scheduleSessions.find((s) => s.sessionIndex === selectedSession);
+
+  // Chuẩn hóa giáo án cho Book Reader (đồng bộ 100% schema với Dashboard)
+  const formattedReaderLessonPrep = useMemo(() => {
+    if (!realPlan || !cls) return null;
+    return StudentDashboardService._formatReadyPlan(
+      { ...realPlan, sessionIndex: selectedSession },
+      cls
+    );
+  }, [realPlan, cls, selectedSession]);
+
+  const activeReadingLog = useMemo(() => {
+    if (!isStudent || !cls?.id) return null;
+    const studentUid = currentUser?.id || currentUser?.code;
+    if (!studentUid) return null;
+    const logId = LessonReadingTrackerService.buildLogId(cls.id, selectedSession, studentUid);
+    return readingLogsMap[logId] || null;
+  }, [isStudent, cls?.id, selectedSession, currentUser?.id, currentUser?.code, readingLogsMap]);
+
+  const readerStats = useMemo(() => {
+    const objCount = Array.isArray(formattedReaderLessonPrep?.objectives)
+      ? formattedReaderLessonPrep.objectives.length
+      : 0;
+    const minReq = computeMinRequiredSeconds(objCount);
+    const preSec = Number(activeReadingLog?.preClassActiveSeconds) || 0;
+    const scrollPct = Number(activeReadingLog?.maxScrollPercent) || 0;
+    const status = activeReadingLog?.prepStatus || PREP_STATUS.NOT_STARTED;
+    return {
+      minReq,
+      preSec,
+      scrollPct,
+      status,
+      percent: Math.min(100, Math.round((preSec / minReq) * 100)),
+      meta: getPrepStatusMeta(status, isEnglish),
+    };
+  }, [formattedReaderLessonPrep, activeReadingLog, isEnglish]);
+
+  const handleReadingLogUpdated = (updatedLog) => {
+    if (!updatedLog?.id) return;
+    setReadingLogsMap((prev) => ({
+      ...prev,
+      [updatedLog.id]: updatedLog,
+    }));
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* 1. Multi-Session Lesson Plan Manager Bar */}
       <Card
         style={{ borderRadius: 16, borderColor: '#d9d9d9', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}
-        bodyStyle={{ padding: 20 }}
+        styles={{ body: { padding: isMobile ? 12 : 20 } }}
       >
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
           <div>
@@ -179,10 +299,10 @@ export const ClassroomCurriculumPanel = ({
         </div>
 
         {/* 2. Scalable Navigation Controls for 100+ Sessions */}
-        <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
+        <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: isMobile ? '10px' : '12px 14px', marginBottom: 16, overflow: 'hidden' }}>
           <Row gutter={[12, 10]} align="middle">
             {/* Quick Search & Jump Select */}
-            <Col xs={24} sm={12} md={12}>
+            <Col xs={24} sm={24} lg={12}>
               <Text strong style={{ fontSize: 12, color: '#475569', display: 'block', marginBottom: 4 }}>
                 🔍 {t('classroom.selectSessionToPlan', isEnglish ? 'Jump to any session:' : 'Nhảy nhanh đến buổi học:') || (isEnglish ? 'Jump to any session:' : 'Nhảy nhanh đến buổi học:')}
               </Text>
@@ -190,14 +310,14 @@ export const ClassroomCurriculumPanel = ({
                 showSearch
                 data-testid="select-quick-jump-session"
                 value={selectedSession}
-                onChange={(val) => setSelectedSession(val)}
+                onChange={(val) => handleSelectSession(val)}
                 placeholder={t('classroom.jumpToSession', isEnglish ? 'Jump to session...' : 'Nhảy nhanh đến buổi học...') || (isEnglish ? 'Jump to session...' : 'Nhảy nhanh đến buổi học...')}
                 style={{ width: '100%', height: 40, borderRadius: 8 }}
                 filterOption={(input, option) =>
                   (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                 }
                 options={allSessionIndices.map((idx) => {
-                  const p = lessonPlans[idx];
+                  const p = visibleLessonPlans[idx];
                   const sched = scheduleSessions.find((s) => s.sessionIndex === idx);
                   const hasPlan = Boolean(p);
                   const isToday = currentSessionIndex && idx === currentSessionIndex;
@@ -224,51 +344,84 @@ export const ClassroomCurriculumPanel = ({
             </Col>
 
             {/* Status Filter & 1-Touch Prev/Next */}
-            <Col xs={24} sm={12} md={12}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+            <Col xs={24} sm={24} lg={12}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: isMobile ? 'stretch' : 'center',
+                  justifyContent: 'space-between',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  width: '100%',
+                }}
+              >
                 <Segmented
-                  size="middle"
+                  block={isMobile}
+                  size={isMobile ? 'small' : 'middle'}
                   data-testid="session-status-filter"
                   value={statusFilter}
                   onChange={setStatusFilter}
                   options={[
                     {
-                      label: `${t('classroom.allSessions', isEnglish ? 'All' : 'Tất cả') || (isEnglish ? 'All' : 'Tất cả')} (${allSessionIndices.length})`,
+                      label: isMobile
+                        ? `${isEnglish ? 'All' : 'Tất cả'} (${allSessionIndices.length})`
+                        : `${t('classroom.allSessions', isEnglish ? 'All' : 'Tất cả') || (isEnglish ? 'All' : 'Tất cả')} (${allSessionIndices.length})`,
                       value: 'all',
                     },
                     {
-                      label: `📘 ${t('classroom.hasPlan', isEnglish ? 'Planned' : 'Đã soạn') || (isEnglish ? 'Planned' : 'Đã soạn')} (${plannedCount})`,
+                      label: isMobile
+                        ? `${isEnglish ? 'Done' : 'Soạn'} (${plannedCount})`
+                        : `📘 ${t('classroom.hasPlan', isEnglish ? 'Planned' : 'Đã soạn') || (isEnglish ? 'Planned' : 'Đã soạn')} (${plannedCount})`,
                       value: 'planned',
                     },
                     {
-                      label: `⚪ ${t('classroom.noPlan', isEnglish ? 'Unplanned' : 'Chưa soạn') || (isEnglish ? 'Unplanned' : 'Chưa soạn')} (${unplannedCount})`,
+                      label: isMobile
+                        ? `${isEnglish ? 'Todo' : 'Chưa'} (${unplannedCount})`
+                        : `⚪ ${t('classroom.noPlan', isEnglish ? 'Unplanned' : 'Chưa soạn') || (isEnglish ? 'Unplanned' : 'Chưa soạn')} (${unplannedCount})`,
                       value: 'unplanned',
                     },
                   ]}
-                  style={{ borderRadius: 8, backgroundColor: '#ffffff', border: '1px solid #cbd5e1' }}
+                  style={{
+                    borderRadius: 8,
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    width: isMobile ? '100%' : 'auto',
+                    maxWidth: '100%',
+                    fontSize: isMobile ? 11 : 13,
+                  }}
                 />
 
-                <Space size={6}>
+                <div style={{ display: 'flex', gap: 6, width: isMobile ? '100%' : 'auto' }}>
                   <Button
                     size="middle"
                     icon={<LeftOutlined />}
                     disabled={!hasPrev}
                     onClick={handlePrevSession}
                     data-testid="btn-prev-session"
-                    style={{ borderRadius: 8, height: 36, fontSize: 12 }}
+                    style={{ borderRadius: 8, height: 36, fontSize: 12, flex: isMobile ? 1 : undefined, whiteSpace: 'nowrap' }}
                   >
-                    {t('classroom.prevSession', isEnglish ? 'Prev' : 'Trước') || (isEnglish ? 'Prev' : 'Trước')}
+                    {isMobile
+                      ? isEnglish
+                        ? 'Prev'
+                        : 'Buổi trước'
+                      : t('classroom.prevSession', isEnglish ? 'Prev' : 'Trước') || (isEnglish ? 'Prev' : 'Trước')}
                   </Button>
                   <Button
                     size="middle"
                     disabled={!hasNext}
                     onClick={handleNextSession}
                     data-testid="btn-next-session"
-                    style={{ borderRadius: 8, height: 36, fontSize: 12 }}
+                    style={{ borderRadius: 8, height: 36, fontSize: 12, flex: isMobile ? 1 : undefined, whiteSpace: 'nowrap' }}
                   >
-                    {t('classroom.nextSession', isEnglish ? 'Next' : 'Sau') || (isEnglish ? 'Next' : 'Sau')} <RightOutlined />
+                    {isMobile
+                      ? isEnglish
+                        ? 'Next'
+                        : 'Buổi sau'
+                      : t('classroom.nextSession', isEnglish ? 'Next' : 'Sau') || (isEnglish ? 'Next' : 'Sau')}{' '}
+                    <RightOutlined />
                   </Button>
-                </Space>
+                </div>
               </div>
             </Col>
           </Row>
@@ -286,7 +439,7 @@ export const ClassroomCurriculumPanel = ({
             }}
           >
             {visiblePillIndices.map((idx) => {
-              const p = lessonPlans[idx];
+              const p = visibleLessonPlans[idx];
               const sched = scheduleSessions.find((s) => s.sessionIndex === idx);
               const isSelected = idx === selectedSession;
               const isToday = currentSessionIndex && idx === currentSessionIndex;
@@ -312,7 +465,7 @@ export const ClassroomCurriculumPanel = ({
                     flexShrink: 0,
                     padding: '0 12px',
                   }}
-                  onClick={() => setSelectedSession(idx)}
+                  onClick={() => handleSelectSession(idx)}
                 >
                   {isToday ? '🟢' : hasPlan ? (isReady ? '📘' : '✏️') : '⚪'}{' '}
                   {isEnglish ? `Session ${idx}` : `Buổi ${idx}`} {dateLabel}{' '}
@@ -364,6 +517,75 @@ export const ClassroomCurriculumPanel = ({
               </Space>
             </div>
 
+            {/* Thanh Đọc Sách & Tính Giờ Chuẩn Bị Bài Dành Riêng Cho Học Viên (Đồng bộ 100% với Dashboard) */}
+            {isStudent && formattedReaderLessonPrep && (
+              <div
+                data-testid="classroom-student-reading-bar"
+                style={{
+                  marginBottom: 14,
+                  padding: isMobile ? '12px' : '12px 16px',
+                  borderRadius: 10,
+                  backgroundColor: '#faf5ff',
+                  border: '1.5px solid #d8b4fe',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: isMobile ? 'stretch' : 'center',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  gap: 10,
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                    <Tag
+                      data-testid="classroom-reading-status-badge"
+                      style={{
+                        margin: 0,
+                        borderRadius: 6,
+                        fontWeight: 700,
+                        fontSize: 11,
+                        backgroundColor: readerStats.meta.bg,
+                        borderColor: readerStats.meta.border,
+                        color: readerStats.meta.textColor,
+                      }}
+                    >
+                      {readerStats.meta.icon} {readerStats.meta.label}
+                    </Tag>
+                    <Text style={{ fontSize: 12, color: '#581c87', fontWeight: 600 }}>
+                      <ClockCircleOutlined style={{ marginRight: 4 }} />
+                      {formatHumanDuration(readerStats.preSec, isEnglish)} / {formatHumanDuration(readerStats.minReq, isEnglish)} •{' '}
+                      {isEnglish ? `Scrolled ${readerStats.scrollPct}%` : `Đã xem ${readerStats.scrollPct}%`}
+                    </Text>
+                  </div>
+                  <Progress
+                    percent={readerStats.percent}
+                    size="small"
+                    strokeColor={readerStats.status === PREP_STATUS.PREPARED ? '#16a34a' : '#7e22ce'}
+                    showInfo={false}
+                    style={{ margin: 0 }}
+                  />
+                </div>
+
+                <Button
+                  type="primary"
+                  icon={<ReadOutlined />}
+                  onClick={() => setBookReaderOpen(true)}
+                  data-testid="btn-classroom-open-book-reader"
+                  style={{
+                    backgroundColor: '#7e22ce',
+                    borderColor: '#7e22ce',
+                    fontWeight: 700,
+                    borderRadius: 8,
+                    minHeight: 40,
+                    width: isMobile ? '100%' : 'auto',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <ExpandOutlined style={{ marginRight: 4 }} />
+                  {isEnglish ? 'Open Book Reader & Track Time' : 'Mở Chế Độ Đọc Sách & Tính Giờ'}
+                </Button>
+              </div>
+            )}
+
             <Row gutter={[16, 16]}>
               <Col xs={24} md={12}>
                 <div style={{ backgroundColor: '#ffffff', border: '1px solid #f0f0f0', borderRadius: 8, padding: 12, height: '100%' }}>
@@ -373,16 +595,16 @@ export const ClassroomCurriculumPanel = ({
                   <div style={{ fontSize: 12, color: '#262626', lineHeight: '20px', whiteSpace: 'pre-line' }}>
                     {Array.isArray(realPlan.objectives)
                       ? realPlan.objectives.map((obj, i) => (
-                          <div key={i}>
-                            <FormattedText content={obj} />
-                          </div>
-                        ))
+                        <div key={i}>
+                          <FormattedText content={obj} />
+                        </div>
+                      ))
                       : (
-                          <FormattedText
-                            content={realPlan.objectives}
-                            fallback={isEnglish ? 'Objectives will be added by teacher.' : 'Mục tiêu đang được cập nhật.'}
-                          />
-                        )}
+                        <FormattedText
+                          content={realPlan.objectives}
+                          fallback={isEnglish ? 'Objectives will be added by teacher.' : 'Mục tiêu đang được cập nhật.'}
+                        />
+                      )}
                   </div>
                 </div>
               </Col>
@@ -477,6 +699,119 @@ export const ClassroomCurriculumPanel = ({
                       {realPlan.homework || (isEnglish ? 'No homework assigned' : 'Chưa giao bài tập')}
                     </Text>
                   </div>
+
+                  {/* Tài liệu đính kèm buổi học (đã chọn từ ô Autocomplete) */}
+                  {Array.isArray(realPlan.attachedMaterials) && realPlan.attachedMaterials.length > 0 && (
+                    <div
+                      data-testid="lesson-plan-attached-materials"
+                      style={{
+                        backgroundColor: '#faf5ff',
+                        border: '1px solid #d8b4fe',
+                        borderRadius: 8,
+                        padding: 12,
+                      }}
+                    >
+                      <Text strong style={{ fontSize: 12, color: '#6b21a8', display: 'block', marginBottom: 6 }}>
+                        📎 {isEnglish
+                          ? `Attached Session Materials (${realPlan.attachedMaterials.length}):`
+                          : `Tài Liệu Đính Kèm Buổi Học (${realPlan.attachedMaterials.length}):`}
+                      </Text>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {realPlan.attachedMaterials.map((mat, idx) => (
+                          <div
+                            key={`${mat.id || idx}_${idx}`}
+                            data-testid={`classroom-attached-material-${mat.id || idx}`}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              flexWrap: 'wrap',
+                              gap: 8,
+                              padding: '7px 10px',
+                              borderRadius: 8,
+                              backgroundColor: '#ffffff',
+                              border: '1px solid #d8b4fe',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0, flex: 1 }}>
+                              <Tag color={mat.type === 'AUDIO' ? 'orange' : 'purple'} style={{ margin: 0, fontSize: 10, fontWeight: 700 }}>
+                                {mat.type || 'PDF'}
+                              </Tag>
+                              <button
+                                type="button"
+                                onClick={() => setPreviewMaterial({ ...mat, courseName: cls?.name || cls?.courseName || '' })}
+                                data-testid={`btn-classroom-preview-material-${mat.id || idx}`}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: 0,
+                                  cursor: 'pointer',
+                                  color: '#581c87',
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  textAlign: 'left',
+                                }}
+                              >
+                                {mat.title}
+                              </button>
+                            </div>
+                            <Space size={6} wrap>
+                              {isStudent && (() => {
+                                const matLog = activeReadingLog?.materialLogs?.[String(mat.id)] || null;
+                                const matSec = Number(matLog?.activeSeconds) || 0;
+                                const matDone = Boolean(matLog?.completed);
+                                return (
+                                  <Tag
+                                    color={matDone ? 'success' : matSec > 0 ? 'warning' : 'default'}
+                                    style={{ margin: 0, fontSize: 10, fontWeight: 700 }}
+                                  >
+                                    {matDone
+                                      ? `✅ ${formatHumanDuration(matSec, isEnglish)}`
+                                      : matSec > 0
+                                      ? `🟡 ${formatHumanDuration(matSec, isEnglish)}`
+                                      : isEnglish
+                                      ? '⚪ Not viewed'
+                                      : '⚪ Chưa xem'}
+                                  </Tag>
+                                );
+                              })()}
+                              {mat.pageLocation && (
+                                <Tag
+                                  color="gold"
+                                  style={{
+                                    margin: 0,
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    color: '#92400e',
+                                    borderRadius: 6,
+                                  }}
+                                >
+                                  📍 {mat.pageLocation}
+                                </Tag>
+                              )}
+                              <Button
+                                size="small"
+                                type="primary"
+                                ghost
+                                icon={<EyeOutlined />}
+                                onClick={() => setPreviewMaterial({ ...mat, courseName: cls?.name || cls?.courseName || '' })}
+                                data-testid={`btn-classroom-preview-btn-${mat.id || idx}`}
+                                style={{
+                                  borderColor: '#7e22ce',
+                                  color: '#7e22ce',
+                                  borderRadius: 6,
+                                  fontWeight: 600,
+                                  fontSize: 11,
+                                }}
+                              >
+                                {isEnglish ? 'Preview' : 'Xem trước'}
+                              </Button>
+                            </Space>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Slide link nếu có */}
                   {realPlan.slideLink && (
@@ -640,6 +975,40 @@ export const ClassroomCurriculumPanel = ({
           </Row>
         )}
       </Card>
+
+      {/* Modal Xem Trước Tài Liệu Đính Kèm Trực Tiếp Trong Ứng Dụng */}
+      <MaterialPreviewModal
+        open={Boolean(previewMaterial)}
+        material={previewMaterial}
+        onClose={() => setPreviewMaterial(null)}
+        zIndex={1200}
+        trackingContext={
+          isStudent && previewMaterial && formattedReaderLessonPrep && currentUser
+            ? {
+                enabled: true,
+                classItem: cls,
+                lessonPrep: formattedReaderLessonPrep,
+                studentUser: currentUser,
+                initialMaterialLog: activeReadingLog?.materialLogs?.[String(previewMaterial.id)] || null,
+                onLogUpdated: handleReadingLogUpdated,
+              }
+            : null
+        }
+      />
+
+      {/* Trình Đọc Sách Toàn Màn Hình & Tính Giờ Đọc Bài Cho Học Viên (Đồng Bộ 100% Với Dashboard) */}
+      {isStudent && formattedReaderLessonPrep && (
+        <LessonBookReaderModal
+          open={bookReaderOpen}
+          onClose={() => setBookReaderOpen(false)}
+          classItem={cls}
+          lessonPrep={formattedReaderLessonPrep}
+          studentUser={currentUser}
+          isStudentRole={true}
+          initialLog={activeReadingLog}
+          onLogUpdated={handleReadingLogUpdated}
+        />
+      )}
     </div>
   );
 };

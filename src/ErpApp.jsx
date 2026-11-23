@@ -24,6 +24,8 @@ import CoursesModule from './modules/courses';
 import StudentsModule from './modules/students';
 import MaterialsModule from './modules/materials';
 import ExercisesModule from './modules/exercises';
+import LessonQaModule from './modules/lesson-qa';
+import PreClassPrepModule from './modules/pre-class-prep';
 import CurriculumModule from './modules/curriculum';
 import SchedulesModule from './modules/schedules';
 import AttendanceModule from './modules/attendance';
@@ -219,6 +221,22 @@ function ErpRoutes() {
           element={
             <ProtectedRoute moduleKey="exercises">
               <ExercisesModule />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={`/${MODULE_SLUGS.lessonQa}`}
+          element={
+            <ProtectedRoute moduleKey="lessonQa">
+              <LessonQaModule />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={`/${MODULE_SLUGS.preClassPrep}`}
+          element={
+            <ProtectedRoute moduleKey="preClassPrep">
+              <PreClassPrepModule />
             </ProtectedRoute>
           }
         />

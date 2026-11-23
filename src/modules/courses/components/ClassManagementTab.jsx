@@ -46,7 +46,14 @@ import {
 import { MeetingPlatformBadge, detectMeetingPlatform } from '../../../shared/utils/meetingPlatformUtils';
 import { findClassSession, getSessionTimer } from '../../../shared/utils/classSessionUtils';
 import { TeacherMeetingRoomModal } from './TeacherMeetingRoomModal';
-import { resolveEffectiveClassStatus } from '../../dashboard/utils/classTimeUtils';
+import { ClassLiveStatusStrip } from './ClassLiveStatusStrip';
+import {
+  resolveEffectiveClassStatus,
+  getClassLiveStatus,
+} from '../../dashboard/utils/classTimeUtils';
+import { useClassTimer } from '../../dashboard/hooks/useClassTimer';
+import { ClassTimerService } from '../../dashboard/services/ClassTimerService';
+import { currentAttendance } from '../../../shared/models/classroom.model';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -94,6 +101,7 @@ export const ClassManagementTab = ({
   const isTeacherRole = currentUser?.role === 'teacher';
   const isStudentRole = currentUser?.role === 'student';
   const [meetingModalClass, setMeetingModalClass] = React.useState(null);
+  const now = useClassTimer();
 
   return (
     <div>
@@ -258,8 +266,8 @@ export const ClassManagementTab = ({
             // - Học viên: Chỉ mở trước giờ học 10 phút (leadSeconds = 600) hoặc khi đang học
             // - Giáo viên: Mở trước 15 phút (leadSeconds = 900)
             // - Cán bộ quản lý (canManage): Luôn mở để test / cấu hình
-            const classSession = findClassSession(record, Date.now());
-            const classTimer = classSession ? getSessionTimer(classSession, Date.now()) : null;
+            const classSession = findClassSession(record, now);
+            const classTimer = classSession ? getSessionTimer(classSession, now) : null;
             const leadSeconds = isStudentRole ? 600 : 900;
             const isRoomTimeOpen = Boolean(
               classTimer && (
@@ -269,20 +277,45 @@ export const ClassManagementTab = ({
             );
             const canJoinRoom = canManage || (isStudentRole ? (isAlreadyEnrolled && isRoomTimeOpen) : true);
 
+            // Đồng bộ trạng thái Real-Time theo đúng Role (Giống ClassLiveCard trên Dashboard)
+            const attendance = !isStudentRole ? currentAttendance(record, now) : null;
+            const liveRole = isTeacherRole ? 'teacher' : 'academic';
+            const liveStatus = !isStudentRole
+              ? getClassLiveStatus(
+                  { ...record, attendanceTaken: attendance ? attendance.unmarkedCount === 0 : false },
+                  liveRole,
+                  new Date(now),
+                  ClassTimerService.getSession(record, now)
+                )
+              : null;
+            const isUrgent = Boolean(!isStudentRole && liveStatus?.pulseClass === 'lak-card-pulse-red');
+            const isLiveNow = classTimer?.state === 'live';
+
+            const resolvedCardBg = isStudentRole
+              ? (isLiveNow ? '#f0f9ff' : '#ffffff')
+              : (liveStatus?.cardBg || '#ffffff');
+            const resolvedCardBorder =
+              totalPending > 0 && canManage
+                ? '1.5px solid #faad14'
+                : isStudentRole
+                ? (isLiveNow ? '1.5px solid #38bdf8' : '1px solid #e2e8f0')
+                : `1.5px solid ${liveStatus?.borderColor || '#e2e8f0'}`;
+
             return (
               <Col xs={24} sm={12} md={12} lg={12} xl={8} key={record.id}>
                 <Card
                   hoverable
                   onClick={() => navigate(`/classroom/${encodeURIComponent(record.id)}`)}
+                  className={!isStudentRole ? (liveStatus?.pulseClass || '') : ''}
                   data-testid={`class-card-${record.id}`}
                   style={{
                     borderRadius: 12,
                     cursor: 'pointer',
-                    border:
-                      totalPending > 0 && canManage
-                        ? '1.5px solid #faad14'
-                        : '1px solid #e2e8f0',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                    backgroundColor: resolvedCardBg,
+                    border: resolvedCardBorder,
+                    boxShadow: isLiveNow
+                      ? '0 4px 16px rgba(0,0,0,0.08)'
+                      : '0 2px 8px rgba(0,0,0,0.04)',
                     display: 'flex',
                     flexDirection: 'column',
                     height: '100%',
@@ -292,23 +325,55 @@ export const ClassManagementTab = ({
                     body: { padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 },
                   }}
                 >
-                  {/* 1. Header Card: Mã Lớp + Trạng Thái + Nút Xóa */}
+                  {/* 1. Header Card: Mã Lớp + Tag Trạng Thái Real-Time (Theo Role) + Nút Xóa */}
                   <div
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: 6,
                       marginBottom: 10,
                     }}
                   >
-                    <Tag color="geekblue" style={{ fontWeight: 700, fontSize: 12, margin: 0 }}>
+                    <Tag color="blue" style={{ fontWeight: 700, fontSize: 12, margin: 0, whiteSpace: 'nowrap' }}>
                       {record.id}
                     </Tag>
 
-                    <Space size={6}>
-                      <Tag color={statusColor} style={{ margin: 0 }}>
-                        {effectiveStatus}
-                      </Tag>
+                    <Space size={6} wrap>
+                      {!isStudentRole && liveStatus ? (
+                        <Tag
+                          color={liveStatus.statusTagColor}
+                          data-testid={`class-live-status-tag-${record.id}`}
+                          style={{
+                            margin: 0,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {isEnglish ? liveStatus.statusLabelEn : liveStatus.statusLabelVi}
+                        </Tag>
+                      ) : (
+                        <Tag
+                          color={isLiveNow ? 'processing' : statusColor}
+                          data-testid={`class-live-status-tag-${record.id}`}
+                          style={{
+                            margin: 0,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {isLiveNow
+                            ? (isEnglish ? '🔴 Live Now' : '🔴 Đang Học')
+                            : effectiveStatus}
+                        </Tag>
+                      )}
                       {canManage && onDeleteClass && (
                         <div onClick={(e) => e.stopPropagation()}>
                           <Popconfirm
@@ -339,15 +404,15 @@ export const ClassManagementTab = ({
                     </Space>
                   </div>
 
-                  {/* 2. Tên Lớp Học & Khóa Học Trực Thuộc */}
+                  {/* 2. Tên Lớp Học & Khóa Học Trực Thuộc (Đồng bộ màu xanh #0958d9 giống Dashboard) */}
                   <Title
                     level={5}
-                    style={{ margin: '0 0 8px 0', color: '#0f172a', minHeight: 44, lineHeight: 1.4 }}
+                    style={{ margin: '0 0 6px 0', color: '#0958d9', minHeight: 40, lineHeight: 1.35 }}
                   >
                     {record.name}
                   </Title>
 
-                  <div style={{ marginBottom: 12 }}>
+                  <div style={{ marginBottom: 10 }}>
                     <Tag
                       color="purple"
                       style={{
@@ -364,6 +429,16 @@ export const ClassManagementTab = ({
                       {foundCourse?.name || record.courseName || record.courseId}
                     </Tag>
                   </div>
+
+                  {/* 2.5. Khối Trạng Thái Real-Time, Điểm Danh (Staff/GV) & Tiến Độ Buổi Học (Đồng bộ Dashboard theo Role) */}
+                  <ClassLiveStatusStrip
+                    cls={record}
+                    course={foundCourse}
+                    now={now}
+                    role={currentUser?.role}
+                    isUrgent={isUrgent}
+                    isStudentEnrolled={isAlreadyEnrolled}
+                  />
 
                   {/* Banner Chờ Giáo Vụ Duyệt (Nếu có GV hoặc HV đăng ký) */}
                   {totalPending > 0 && (
@@ -543,7 +618,7 @@ export const ClassManagementTab = ({
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifycontent: 'space-between',
+                                justifyContent: 'space-between',
                                 fontSize: 11,
                                 paddingLeft: 18,
                               }}
@@ -971,7 +1046,7 @@ export const ClassManagementTab = ({
                       width: '100%',
                     }}
                   >
-                    {/* Nút 1: Vào Chi Tiết Lớp Học (Giống Dashboard) */}
+                    {/* Nút 1: Vào Chi Tiết Lớp Học (Điều chỉnh nhãn theo Role) */}
                     <Button
                       type="primary"
                       icon={<DesktopOutlined />}
@@ -988,10 +1063,14 @@ export const ClassManagementTab = ({
                         backgroundColor: '#1677ff',
                       }}
                     >
-                      {isEnglish ? 'Classroom' : 'Chi Tiết Lớp'}
+                      {isStudentRole
+                        ? (isEnglish ? 'My Classroom' : 'Vào Lớp Học')
+                        : isTeacherRole
+                        ? (isEnglish ? 'Teaching Room' : 'Phòng Giảng Dạy')
+                        : (isEnglish ? 'Classroom' : 'Chi Tiết Lớp')}
                     </Button>
 
-                    {/* Nút 2: Danh Sách Học Viên */}
+                    {/* Nút 2: Danh Sách Học Viên / Bạn Cùng Lớp */}
                     <Button
                       icon={<TeamOutlined />}
                       data-testid={`btn-roster-${record.id}`}
@@ -1006,7 +1085,10 @@ export const ClassManagementTab = ({
                         fontWeight: 500,
                       }}
                     >
-                      {isEnglish ? 'Roster' : 'Học Viên'} ({studentCount})
+                      {isStudentRole
+                        ? (isEnglish ? 'Classmates' : 'Bạn Cùng Lớp')
+                        : (isEnglish ? 'Roster' : 'Học Viên')}{' '}
+                      ({studentCount})
                       {canManage && totalPending > 0 ? ` • 🔔${totalPending}` : ''}
                     </Button>
 

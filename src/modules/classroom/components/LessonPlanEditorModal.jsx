@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Form, Input, Modal, Radio, Select, Space, Tag, Typography, Row, Col } from 'antd';
-import { BookOutlined, CalendarOutlined, CopyOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { BookOutlined, CalendarOutlined, CopyOutlined, FolderOpenOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { LESSON_PLAN_STATUS } from '../../../shared/models/classroom.model';
 import { generateClassSessionDates } from '../../../shared/utils/classSessionUtils';
+import { MaterialService } from '../../materials/services/MaterialService';
 import { SimpleObjectivesEditor, parseObjectivesList } from './SimpleObjectivesEditor';
+import { LessonMaterialAutocomplete } from './LessonMaterialAutocomplete';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -23,6 +25,31 @@ export const LessonPlanEditorModal = ({
   const [form] = Form.useForm();
   const [isManualSchedule, setIsManualSchedule] = useState(false);
   const [selectedSessionVal, setSelectedSessionVal] = useState(sessionIndex);
+  const [classSharedMaterials, setClassSharedMaterials] = useState([]);
+  const [loadingMaterials, setLoadingMaterials] = useState(false);
+
+  // Nạp danh sách học liệu đã được chia sẻ cho lớp hiện tại để gợi ý Autocomplete
+  useEffect(() => {
+    if (!open || !cls?.id) return;
+    let mounted = true;
+    setLoadingMaterials(true);
+    MaterialService.getAllMaterials()
+      .then((all) => {
+        if (!mounted) return;
+        const shared = MaterialService.getMaterialsSharedForClass(all, cls);
+        setClassSharedMaterials(shared);
+      })
+      .catch((err) => {
+        console.warn('[LessonPlanEditorModal] Lỗi nạp tài liệu chia sẻ cho lớp:', err?.message);
+        if (mounted) setClassSharedMaterials([]);
+      })
+      .finally(() => {
+        if (mounted) setLoadingMaterials(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [open, cls?.id, cls?.courseId]);
 
   // Sinh danh sách các buổi học chuẩn theo thời khóa biểu của lớp học
   const scheduleSessions = useMemo(() => {
@@ -48,6 +75,7 @@ export const LessonPlanEditorModal = ({
           readingDailyTime: planToUse.readingDailyTime || '60+ mins',
           writingDailyTime: planToUse.writingDailyTime || '30+ mins',
           slideLink: planToUse.slideLink || '',
+          attachedMaterials: Array.isArray(planToUse.attachedMaterials) ? planToUse.attachedMaterials : [],
           teacherNotes: planToUse.teacherNotes || '',
           status: planToUse.status || LESSON_PLAN_STATUS.READY,
         });
@@ -64,6 +92,7 @@ export const LessonPlanEditorModal = ({
           readingDailyTime: '60+ mins',
           writingDailyTime: '30+ mins',
           slideLink: '',
+          attachedMaterials: [],
           teacherNotes: '',
           status: LESSON_PLAN_STATUS.READY,
         });
@@ -90,6 +119,7 @@ export const LessonPlanEditorModal = ({
         readingDailyTime: targetPlan.readingDailyTime || '60+ mins',
         writingDailyTime: targetPlan.writingDailyTime || '30+ mins',
         slideLink: targetPlan.slideLink || '',
+        attachedMaterials: Array.isArray(targetPlan.attachedMaterials) ? targetPlan.attachedMaterials : [],
         teacherNotes: targetPlan.teacherNotes || '',
         status: targetPlan.status || LESSON_PLAN_STATUS.READY,
       });
@@ -105,6 +135,7 @@ export const LessonPlanEditorModal = ({
         readingDailyTime: '60+ mins',
         writingDailyTime: '30+ mins',
         slideLink: '',
+        attachedMaterials: [],
         teacherNotes: '',
         status: LESSON_PLAN_STATUS.READY,
       });
@@ -141,6 +172,7 @@ export const LessonPlanEditorModal = ({
         readingDailyTime: previousPlan.readingDailyTime || '60+ mins',
         writingDailyTime: previousPlan.writingDailyTime || '30+ mins',
         objectives: Array.isArray(previousPlan.objectives) ? previousPlan.objectives.join('\n') : (previousPlan.objectives || ''),
+        attachedMaterials: Array.isArray(previousPlan.attachedMaterials) ? previousPlan.attachedMaterials : [],
       });
     }
   };
@@ -150,11 +182,24 @@ export const LessonPlanEditorModal = ({
     const objectives = parseObjectivesList(rawObjectives);
 
     const actualSessionIndex = Number(values.sessionIndex) || selectedSessionVal || sessionIndex;
+    const cleanedMaterials = Array.isArray(values.attachedMaterials)
+      ? values.attachedMaterials
+          .filter((m) => m && m.id && m.title)
+          .map((m) => ({
+            id: String(m.id).trim(),
+            title: String(m.title).trim(),
+            type: String(m.type || 'PDF').trim(),
+            url: String(m.url || '').trim(),
+            matchScope: String(m.matchScope || 'CLASS').trim(),
+            pageLocation: String(m.pageLocation || '').trim(),
+          }))
+      : [];
 
     onSave?.(actualSessionIndex, {
       ...values,
       sessionIndex: actualSessionIndex,
       objectives,
+      attachedMaterials: cleanedMaterials,
     });
   };
 
@@ -359,10 +404,15 @@ export const LessonPlanEditorModal = ({
           />
         </Form.Item>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0 16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0 16px', alignItems: 'start' }}>
           <Form.Item
             name="studentPrep"
-            label={isEnglish ? 'Student Pre-Class Reading (Student Prep)' : 'Học Sinh Đọc Chuẩn Bị (Student Prep)'}
+            label={<span style={{ fontWeight: 600 }}>{isEnglish ? 'Student Pre-Class Reading' : 'Học Sinh Đọc Chuẩn Bị (Student Prep)'}</span>}
+            extra={
+              <span style={{ fontSize: 11, color: '#8c8c8c' }}>
+                {isEnglish ? 'Shown in Student Lesson Overview' : 'Hiển thị ở phần chuẩn bị bài của học viên'}
+              </span>
+            }
           >
             <TextArea
               autoSize={{ minRows: 2, maxRows: 4 }}
@@ -373,7 +423,12 @@ export const LessonPlanEditorModal = ({
 
           <Form.Item
             name="homework"
-            label={isEnglish ? 'Homework & Practice Tasks' : 'Bài Tập Về Nhà (Homework - Tự động điền vào báo cáo)'}
+            label={<span style={{ fontWeight: 600 }}>{isEnglish ? 'Homework & Practice Tasks' : 'Bài Tập Về Nhà (Homework)'}</span>}
+            extra={
+              <span style={{ fontSize: 11, color: '#8c8c8c' }}>
+                {isEnglish ? 'Auto-filled into after-class report' : 'Tự động điền vào báo cáo sau buổi học'}
+              </span>
+            }
           >
             <TextArea
               autoSize={{ minRows: 2, maxRows: 4 }}
@@ -384,18 +439,18 @@ export const LessonPlanEditorModal = ({
         </div>
 
         {/* 3. THỜI LƯỢNG RÈN LUYỆN GỢI Ý MỖI NGÀY (MCGRAW-HILL WONDERS BENCHMARKS) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0 16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0 16px', alignItems: 'start' }}>
           <Form.Item
             name="readingDailyTime"
             label={
-              <Space size={6}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
                 <span style={{ fontWeight: 600 }}>
-                  {isEnglish ? 'Reading Suggested Daily Time' : 'Thời Lượng Đọc Gợi Ý (Mỗi Ngày)'}
+                  {isEnglish ? 'Daily Reading Time' : 'Thời Lượng Đọc / Ngày'}
                 </span>
-                <Tag color="blue" style={{ fontSize: 10, margin: 0, padding: '0 4px', borderRadius: 4 }}>
+                <Tag color="blue" style={{ fontSize: 10, margin: 0, padding: '0 5px', borderRadius: 4, whiteSpace: 'nowrap' }}>
                   Wonders 60+ mins
                 </Tag>
-              </Space>
+              </span>
             }
             extra={
               <Space size={4} style={{ marginTop: 4 }}>
@@ -421,14 +476,14 @@ export const LessonPlanEditorModal = ({
           <Form.Item
             name="writingDailyTime"
             label={
-              <Space size={6}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
                 <span style={{ fontWeight: 600 }}>
-                  {isEnglish ? 'Writing Suggested Daily Time' : 'Thời Lượng Viết Gợi Ý (Mỗi Ngày)'}
+                  {isEnglish ? 'Daily Writing Time' : 'Thời Lượng Viết / Ngày'}
                 </span>
-                <Tag color="cyan" style={{ fontSize: 10, margin: 0, padding: '0 4px', borderRadius: 4 }}>
+                <Tag color="cyan" style={{ fontSize: 10, margin: 0, padding: '0 5px', borderRadius: 4, whiteSpace: 'nowrap' }}>
                   Wonders 30+ mins
                 </Tag>
-              </Space>
+              </span>
             }
             extra={
               <Space size={4} style={{ marginTop: 4 }}>
@@ -451,6 +506,35 @@ export const LessonPlanEditorModal = ({
             />
           </Form.Item>
         </div>
+
+        {/* 3.5. Ô AUTOCOMPLETE CHỌN TÀI LIỆU ĐÃ ĐƯỢC CHIA SẺ CHO LỚP */}
+        <Form.Item
+          name="attachedMaterials"
+          label={
+            <Space size={6} wrap>
+              <FolderOpenOutlined style={{ color: '#7e22ce' }} />
+              <span style={{ fontWeight: 600 }}>
+                {isEnglish ? 'Attached Class Materials (Autocomplete)' : 'Tài Liệu Đính Kèm Cho Buổi Học (Gõ Chọn Tài Liệu Đã Share Cho Lớp)'}
+              </span>
+              <Tag color="purple" style={{ fontSize: 10, margin: 0, padding: '0 6px', borderRadius: 4 }}>
+                {classSharedMaterials.length} {isEnglish ? 'available' : 'tài liệu khả dụng'}
+              </Tag>
+            </Space>
+          }
+          extra={
+            <span style={{ fontSize: 11, color: '#64748b' }}>
+              {isEnglish
+                ? 'Each row pairs 1 shared class material with a page/section reminder for students (e.g. pp. 10–25, Phonics section).'
+                : 'Mỗi dòng gồm 1 ô gõ chọn tài liệu đã share cho lớp + 1 ô nhắc học viên xem trang mấy / vị trí nào.'}
+            </span>
+          }
+        >
+          <LessonMaterialAutocomplete
+            materials={classSharedMaterials}
+            loading={loadingMaterials}
+            classId={cls?.id || cls?.code || ''}
+          />
+        </Form.Item>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0 16px' }}>
           <Form.Item

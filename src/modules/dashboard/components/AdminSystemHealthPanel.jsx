@@ -333,14 +333,44 @@ export const AdminSystemHealthPanel = ({
           </div>
         )}
 
-        <Table
-          columns={folderColumns}
-          dataSource={healthData.driveFolderTree}
-          rowKey="code"
-          pagination={false}
-          size="small"
-          scroll={{ x: 700 }}
-        />
+        {/* Danh Sách Thư Mục Google Drive Responsive (Thích ứng mọi tỉ lệ màn hình không tràn nút) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {(healthData.driveFolderTree || []).map((item) => (
+            <div
+              key={item.code}
+              style={{
+                display: 'flex',
+                alignItems: isMobile ? 'flex-start' : 'center',
+                justifyContent: 'space-between',
+                flexDirection: isMobile ? 'column' : 'row',
+                flexWrap: 'wrap',
+                gap: 8,
+                padding: '10px 12px',
+                borderRadius: 8,
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Text strong style={{ color: '#1890ff', display: 'block', fontSize: 13, overflowWrap: 'anywhere' }}>
+                  📁 {item.code}
+                </Text>
+                <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                  {item.purpose}
+                </Text>
+              </div>
+              <Button
+                size="small"
+                type="link"
+                icon={<FolderOpenOutlined />}
+                style={{ whiteSpace: 'nowrap', padding: '0 4px', fontWeight: 600 }}
+                onClick={() => window.open(`https://drive.google.com/drive/folders/${item.folderId}`, '_blank')}
+              >
+                {t('dashboard.adminHealth.btnOpenFolder')}
+              </Button>
+            </div>
+          ))}
+        </div>
       </Card>
 
       <Card

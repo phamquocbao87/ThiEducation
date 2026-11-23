@@ -19,10 +19,16 @@ import { AbsentStudentsService } from '../services/AbsentStudentsService';
 import { AbsentStudentsAuditDrawer } from './AbsentStudentsAuditDrawer';
 import { LessonPlanAlertService } from '../services/LessonPlanAlertService';
 import { DirectorCurriculumReadinessCard } from './DirectorCurriculumReadinessCard';
+import { DirectorStudentReadinessCard } from './DirectorStudentReadinessCard';
+import { DashboardNewQuestionsPreviewCard } from './DashboardNewQuestionsPreviewCard';
+import { PreClassPrepReportService } from '../../lesson-reader';
+import { LessonQaManagementService } from '../../lesson-qa/services/LessonQaManagementService';
+import { useAuth } from '../../../core/context/AuthContext';
 
 const { Title, Text } = Typography;
 
 export const DirectorOverviewPanel = ({ directorData = {} }) => {
+  const { currentUser } = useAuth();
   const { isEnglish, t } = useLanguage();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -52,6 +58,9 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
 
   const [absentData, setAbsentData] = useState({ absentRecords: [], todayAbsentCount: 0 });
   const [isAbsentDrawerOpen, setIsAbsentDrawerOpen] = useState(false);
+  const [prepReportData, setPrepReportData] = useState(null);
+  const [loadingPrepReport, setLoadingPrepReport] = useState(false);
+  const [schoolQuestions, setSchoolQuestions] = useState([]);
 
   useEffect(() => {
     let mounted = true;
@@ -60,10 +69,34 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
         if (mounted) setAbsentData(res || { absentRecords: [], todayAbsentCount: 0 });
       })
       .catch((err) => console.warn('Lỗi quét absent students:', err));
+
+    if (allActiveClasses.length > 0) {
+      setLoadingPrepReport(true);
+      PreClassPrepReportService.buildPrepReport({
+        classes: allActiveClasses,
+        users: directorData.allUsers || [],
+        userRole: 'director',
+        isEnglish,
+      })
+        .then((res) => {
+          if (mounted) setPrepReportData(res);
+        })
+        .catch((err) => console.warn('Lỗi tổng hợp báo cáo chuẩn bị bài cho giám đốc:', err))
+        .finally(() => {
+          if (mounted) setLoadingPrepReport(false);
+        });
+    }
+
+    LessonQaManagementService.getScopedQaDataset(currentUser)
+      .then((res) => {
+        if (mounted) setSchoolQuestions(res?.questions || []);
+      })
+      .catch(() => {});
+
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [allActiveClasses, directorData.allUsers, isEnglish]);
 
   const courseColumns = useMemo(
     () => [
@@ -129,7 +162,7 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
     <div>
       {/* 1. Hàng Thống Kê 4 Thẻ KPI Chiến Lược */}
       <Row gutter={[isMobile ? 8 : 16, isMobile ? 8 : 16]} style={{ marginBottom: isMobile ? 12 : 20 }}>
-        <Col xs={12} sm={12} lg={6}>
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
           <Card
             bordered={false}
             style={{
@@ -138,14 +171,14 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
               borderTop: '3px solid #16a34a',
               height: '100%',
             }}
-            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 20px' } }}
+            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 18px' } }}
           >
             <Statistic
               title={<Text strong style={{ fontSize: isMobile ? 11 : 13, display: 'block', lineHeight: 1.3 }}>{isEnglish ? 'Monthly Revenue' : 'Doanh Thu Thực Thu'}</Text>}
               value={paidTuitionTotal}
               formatter={(v) => formatCurrency(v)}
-              prefix={<DollarOutlined style={{ color: '#16a34a', fontSize: isMobile ? 14 : 18 }} />}
-              styles={{ content: { color: '#16a34a', fontWeight: 700, fontSize: isMobile ? 16 : 22, whiteSpace: 'nowrap' } }}
+              prefix={<DollarOutlined style={{ color: '#16a34a', fontSize: isMobile ? 14 : 17 }} />}
+              styles={{ content: { color: '#16a34a', fontWeight: 700, fontSize: isMobile ? 15 : 'clamp(15px, 1.35vw, 21px)', whiteSpace: 'nowrap' } }}
             />
             <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 12, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {isEnglish ? 'Pending:' : 'Chờ đối soát:'}{' '}
@@ -154,7 +187,7 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
           </Card>
         </Col>
 
-        <Col xs={12} sm={12} lg={6}>
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
           <Card
             bordered={false}
             style={{
@@ -163,14 +196,14 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
               borderTop: '3px solid #722ed1',
               height: '100%',
             }}
-            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 20px' } }}
+            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 18px' } }}
           >
             <Statistic
               title={<Text strong style={{ fontSize: isMobile ? 11 : 13, display: 'block', lineHeight: 1.3 }}>{isEnglish ? 'Committed Payroll' : 'Quỹ Lương Nhân Sự'}</Text>}
               value={totalPayrollCommitted}
               formatter={(v) => formatCurrency(v)}
-              prefix={<DollarOutlined style={{ color: '#722ed1', fontSize: isMobile ? 14 : 18 }} />}
-              styles={{ content: { color: '#722ed1', fontWeight: 700, fontSize: isMobile ? 16 : 22, whiteSpace: 'nowrap' } }}
+              prefix={<DollarOutlined style={{ color: '#722ed1', fontSize: isMobile ? 14 : 17 }} />}
+              styles={{ content: { color: '#722ed1', fontWeight: 700, fontSize: isMobile ? 15 : 'clamp(15px, 1.35vw, 21px)', whiteSpace: 'nowrap' } }}
             />
             <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 12, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {isEnglish ? 'Staff:' : 'Nhân sự:'}{' '}
@@ -179,7 +212,7 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
           </Card>
         </Col>
 
-        <Col xs={12} sm={12} lg={6}>
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
           <Card
             bordered={false}
             style={{
@@ -188,14 +221,14 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
               borderTop: '3px solid #1890ff',
               height: '100%',
             }}
-            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 20px' } }}
+            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 18px' } }}
           >
             <Statistic
               title={<Text strong style={{ fontSize: isMobile ? 11 : 13, display: 'block', lineHeight: 1.3 }}>{isEnglish ? 'Estimated Margin' : 'Lợi Nhuận Gộp'}</Text>}
               value={grossProfit}
               formatter={(v) => formatCurrency(v)}
-              prefix={<RiseOutlined style={{ color: grossProfit >= 0 ? '#1890ff' : '#cf1322', fontSize: isMobile ? 14 : 18 }} />}
-              styles={{ content: { color: grossProfit >= 0 ? '#1890ff' : '#cf1322', fontWeight: 700, fontSize: isMobile ? 16 : 22, whiteSpace: 'nowrap' } }}
+              prefix={<RiseOutlined style={{ color: grossProfit >= 0 ? '#1890ff' : '#cf1322', fontSize: isMobile ? 14 : 17 }} />}
+              styles={{ content: { color: grossProfit >= 0 ? '#1890ff' : '#cf1322', fontWeight: 700, fontSize: isMobile ? 15 : 'clamp(15px, 1.35vw, 21px)', whiteSpace: 'nowrap' } }}
             />
             <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 12, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {isEnglish ? 'Gross profit' : 'Sau trừ chi phí'}
@@ -203,7 +236,7 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
           </Card>
         </Col>
 
-        <Col xs={12} sm={12} lg={6}>
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
           <Card
             bordered={false}
             style={{
@@ -212,13 +245,13 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
               borderTop: '3px solid #fa8c16',
               height: '100%',
             }}
-            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 20px' } }}
+            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 18px' } }}
           >
             <Statistic
               title={<Text strong style={{ fontSize: isMobile ? 11 : 13, display: 'block', lineHeight: 1.3 }}>{isEnglish ? 'Average Fill Rate' : 'Tỷ Lệ Lấp Đầy'}</Text>}
               value={fillRate}
               suffix={<span style={{ fontSize: isMobile ? 12 : 14 }}>%</span>}
-              prefix={<TeamOutlined style={{ color: '#fa8c16', fontSize: isMobile ? 14 : 18 }} />}
+              prefix={<TeamOutlined style={{ color: '#fa8c16', fontSize: isMobile ? 14 : 17 }} />}
               styles={{ content: { color: '#fa8c16', fontWeight: 700, fontSize: isMobile ? 18 : 22 } }}
             />
             <Progress percent={fillRate} strokeColor="#fa8c16" showInfo={false} size="small" style={{ marginTop: 4 }} />
@@ -226,7 +259,7 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
         </Col>
 
         {/* Thẻ KPI Học Viên Vắng Học Hôm Nay */}
-        <Col xs={12} sm={12} lg={6}>
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
           <Card
             hoverable
             onClick={() => setIsAbsentDrawerOpen(true)}
@@ -239,7 +272,7 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
               height: '100%',
               cursor: 'pointer',
             }}
-            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 20px' } }}
+            styles={{ body: { padding: isMobile ? '12px 10px' : '16px 18px' } }}
             data-testid="kpi-today-absent-students-director"
           >
             <Statistic
@@ -249,9 +282,9 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
                 </Text>
               }
               value={absentData.todayAbsentCount}
-              prefix={<UserDeleteOutlined style={{ color: '#ff4d4f', fontSize: isMobile ? 14 : 18 }} />}
+              prefix={<UserDeleteOutlined style={{ color: '#ff4d4f', fontSize: isMobile ? 14 : 17 }} />}
               suffix={<span style={{ fontSize: isMobile ? 11 : 13 }}>{isEnglish ? 'std' : 'học viên'}</span>}
-              styles={{ content: { color: '#cf1322', fontWeight: 700, fontSize: isMobile ? 18 : 24 } }}
+              styles={{ content: { color: '#cf1322', fontWeight: 700, fontSize: isMobile ? 18 : 22 } }}
             />
             <div style={{ marginTop: 4, fontSize: isMobile ? 10 : 12, color: '#cf1322', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               👉 {isEnglish ? 'Click to inspect list' : 'Chạm để xem chi tiết'}
@@ -260,7 +293,7 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
         </Col>
 
         {/* Thẻ KPI Sẵn Sàng Bài Học 24H (Lesson Plan & Curriculum Readiness) */}
-        <Col xs={12} sm={12} lg={6}>
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
           <DirectorCurriculumReadinessCard
             alerts={lessonPlanAlertData.urgentAlerts}
             complianceRate={lessonPlanAlertData.complianceRate}
@@ -268,11 +301,26 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
             totalUpcoming24h={lessonPlanAlertData.totalUpcoming24h}
           />
         </Col>
+
+        {/* Thẻ KPI Học Viên Đọc Bài & Điểm Rèn Luyện Toàn Trường */}
+        <Col xs={12} sm={12} md={12} lg={12} xl={6}>
+          <DirectorStudentReadinessCard
+            reportData={prepReportData}
+            loading={loadingPrepReport}
+          />
+        </Col>
       </Row>
+
+      {/* 1.5. Preview 1–2 Câu Hỏi Mới Nhất Toàn Trường -> Mở /lesson-qa */}
+      <DashboardNewQuestionsPreviewCard
+        questions={schoolQuestions}
+        userRole="director"
+        maxItems={2}
+      />
 
       {/* 2. Quy Mô Toàn Hệ Thống & Phân Bổ Chương Trình Đào Tạo */}
       <Row gutter={[16, 16]}>
-        <Col xs={24} lg={16}>
+        <Col xs={24} xl={16}>
           <Card
             title={
               <Space>
@@ -304,7 +352,7 @@ export const DirectorOverviewPanel = ({ directorData = {} }) => {
           </Card>
         </Col>
 
-        <Col xs={24} lg={8}>
+        <Col xs={24} xl={8}>
           <Card
             title={
               <Space>

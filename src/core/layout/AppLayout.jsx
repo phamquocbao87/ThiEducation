@@ -18,6 +18,8 @@ import {
 } from 'antd';
 import {
   MenuOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
   DashboardOutlined,
   FileTextOutlined,
   CalendarOutlined,
@@ -37,6 +39,8 @@ import {
   EyeOutlined,
   SearchOutlined,
   IdcardOutlined,
+  QuestionCircleOutlined,
+  ReadOutlined,
 } from '@ant-design/icons';
 import { useAuth, CORE_ROLE_USERS } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -71,11 +75,17 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isCompactHeader, setIsCompactHeader] = useState(window.innerWidth < 1200);
+  const [siderCollapsed, setSiderCollapsed] = useState(window.innerWidth > 768 && window.innerWidth <= 1180);
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-      setIsCompactHeader(window.innerWidth < 1200);
+      const w = window.innerWidth;
+      setIsMobile(w <= 768);
+      setIsCompactHeader(w < 1200);
+      // Tự động thu gọn Sidebar sang chế độ icon rail khi scale Desktop hẹp (769px - 1180px) để Dashboard luôn rộng rãi
+      if (w > 768) {
+        setSiderCollapsed(w <= 1180);
+      }
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -109,6 +119,16 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
         key: 'exercises',
         icon: <FormOutlined />,
         label: t('menus.exercises', isEnglish ? 'Exercises' : 'Bài Tập') || (isEnglish ? 'Exercises' : 'Bài Tập'),
+      },
+      {
+        key: 'lessonQa',
+        icon: <QuestionCircleOutlined />,
+        label: isEnglish ? 'Lesson Q&A' : 'Hỏi & Đáp Bài Học',
+      },
+      {
+        key: 'preClassPrep',
+        icon: <ReadOutlined />,
+        label: isEnglish ? 'Pre-Class Prep' : 'Chuẩn Bị Bài Trước Giờ',
       },
       {
         key: 'schedules',
@@ -490,19 +510,46 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
       <Layout>
         {!isMobile && (
           <Sider
-            width={255}
+            collapsible
+            collapsed={siderCollapsed}
+            onCollapse={setSiderCollapsed}
+            trigger={null}
+            width={248}
+            collapsedWidth={72}
             style={{
               background: '#fff',
               boxShadow: '2px 0 8px rgba(0,0,0,0.05)',
               zIndex: 1,
+              transition: 'all 0.2s ease',
             }}
           >
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid #f0f0f0' }}>
-              <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>
-                {isEnglish ? 'WORKSPACE MENU FOR' : 'MENU CÔNG VIỆC CỦA'}{' '}
-                {isEnglish ? (currentRoleMeta.shortLabelEn || currentRoleMeta.shortLabel) : currentRoleMeta.shortLabel}{' '}
-                ({currentUser.id || currentUser.code})
-              </Text>
+            <div
+              style={{
+                padding: siderCollapsed ? '12px 0' : '12px 16px',
+                borderBottom: '1px solid #f0f0f0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: siderCollapsed ? 'center' : 'space-between',
+                gap: 6,
+              }}
+            >
+              {!siderCollapsed && (
+                <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', lineHeight: 1.3 }}>
+                  {isEnglish ? 'WORKSPACE MENU FOR' : 'MENU CÔNG VIỆC CỦA'}{' '}
+                  {isEnglish ? (currentRoleMeta.shortLabelEn || currentRoleMeta.shortLabel) : currentRoleMeta.shortLabel}{' '}
+                  ({currentUser.id || currentUser.code})
+                </Text>
+              )}
+              <Tooltip title={siderCollapsed ? (isEnglish ? 'Expand menu' : 'Mở rộng menu') : (isEnglish ? 'Collapse menu' : 'Thu gọn menu')}>
+                <Button
+                  type="text"
+                  size="small"
+                  data-testid="btn-toggle-desktop-sider"
+                  icon={siderCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                  onClick={() => setSiderCollapsed((prev) => !prev)}
+                  style={{ color: '#475569', flexShrink: 0 }}
+                />
+              </Tooltip>
             </div>
             <Menu
               mode="inline"
@@ -676,14 +723,19 @@ export const AppLayout = ({ activeTab, setActiveTab, children }) => {
           </Drawer>
         )}
 
-        <Layout style={{ padding: isMobile ? '12px' : '24px' }}>
+        <Layout style={{ padding: isMobile ? '10px' : 'clamp(14px, 1.8vw, 24px)', minWidth: 0 }}>
           <Content
             style={{
               background: '#fff',
-              padding: isMobile ? '16px' : '24px',
-              borderRadius: 8,
+              padding: isMobile ? '14px 12px' : 'clamp(16px, 1.8vw, 24px)',
+              borderRadius: 10,
               boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               minHeight: 360,
+              width: '100%',
+              maxWidth: 1640,
+              margin: '0 auto',
+              minWidth: 0,
+              boxSizing: 'border-box',
             }}
           >
             {children}

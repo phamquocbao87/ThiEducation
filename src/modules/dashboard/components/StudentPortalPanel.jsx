@@ -34,7 +34,16 @@ import { StudentLearningCornerCard } from './StudentLearningCornerCard';
 import { StudentClassMaterialsCard } from './StudentClassMaterialsCard';
 import { StudentHomeworkTasksCard } from './StudentHomeworkTasksCard';
 import { StudentRecentEvaluationsCard } from './StudentRecentEvaluationsCard';
+import { StudentConductScoreCard } from './StudentConductScoreCard';
+import { DashboardNewQuestionsPreviewCard } from './DashboardNewQuestionsPreviewCard';
 import { ClassAbsenceReportModal } from '../../attendance/components/ClassAbsenceReportModal';
+import { LessonQaManagementService } from '../../lesson-qa/services/LessonQaManagementService';
+import {
+  LessonOverviewCompactCard,
+  LessonBookReaderModal,
+  LessonReadingTrackerService,
+  ConductScoreService,
+} from '../../lesson-reader';
 import { useClassTimer } from '../hooks/useClassTimer';
 import { ClassSessionTimer } from './ClassSessionTimer';
 import { findClassSession, getSessionTimer } from '../../../shared/utils/classSessionUtils';
@@ -70,27 +79,38 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
 
   const [absenceModalOpen, setAbsenceModalOpen] = useState(false);
   const [selectedClassForAbsence, setSelectedClassForAbsence] = useState(null);
+  const [bookReaderOpen, setBookReaderOpen] = useState(false);
+  const [bookReaderInitialTab, setBookReaderInitialTab] = useState('notes');
 
   const [homeworks, setHomeworks] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
   const [materials, setMaterials] = useState([]);
+  const [readingLogsMap, setReadingLogsMap] = useState(() =>
+    LessonReadingTrackerService.getLocalCacheMap(currentUser?.id || currentUser?.code)
+  );
+  const [studentQuestions, setStudentQuestions] = useState([]);
   const [loadingExtra, setLoadingExtra] = useState(true);
 
-  // Tải dữ liệu bổ trợ bài tập, đánh giá và tài liệu theo lớp
+  // Tải dữ liệu bổ trợ bài tập, đánh giá, tài liệu, nhật ký đọc bài và Q&A theo lớp
   useEffect(() => {
     let isMounted = true;
+    const studentUid = currentUser?.id || currentUser?.code;
     const loadStudentData = async () => {
       try {
         setLoadingExtra(true);
-        const [hwList, evalList, matList] = await Promise.all([
+        const [hwList, evalList, matList, logsMap, qaRes] = await Promise.all([
           StudentDashboardService.getStudentHomeworkTasks(currentUser, myClasses),
           StudentDashboardService.getStudentRecentEvaluations(currentUser, myClasses),
           StudentDashboardService.getStudentClassMaterials(myClasses, currentUser),
+          LessonReadingTrackerService.getStudentReadingLogs(studentUid),
+          LessonQaManagementService.getScopedQaDataset(currentUser).catch(() => ({ questions: [] })),
         ]);
         if (isMounted) {
           setHomeworks(hwList || []);
           setEvaluations(evalList || []);
           setMaterials(matList || []);
+          setReadingLogsMap(logsMap || {});
+          setStudentQuestions(qaRes?.questions || []);
         }
       } catch (err) {
         console.warn('[StudentPortalPanel] Lỗi tải dữ liệu học viên:', err);
@@ -131,8 +151,24 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
     upcomingTimer && (upcomingTimer.state === 'live' || (upcomingTimer.state === 'upcoming' && upcomingTimer.startsIn <= 600))
   );
 
-  // Bộ chọn lớp học chủ động (Class Switcher / Tabs)
+  // Bộ chọn lớp học chủ động (Class Switcher / Tabs) và buổi giáo án chủ động
   const [selectedClassId, setSelectedClassId] = useState(null);
+  const [selectedPrepSession, setSelectedPrepSession] = useState(null);
+
+  // Hỗ trợ deep-link từ Notification (?openReader=1&classId=LH002&qaId=...)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('openReader') === '1') {
+        const targetCls = params.get('classId');
+        if (targetCls) setSelectedClassId(targetCls);
+        if (params.get('qaId')) setBookReaderInitialTab('qa');
+        setBookReaderOpen(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const activeClassId = useMemo(() => {
     if (selectedClassId && myClasses.some((c) => (c.id || c.code) === selectedClassId)) {
@@ -150,11 +186,56 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
     );
   }, [activeClassId, myClasses, sortedClasses, nextClass]);
 
-  // Hướng dẫn chuẩn bị bài học cho lớp học đang được chọn
-  const lessonPrep = useMemo(
-    () => StudentDashboardService.getLessonPreparationGuide(activePrepClass),
+  // Danh sách toàn bộ giáo án READY của lớp hiện hành + giáo án ưu tiên hiển thị
+  const availableLessonPlans = useMemo(
+    () => StudentDashboardService.getReadyLessonPlans(activePrepClass),
     [activePrepClass]
   );
+
+  // Reset buổi đang chọn khi đổi lớp học
+  useEffect(() => {
+    setSelectedPrepSession(null);
+  }, [activeClassId]);
+
+  // Hướng dẫn chuẩn bị bài học cho lớp học đang được chọn (ưu tiên hôm nay/sắp tới hoặc buổi học viên tự chọn)
+  const lessonPrep = useMemo(
+    () =>
+      StudentDashboardService.getLessonPreparationGuide(activePrepClass, {
+        sessionIndexOverride: selectedPrepSession,
+      }),
+    [activePrepClass, selectedPrepSession]
+  );
+
+  // Nhật ký đọc bài thực tế của học viên cho buổi học hiện hành
+  const activeReadingLog = useMemo(() => {
+    const cId = activePrepClass?.id || activePrepClass?.code;
+    const sId = currentUser?.id || currentUser?.code;
+    if (!cId || !lessonPrep || !sId) return null;
+    const logId = LessonReadingTrackerService.buildLogId(cId, lessonPrep.sessionIndex, sId);
+    return readingLogsMap[logId] || null;
+  }, [activePrepClass, lessonPrep, currentUser, readingLogsMap]);
+
+  const handleReadingLogUpdated = (updatedLog) => {
+    if (!updatedLog?.id) return;
+    setReadingLogsMap((prev) => ({
+      ...prev,
+      [updatedLog.id]: updatedLog,
+    }));
+  };
+
+  // Tổng hợp Điểm Rèn Luyện cá nhân của chính học viên (35% Chuẩn bị bài, 15% Note/Q&A, 25% Chuyên cần, 25% Bài tập)
+  const studentConductSummary = useMemo(() => {
+    const sId = currentUser?.id || currentUser?.code;
+    if (!sId) return null;
+    return ConductScoreService.computeStudentConductSummary({
+      studentId: sId,
+      classes: myClasses,
+      readingLogs: Object.values(readingLogsMap || {}),
+      evaluations,
+      homeworks,
+      isEnglish,
+    });
+  }, [currentUser, myClasses, readingLogsMap, evaluations, homeworks, isEnglish]);
 
   return (
     <div data-testid="student-portal-dashboard-container">
@@ -395,12 +476,12 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
         />
       )}
 
-      {/* 3. BỐ CỤC LƯỚI BẤT ĐỐI XỨNG TỶ LỆ VÀNG (15 / 9) */}
-      <Row gutter={[20, 20]}>
+      {/* 3. BỐ CỤC LƯỚI BẤT ĐỐI XỨNG TỶ LỆ VÀNG (15 / 9 TRÊN >= 1200PX, XẾP DỌC THOÁNG TRÊN MOBILE/TABLET/SCALE HẸP) */}
+      <Row gutter={[isMobile ? 12 : 20, isMobile ? 12 : 20]}>
         {/* ========================================================= */}
-        {/* CỘT TRÁI / TRUNG TÂM (Col lg=15): LUỒNG HỌC TẬP CHÍNH */}
+        {/* CỘT TRÁI / TRUNG TÂM (Col xl=15): LUỒNG HỌC TẬP CHÍNH */}
         {/* ========================================================= */}
-        <Col xs={24} lg={15}>
+        <Col xs={24} xl={15}>
           {/* KHỐI 1: LỚP HỌC ĐANG HỌC & CHUẨN BỊ BÀI HỌC (PRE-CLASS LESSON PREP) */}
           <Card
             bordered={false}
@@ -408,10 +489,10 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
               borderRadius: 14,
               border: '1px solid #e2e8f0',
               boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
-              marginBottom: 20,
+              marginBottom: isMobile ? 14 : 20,
               backgroundColor: '#ffffff',
             }}
-            styles={{ body: { padding: '20px 22px' } }}
+            styles={{ body: { padding: isMobile ? '14px 12px' : '20px 22px' } }}
             data-testid="student-classes-and-prep-card"
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -647,274 +728,18 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
               </div>
             )}
 
-            {/* Khối Chuẩn Bị Bài Học (Pre-Class Preparation Guide) */}
-            <div
-              style={{
-                padding: '14px 16px',
-                borderRadius: 10,
-                backgroundColor: '#faf5ff',
-                border: '1.5px solid #e9d5ff',
-              }}
-              data-testid="pre-class-prep-guide"
-            >
-              {/* Huy Hiệu Nhận Diện Rõ Tên Lớp & Mã Lớp (Bắt buộc theo yêu cầu Sếp Bảo) */}
-              <div
-                data-testid="active-prep-class-badge"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 14px',
-                  backgroundColor: '#f3e8ff',
-                  borderRadius: 8,
-                  border: '1.5px solid #d8b4fe',
-                  marginBottom: 12,
-                  flexWrap: 'wrap',
-                  gap: 8,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <Tag
-                    color="purple"
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 800,
-                      padding: '3px 8px',
-                      borderRadius: 6,
-                      margin: 0,
-                      backgroundColor: '#7e22ce',
-                      color: '#ffffff',
-                      border: 'none',
-                    }}
-                  >
-                    🏫 {activePrepClass?.id || activePrepClass?.code || 'LỚP'}
-                  </Tag>
-                  <Text strong style={{ fontSize: 14, color: '#581c87' }}>
-                    {activePrepClass?.name}
-                  </Text>
-                  <Tag color="cyan" style={{ fontSize: 11, borderRadius: 4, margin: 0, fontWeight: 600 }}>
-                    {activePrepClass?.courseLevel || 'Wonders ELA'}
-                  </Tag>
-                </div>
-                <div style={{ fontSize: 12, color: '#6b21a8', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span>👨‍🏫 {activePrepClass?.teacherName || 'Teacher Maj'}</span>
-                  <span>•</span>
-                  <span>📅 {activePrepClass?.schedule || 'Lịch học'}</span>
-                </div>
-              </div>
-
-              {!lessonPrep ? (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={
-                    isEnglish
-                      ? `📚 Upcoming lesson materials & Wonders curriculum are being finalized before class. Have a great and engaging session!`
-                      : `📚 Bài học và tài liệu đọc trước cho buổi học đang được hoàn thiện trước giờ học. Chúc con có một buổi học thật vui và bổ ích!`
-                  }
-                  style={{ padding: '16px 0' }}
-                />
-              ) : (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
-                    <Space size={6}>
-                      <BookOutlined style={{ color: '#9333ea', fontSize: 16 }} />
-                      <Text strong style={{ fontSize: 14, color: '#581c87' }}>
-                        {isEnglish ? 'Lesson Overview:' : 'Tổng Quan Bài Học (Lesson Overview):'}
-                      </Text>
-                    </Space>
-                    <Space size={6} wrap>
-                      {lessonPrep.isRealPlan && (
-                        <Tag color="success" style={{ borderRadius: 4, margin: 0, fontWeight: 700 }}>
-                          {isEnglish
-                            ? `Teacher: ${lessonPrep.authorName} (Session ${lessonPrep.sessionIndex})`
-                            : `Giáo viên soạn: ${lessonPrep.authorName} (Buổi ${lessonPrep.sessionIndex})`}
-                        </Tag>
-                      )}
-                      {lessonPrep.unitWeek && (
-                        <Tag color="purple" style={{ borderRadius: 4, margin: 0, fontWeight: 600 }}>
-                          {lessonPrep.unitWeek}
-                        </Tag>
-                      )}
-                      {lessonPrep.date && (
-                        <Tag color="default" style={{ borderRadius: 4, margin: 0 }}>
-                          📅 {lessonPrep.date}
-                        </Tag>
-                      )}
-                    </Space>
-                  </div>
-
-                  {/* Tiêu đề bài học giáo viên đã soạn */}
-                  {lessonPrep.lessonTitle && (
-                    <div style={{ fontSize: 16, fontWeight: 700, color: '#3b0764', marginBottom: 12 }}>
-                      📖 {lessonPrep.lessonTitle}
-                    </div>
-                  )}
-
-                  {/* 1. Mục tiêu bài học & nội dung giảng dạy do giáo viên đã soạn */}
-                  {Array.isArray(lessonPrep.objectives) && lessonPrep.objectives.length > 0 && (
-                    <div
-                      style={{
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #e9d5ff',
-                        borderRadius: 8,
-                        padding: '12px 14px',
-                        marginBottom: 12,
-                      }}
-                      data-testid="lesson-plan-objectives"
-                    >
-                      <Text strong style={{ fontSize: 13, color: '#6b21a8', display: 'block', marginBottom: 8 }}>
-                        🎯 {isEnglish ? 'Lesson Objectives & Academic Content:' : 'Mục Tiêu Bài Học & Nội Dung Giảng Dạy:'}
-                      </Text>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {lessonPrep.objectives.map((obj, i) => (
-                          <div
-                            key={i}
-                            style={{
-                              fontSize: 13,
-                              color: '#1e293b',
-                              padding: '6px 10px',
-                              backgroundColor: '#faf5ff',
-                              borderRadius: 6,
-                              borderLeft: '3px solid #9333ea',
-                              lineHeight: 1.5,
-                              whiteSpace: 'pre-line',
-                            }}
-                          >
-                            <FormattedText content={obj} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 1.5. Thời lượng rèn luyện hàng ngày chuẩn McGraw-Hill Wonders */}
-                  {(lessonPrep.readingDailyTime || lessonPrep.writingDailyTime) && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 12,
-                        alignItems: 'center',
-                        backgroundColor: '#f0f5ff',
-                        border: '1px solid #bfdbfe',
-                        borderRadius: 8,
-                        padding: '10px 14px',
-                        marginBottom: 12,
-                      }}
-                      data-testid="student-wonders-daily-benchmarks"
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            minWidth: 30,
-                            height: 30,
-                            borderRadius: '50%',
-                            backgroundColor: '#2563eb',
-                            color: '#ffffff',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            padding: '0 4px',
-                            textAlign: 'center',
-                          }}
-                        >
-                          {lessonPrep.readingDailyTime || '60+ mins'}
-                        </span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#1e40af' }}>
-                          {isEnglish ? 'Reading Lesson Goals' : 'Mục Tiêu Đọc Hiểu (Reading Goals)'}
-                        </span>
-                      </div>
-
-                      <div style={{ width: 1, height: 16, backgroundColor: '#cbd5e1' }} />
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            minWidth: 30,
-                            height: 30,
-                            borderRadius: '50%',
-                            backgroundColor: '#16a34a',
-                            color: '#ffffff',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            padding: '0 4px',
-                            textAlign: 'center',
-                          }}
-                        >
-                          {lessonPrep.writingDailyTime || '30+ mins'}
-                        </span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#166534' }}>
-                          {isEnglish ? 'Writing Lesson Goals' : 'Mục Tiêu Viết & Ngữ Pháp (Writing Goals)'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 2. Nội dung học sinh cần đọc chuẩn bị trước giờ lên lớp */}
-                  {lessonPrep.studentPrep && (
-                    <div
-                      style={{
-                        backgroundColor: '#f0fdf4',
-                        border: '1px solid #bbf7d0',
-                        borderRadius: 8,
-                        padding: '12px 14px',
-                        marginBottom: 12,
-                      }}
-                      data-testid="lesson-plan-student-prep"
-                    >
-                      <Text strong style={{ fontSize: 13, color: '#15803d', display: 'block', marginBottom: 4 }}>
-                        📖 {isEnglish ? 'Student Pre-Class Reading & Preparation:' : 'Nội Dung Học Sinh Cần Chuẩn Bị Trước Khi Lên Lớp (Student Prep):'}
-                      </Text>
-                      <div style={{ fontSize: 13, color: '#166534', fontWeight: 600, whiteSpace: 'pre-line' }}>
-                        {lessonPrep.studentPrep}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 3. Bài tập về nhà do giáo viên giao */}
-                  {lessonPrep.homework && (
-                    <div
-                      style={{
-                        backgroundColor: '#fff7ed',
-                        border: '1px solid #fed7aa',
-                        borderRadius: 8,
-                        padding: '12px 14px',
-                        marginBottom: 12,
-                      }}
-                      data-testid="lesson-plan-homework"
-                    >
-                      <Text strong style={{ fontSize: 13, color: '#c2410c', display: 'block', marginBottom: 4 }}>
-                        📚 {isEnglish ? 'Assigned Homework:' : 'Bài Tập Giáo Viên Giao Về Nhà (Homework):'}
-                      </Text>
-                      <div style={{ fontSize: 13, color: '#9a3412', fontWeight: 600, whiteSpace: 'pre-line' }}>
-                        {lessonPrep.homework}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 4. Slide bài giảng trực tuyến nếu có */}
-                  {lessonPrep.slideLink && (
-                    <div style={{ marginTop: 8 }}>
-                      <Button
-                        type="link"
-                        href={lessonPrep.slideLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        icon={<GlobalOutlined />}
-                        style={{ padding: 0, fontWeight: 600, color: '#2563eb' }}
-                      >
-                        {isEnglish ? '🔗 Open Interactive Presentation Slides' : '🔗 Mở Slide Bài Giảng Trực Tuyến'}
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+            {/* Khối Chuẩn Bị Bài Học Rút Gọn (Compact Lesson Overview -> Tap Mở Book Reader Full-Screen) */}
+            <LessonOverviewCompactCard
+              activePrepClass={activePrepClass}
+              lessonPrep={lessonPrep}
+              availablePlans={availableLessonPlans}
+              onSelectSession={setSelectedPrepSession}
+              readingLog={activeReadingLog}
+              studentUser={currentUser}
+              onLogUpdated={handleReadingLogUpdated}
+              isStudentRole={true}
+              onOpenReader={() => setBookReaderOpen(true)}
+            />
           </Card>
 
           {/* KHỐI 2: BÀI TẬP ĐƯỢC GIAO & CẦN LÀM (ASSIGNED HOMEWORK TASKS) */}
@@ -934,9 +759,19 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
         </Col>
 
         {/* ========================================================= */}
-        {/* CỘT PHẢI (Col lg=9): TÀI NGUYÊN MỞ RỘNG & HỌC LIỆU BỔ TRỢ */}
+        {/* CỘT PHẢI (Col xl=9): TÀI NGUYÊN MỞ RỘNG & HỌC LIỆU BỔ TRỢ */}
         {/* ========================================================= */}
-        <Col xs={24} lg={9}>
+        <Col xs={24} xl={9}>
+          {/* KHỐI 3.5: ĐIỂM RÈN LUYỆN CÁ NHÂN CỦA HỌC VIÊN */}
+          <StudentConductScoreCard conductSummary={studentConductSummary} />
+
+          {/* KHỐI 3.6: PREVIEW 1–2 CÂU HỎI MỚI NHẤT -> MỞ MÀN HÌNH CHI TIẾT /lesson-qa */}
+          <DashboardNewQuestionsPreviewCard
+            questions={studentQuestions}
+            userRole="student"
+            maxItems={2}
+          />
+
           {/* KHỐI 4: "LEARNING CORNER" (4 NỀN TẢNG QUỐC TẾ UY TÍN) */}
           <StudentLearningCornerCard />
 
@@ -947,6 +782,19 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
           />
         </Col>
       </Row>
+
+      {/* Trình Đọc Sách Toàn Màn Hình Dành Cho Người Học (Book Reader + Notes + Ask Teacher Q&A + Active Timer) */}
+      <LessonBookReaderModal
+        open={bookReaderOpen}
+        onClose={() => setBookReaderOpen(false)}
+        classItem={activePrepClass}
+        lessonPrep={lessonPrep}
+        studentUser={currentUser}
+        isStudentRole={true}
+        initialLog={activeReadingLog}
+        initialTab={bookReaderInitialTab}
+        onLogUpdated={handleReadingLogUpdated}
+      />
 
       {/* Modal Báo Vắng Mặt / Xin Nghỉ Phép */}
       <ClassAbsenceReportModal

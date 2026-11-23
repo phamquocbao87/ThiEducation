@@ -210,6 +210,19 @@ export const buildLessonPlan = (cls, planData = {}, actor, now = Date.now()) => 
   const sessionIndex = Math.max(1, Number(planData.sessionIndex) || 1);
   const status = planData.status === LESSON_PLAN_STATUS.DRAFT ? LESSON_PLAN_STATUS.DRAFT : LESSON_PLAN_STATUS.READY;
 
+  const attachedMaterials = Array.isArray(planData.attachedMaterials)
+    ? planData.attachedMaterials
+        .filter((m) => m && m.id && m.title)
+        .map((m) => ({
+          id: String(m.id).trim(),
+          title: String(m.title).trim(),
+          type: String(m.type || 'PDF').trim(),
+          url: String(m.url || '').trim(),
+          matchScope: String(m.matchScope || 'CLASS').trim(),
+          pageLocation: String(m.pageLocation || '').trim(),
+        }))
+    : [];
+
   return {
     id: `LP_${cls.id}_SESSION_${sessionIndex}`,
     classId: cls.id,
@@ -227,6 +240,7 @@ export const buildLessonPlan = (cls, planData = {}, actor, now = Date.now()) => 
     readingDailyTime: String(planData.readingDailyTime || '60+ mins').trim(),
     writingDailyTime: String(planData.writingDailyTime || '30+ mins').trim(),
     slideLink: String(planData.slideLink || '').trim(),
+    attachedMaterials,
     teacherNotes: String(planData.teacherNotes || '').trim(),
     status,
     authorId: actor.id,

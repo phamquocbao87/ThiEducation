@@ -78,24 +78,24 @@ export class StudentDashboardService extends BaseModuleService {
   }
 
   /**
-   * Đọc trực tiếp 100% giáo án do giáo viên đã soạn trên Cloud Firestore (`classes/{classId}.lessonPlans`)
-   * CHỈ HIỂN THỊ PHẦN GIÁO ÁN GIÁO VIÊN ĐÃ SOẠN CHO BÀI HỌC. TUYỆT ĐỐI KHÔNG TỰ SINH HAY DÙNG DUMMY DATA.
+   * Chuẩn hóa ngày giáo án (`YYYY-MM-DD` hoặc `DD/MM/YYYY`) sang timestamp 00:00:00 giờ địa phương
    */
-  static getLessonPreparationGuide(classItem) {
-    const plans = classItem?.lessonPlans || {};
-    const readyPlans = Object.values(plans).filter(
-      (p) => p && p.status !== 'DRAFT' && (p.lessonTitle || p.unitWeek || p.studentPrep || p.objectives)
-    );
+  static _parsePlanDateStartMs(dateStr) {
+    if (!dateStr) return null;
+    const str = String(dateStr).trim();
+    const ymd = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (ymd) return new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3])).getTime();
+    const dmy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (dmy) return new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1])).getTime();
+    const parsed = Date.parse(str);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
 
-    // Không có giáo án thực tế trong Firestore -> Trả về null (Không sinh dummy)
-    if (readyPlans.length === 0) {
-      return null;
-    }
-
-    // Sắp xếp lấy buổi học sẵn sàng mới nhất
-    readyPlans.sort((a, b) => (Number(a.sessionIndex) || 0) - (Number(b.sessionIndex) || 0));
-    const realPlan = readyPlans[readyPlans.length - 1];
-
+  /**
+   * Chuẩn hóa 1 giáo án READY sang object hiển thị chuẩn cho Học viên & Book Reader
+   */
+  static _formatReadyPlan(realPlan, classItem) {
+    if (!realPlan) return null;
     const rawObjectives = Array.isArray(realPlan.objectives)
       ? realPlan.objectives.filter(Boolean)
       : typeof realPlan.objectives === 'string'
@@ -104,7 +104,7 @@ export class StudentDashboardService extends BaseModuleService {
 
     return {
       isRealPlan: true,
-      sessionIndex: realPlan.sessionIndex || 1,
+      sessionIndex: Number(realPlan.sessionIndex) || 1,
       authorName: realPlan.authorName || classItem?.teacherName || 'Teacher',
       date: realPlan.date || '',
       unitWeek: realPlan.unitWeek || '',
@@ -115,7 +115,73 @@ export class StudentDashboardService extends BaseModuleService {
       readingDailyTime: realPlan.readingDailyTime || '60+ mins',
       writingDailyTime: realPlan.writingDailyTime || '30+ mins',
       slideLink: realPlan.slideLink || '',
+      attachedMaterials: Array.isArray(realPlan.attachedMaterials) ? realPlan.attachedMaterials : [],
+      updatedAt: realPlan.updatedAt || '',
     };
+  }
+
+  /**
+   * Trả về danh sách toàn bộ giáo án ở trạng thái READY của lớp (sắp xếp theo số buổi tăng dần)
+   */
+  static getReadyLessonPlans(classItem) {
+    const plans = classItem?.lessonPlans || {};
+    return Object.values(plans)
+      .filter((p) => p && p.status !== 'DRAFT' && (p.lessonTitle || p.unitWeek || p.studentPrep || p.objectives))
+      .sort((a, b) => (Number(a.sessionIndex) || 0) - (Number(b.sessionIndex) || 0))
+      .map((p) => this._formatReadyPlan(p, classItem));
+  }
+
+  /**
+   * Đọc trực tiếp 100% giáo án do giáo viên đã soạn trên Cloud Firestore (`classes/{classId}.lessonPlans`)
+   * - Chọn buổi thông minh theo ngày dạy thực tế:
+   *   1) Nếu có `sessionIndexOverride` khớp 1 buổi READY -> trả về buổi đó.
+   *   2) Ưu tiên buổi học diễn ra HÔM NAY hoặc SẮP TỚI gần nhất (`date >= today`).
+   *   3) Nếu tất cả buổi READY đều ở quá khứ -> chọn buổi có ngày dạy gần hiện tại nhất (cùng ngày ưu tiên `updatedAt` mới nhất).
+   */
+  static getLessonPreparationGuide(classItem, { sessionIndexOverride = null } = {}) {
+    const readyPlans = this.getReadyLessonPlans(classItem);
+    if (readyPlans.length === 0) {
+      return null;
+    }
+
+    if (sessionIndexOverride != null) {
+      const matchedOverride = readyPlans.find(
+        (p) => Number(p.sessionIndex) === Number(sessionIndexOverride)
+      );
+      if (matchedOverride) return matchedOverride;
+    }
+
+    const nowDate = new Date();
+    const todayStartMs = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
+
+    const enriched = readyPlans.map((p) => ({
+      plan: p,
+      dateMs: this._parsePlanDateStartMs(p.date),
+      updatedMs: p.updatedAt ? Date.parse(p.updatedAt) || 0 : 0,
+    }));
+
+    const upcomingOrToday = enriched
+      .filter((x) => x.dateMs != null && x.dateMs >= todayStartMs)
+      .sort((a, b) => {
+        if (a.dateMs !== b.dateMs) return a.dateMs - b.dateMs; // Gần hôm nay nhất lên đầu
+        if (b.updatedMs !== a.updatedMs) return b.updatedMs - a.updatedMs;
+        return b.plan.sessionIndex - a.plan.sessionIndex;
+      });
+
+    if (upcomingOrToday.length > 0) {
+      return upcomingOrToday[0].plan;
+    }
+
+    // Nếu không có buổi hôm nay/tương lai -> ưu tiên ngày dạy mới nhất, kế đến updatedAt mới nhất
+    const sortedPast = [...enriched].sort((a, b) => {
+      const da = a.dateMs ?? -Infinity;
+      const db = b.dateMs ?? -Infinity;
+      if (db !== da) return db - da;
+      if (b.updatedMs !== a.updatedMs) return b.updatedMs - a.updatedMs;
+      return b.plan.sessionIndex - a.plan.sessionIndex;
+    });
+
+    return sortedPast[0].plan;
   }
 
   /**

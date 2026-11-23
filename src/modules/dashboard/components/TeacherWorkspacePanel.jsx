@@ -18,13 +18,19 @@ import { PendingEvaluationTaskService } from '../services/PendingEvaluationTaskS
 import { TeacherEvaluationTasksCard } from './TeacherEvaluationTasksCard';
 import { LessonPlanAlertService } from '../services/LessonPlanAlertService';
 import { TeacherLessonPlanAlertCard } from './TeacherLessonPlanAlertCard';
+import { DashboardNewQuestionsPreviewCard } from './DashboardNewQuestionsPreviewCard';
+import { TeacherPreClassPrepCard } from './TeacherPreClassPrepCard';
 import { LessonPlanEditorModal } from '../../classroom/components/LessonPlanEditorModal';
 import { ClassroomRealtimeService } from '../../../shared/services/ClassroomRealtimeService';
 import { AbsenceRequestService } from '../../attendance/services/AbsenceRequestService';
+import { PreClassPrepReportService } from '../../lesson-reader';
+import { LessonQaManagementService } from '../../lesson-qa/services/LessonQaManagementService';
+import { useAuth } from '../../../core/context/AuthContext';
 
 const { Title, Text } = Typography;
 
 export const TeacherWorkspacePanel = ({ workspaceData = {} }) => {
+  const { currentUser } = useAuth();
   const { isEnglish, t } = useLanguage();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -43,6 +49,9 @@ export const TeacherWorkspacePanel = ({ workspaceData = {} }) => {
   const [pendingTasks, setPendingTasks] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [absencesByClass, setAbsencesByClass] = useState({});
+  const [studentQuestions, setStudentQuestions] = useState([]);
+  const [prepReportData, setPrepReportData] = useState(null);
+  const [loadingPrepReport, setLoadingPrepReport] = useState(false);
   const [editingAlert, setEditingAlert] = useState(null);
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
   const [localLessonPlans, setLocalLessonPlans] = useState({});
@@ -115,6 +124,39 @@ export const TeacherWorkspacePanel = ({ workspaceData = {} }) => {
     };
   }, [myClasses]);
 
+  // Nạp danh sách câu hỏi Q&A học viên gửi tới Giáo viên trước giờ học
+  useEffect(() => {
+    let mounted = true;
+    const tId = currentUser?.id || myClasses[0]?.teacherId;
+    const cIds = myClasses.map((c) => c.id || c.code).filter(Boolean);
+    if (!tId && cIds.length === 0) return;
+
+    LessonQaManagementService.getScopedQaDataset(currentUser)
+      .then((res) => {
+        if (mounted) setStudentQuestions(res?.questions || []);
+      })
+      .catch((err) => console.warn('Lỗi đọc câu hỏi học viên cho giáo viên:', err));
+
+    setLoadingPrepReport(true);
+    PreClassPrepReportService.buildPrepReport({
+      classes: myClasses,
+      users: myStudents,
+      userRole: 'teacher',
+      isEnglish,
+    })
+      .then((res) => {
+        if (mounted) setPrepReportData(res);
+      })
+      .catch((err) => console.warn('Lỗi tổng hợp báo cáo chuẩn bị bài cho giáo viên:', err))
+      .finally(() => {
+        if (mounted) setLoadingPrepReport(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [currentUser?.id, myClasses, myStudents, isEnglish]);
+
   const handleCardClick = (cls) => {
     navigate(`/classroom/${encodeURIComponent(cls.id)}`);
   };
@@ -173,6 +215,19 @@ export const TeacherWorkspacePanel = ({ workspaceData = {} }) => {
 
       {/* 1. Nhiệm Vụ Giảng Dạy: Buổi Học Quên Chưa Đánh Giá */}
       <TeacherEvaluationTasksCard tasks={pendingTasks} />
+
+      {/* 1.5. Preview 1–2 Câu Hỏi Học Viên Mới Nhất (Bấm vào mở màn hình chi tiết /lesson-qa) */}
+      <DashboardNewQuestionsPreviewCard
+        questions={studentQuestions}
+        userRole="teacher"
+        maxItems={2}
+      />
+
+      {/* 1.6. Báo Cáo Học Viên Chuẩn Bị Bài Trước Giờ Học (Pre-Class Reading Report) */}
+      <TeacherPreClassPrepCard
+        reportData={prepReportData}
+        loading={loadingPrepReport}
+      />
 
       {/* 2. Banner Lớp Học Sắp Tới Nổi Bật (Next Class Alert) */}
       {nextClass ? (
@@ -294,7 +349,7 @@ export const TeacherWorkspacePanel = ({ workspaceData = {} }) => {
               value={latestPayroll.totalSalary || 0}
               formatter={(v) => formatCurrency(v)}
               prefix={<DollarOutlined style={{ color: '#722ed1', fontSize: isMobile ? 14 : 18 }} />}
-              styles={{ content: { color: '#722ed1', fontWeight: 700, fontSize: isMobile ? 18 : 22, whiteSpace: 'nowrap' } }}
+              styles={{ content: { color: '#722ed1', fontWeight: 700, fontSize: isMobile ? 16 : 'clamp(15px, 1.4vw, 22px)', whiteSpace: 'nowrap' } }}
             />
             <div style={{ marginTop: 4, fontSize: isMobile ? 11 : 12, color: '#64748b' }}>
               {isEnglish ? 'Rate/session:' : 'Đơn giá/tiết:'} <Text strong style={{ whiteSpace: 'nowrap' }}>{formatCurrency(latestPayroll.ratePerSession || 450000)}</Text>
@@ -340,7 +395,7 @@ export const TeacherWorkspacePanel = ({ workspaceData = {} }) => {
         {sortedClasses.length > 0 ? (
           <Row gutter={[16, 16]}>
             {sortedClasses.map((cls) => (
-              <Col xs={24} sm={12} lg={8} key={cls.id}>
+              <Col xs={24} sm={12} md={12} lg={12} xl={8} xxl={6} key={cls.id}>
                 <ClassLiveCard
                   cls={cls}
                   role="teacher"
