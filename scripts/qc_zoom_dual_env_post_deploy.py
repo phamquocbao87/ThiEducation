@@ -17,8 +17,8 @@ import os
 from playwright.async_api import async_playwright
 
 DEV_URL = os.environ.get("QC_DEV_CLOUD_URL", "https://dev.lakeducation.edu.vn")
-PROD_URL = os.environ.get("QC_PROD_CLOUD_URL", "https://erp.lakeducation.edu.vn")
-BACKUP_URL = os.environ.get("QC_BACKUP_CLOUD_URL", "https://bk.lakeducation.edu.vn")
+PROD_URL = os.environ.get("QC_PROD_CLOUD_URL", "https://bk.lakeducation.edu.vn")
+BACKUP_URL = os.environ.get("QC_BACKUP_CLOUD_URL", "https://lakeducation-backup-erp.web.app")
 ARTIFACT_DIR = "/Users/baopqmac/.gemini/antigravity/brain/692b2ddb-3a45-4f8d-ba80-85b0fb828fce"
 
 
