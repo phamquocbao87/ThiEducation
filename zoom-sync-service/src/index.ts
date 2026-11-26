@@ -16,6 +16,7 @@ import {
   getZoomRouterConfig,
   updateZoomRouterConfig,
   resolveWebhookTargets,
+  resolveReadOnlyTargetDb,
   resolveApiTargetDb,
   resolveWriteTargetsForAction,
   RoutingMode,
@@ -191,10 +192,10 @@ app.post('/router-config', async (req, res) => {
   }
 });
 
-// 2.3. Yêu cầu #2: Lấy bảng Gợi ý Mapping thông minh giữa Lớp LAK và Phòng Zoom
+// 2.3. Yêu cầu #2: Lấy bảng Gợi ý Mapping thông minh giữa Lớp LAK và Phòng Zoom (Read-Only an toàn cho cả DEV & PROD)
 app.get('/mapping-suggestions', async (req, res) => {
   try {
-    const { env, db } = await resolveApiTargetDb(readReqEnv(req));
+    const { env, db } = resolveReadOnlyTargetDb(readReqEnv(req));
     const [clsSnap, accountRooms] = await Promise.all([
       getDocs(collection(db, 'classes')),
       ZoomOAuthClient.listAllAccountRooms(),
@@ -341,10 +342,10 @@ app.delete('/meetings/:meetingId', async (req, res) => {
   }
 });
 
-// 2.6. Yêu cầu #8: Quét đối soát các bản ghi còn thiếu trên Zoom Cloud
+// 2.6. Yêu cầu #8: Quét đối soát các bản ghi còn thiếu trên Zoom Cloud (Read-Only an toàn cho cả DEV & PROD)
 app.get('/missing-recordings', async (req, res) => {
   try {
-    const { env, db } = await resolveApiTargetDb(readReqEnv(req));
+    const { env, db } = resolveReadOnlyTargetDb(readReqEnv(req));
     const todayIso = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
     const defaultFrom = new Date(Date.now() - 35 * 86400 * 1000).toISOString().slice(0, 10);
     const fromDate = String(req.query.from || defaultFrom);

@@ -145,6 +145,11 @@ export async function resolveWebhookTargets(): Promise<Array<{ env: LakEnvKey; d
   return targets;
 }
 
+export function resolveReadOnlyTargetDb(requestedEnv?: string): { env: LakEnvKey; db: Firestore } {
+  const cleanEnv: LakEnvKey = requestedEnv === 'prod' ? 'prod' : 'dev';
+  return cleanEnv === 'prod' ? { env: 'prod', db: dbProd } : { env: 'dev', db: dbDev };
+}
+
 export async function resolveApiTargetDb(requestedEnv?: string): Promise<{ env: LakEnvKey; db: Firestore }> {
   const cleanEnv: LakEnvKey = requestedEnv === 'prod' ? 'prod' : 'dev';
   if (cleanEnv === 'prod') {
