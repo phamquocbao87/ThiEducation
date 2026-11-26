@@ -6,10 +6,13 @@ import {
   BookOutlined,
   DesktopOutlined,
   StarFilled,
+  VideoCameraOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../core/context/AuthContext';
+import { PermissionService } from '../../core/services/PermissionService';
 import { useLanguage } from '../../core/context/LanguageContext';
 import { useIsMobile } from '../../shared/hooks/useIsMobile';
+import { ClassroomZoomLinkTab } from '../../shared/components/ClassroomZoomLinkTab';
 import { localizeSystemMessage } from '../../core/i18n/i18n';
 import { BaseFormPageLayout } from '../../shared/components/layout/BaseFormPageLayout';
 import { FormSectionCard } from '../../shared/components/layout/FormSectionCard';
@@ -39,8 +42,16 @@ export default function ClassroomPage() {
   const [searchParams] = useSearchParams();
   const urlTab = searchParams.get('tab');
   const urlSessionMs = searchParams.get('sessionDateMs');
+  const canManageZoomLink = PermissionService.canLinkClassWithZoom(currentUser?.role);
 
-  const [activeTab, setActiveTab] = useState(() => (urlTab === 'evaluation' ? 'evaluation' : 'seating'));
+  const [activeTab, setActiveTab] = useState(() => {
+    if (urlTab === 'evaluation') return 'evaluation';
+    if (urlTab === 'curriculum') return 'curriculum';
+    if (urlTab === 'zoom-link' && PermissionService.canLinkClassWithZoom(currentUser?.role)) {
+      return 'zoom-link';
+    }
+    return 'seating';
+  });
   const [selectedStudentForNote, setSelectedStudentForNote] = useState(null);
   const [quickNoteModalOpen, setQuickNoteModalOpen] = useState(false);
   const [lessonPlanModalOpen, setLessonPlanModalOpen] = useState(false);
@@ -95,10 +106,16 @@ export default function ClassroomPage() {
     return matched ? matched.sessionIndex : 1;
   }, [c.session, scheduleSessions]);
 
-  // Deep link hỗ trợ chuyển thẳng vào Tab và Buổi học chỉ định từ Dashboard Tasks
+  // Deep link hỗ trợ chuyển thẳng vào Tab và Buổi học chỉ định từ Dashboard Tasks / Zoom Sync
   useEffect(() => {
     if (urlTab === 'evaluation') {
       setActiveTab('evaluation');
+    } else if (urlTab === 'curriculum') {
+      setActiveTab('curriculum');
+    } else if (urlTab === 'zoom-link') {
+      setActiveTab(canManageZoomLink ? 'zoom-link' : 'seating');
+    } else if (!canManageZoomLink && activeTab === 'zoom-link') {
+      setActiveTab('seating');
     }
     if (urlSessionMs && scheduleSessions.length > 0 && c.cls) {
       const targetMs = Number(urlSessionMs);
@@ -312,7 +329,7 @@ export default function ClassroomPage() {
                   : 'Bài Học & Tài Liệu'
                 : isMobile
                 ? isEnglish
-                  ? 'Lesson Plan'
+                  ? 'Plan'
                   : 'Giáo án'
                 : t('classroom.tabCurriculum') || 'Soạn Giáo Án & Học Liệu'}
             </span>
@@ -394,6 +411,32 @@ export default function ClassroomPage() {
         </div>
       ),
     },
+    ...(canManageZoomLink
+      ? [
+          {
+            key: 'zoom-link',
+            label: (
+              <span data-testid="tab-zoom-link" style={{ fontSize: isMobile ? 12 : undefined }}>
+                <Space size={isMobile ? 4 : 6}>
+                  <VideoCameraOutlined />
+                  <span>
+                    {isMobile
+                      ? 'Zoom'
+                      : isEnglish
+                      ? 'Zoom Cloud Link'
+                      : 'Liên Kết Với Zoom'}
+                  </span>
+                </Space>
+              </span>
+            ),
+            children: (
+              <div style={{ marginTop: 8 }}>
+                <ClassroomZoomLinkTab cls={c.cls} currentUser={currentUser} />
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -425,9 +468,9 @@ export default function ClassroomPage() {
                 activeKey={activeTab}
                 onChange={setActiveTab}
                 items={tabItems}
-                type="card"
+                type={isMobile ? 'line' : 'card'}
                 size={isMobile ? 'small' : 'middle'}
-                tabBarGutter={isMobile ? 4 : 8}
+                tabBarGutter={isMobile ? 10 : 8}
                 className="classroom-tabs"
               />
             </FormSectionCard>

@@ -20,6 +20,7 @@ import PreClassPrepModule from './modules/pre-class-prep';
 import CurriculumModule from './modules/curriculum';
 import ContractsModule from './modules/contracts';
 import SchedulesModule from './modules/schedules';
+import ZoomSyncModule from './modules/zoom-sync';
 import AttendanceModule from './modules/attendance';
 import TuitionModule from './modules/tuition';
 import UsersModule from './modules/users';
@@ -142,6 +143,10 @@ function AppRoutes() {
                 <SchedulesModule />
               </ProtectedRoute>
             }
+          />
+          <Route
+            path={`/${MODULE_SLUGS.zoomSync}`}
+            element={<Navigate to={`/${MODULE_SLUGS.dashboard}`} replace />}
           />
           <Route
             path={`/${MODULE_SLUGS.contracts}`}

@@ -215,11 +215,11 @@ export const SessionEvaluationPanel = ({
   const canEvaluate = canEvaluateProp !== undefined
     ? Boolean(canEvaluateProp)
     : Boolean(
-        (!isSessionUpcoming || Boolean(selectedSessionOverride)) &&
-        !isNoSession &&
-        !fallbackWindowState.isLockedAfter18h &&
-        (isTeacher || isAcademic)
-      );
+      (!isSessionUpcoming || Boolean(selectedSessionOverride)) &&
+      !isNoSession &&
+      !fallbackWindowState.isLockedAfter18h &&
+      (isTeacher || isAcademic)
+    );
 
   const formattedSessionDate = session?.start
     ? new Intl.DateTimeFormat(isEnglish ? 'en-US' : 'vi-VN', {
@@ -464,11 +464,11 @@ export const SessionEvaluationPanel = ({
       } else if (status.isLockedAfter18h) {
         statusTag = status.isComplete
           ? (isEnglish
-              ? `🔒 Completed & Locked (${status.completedCount}/${status.requiredCount})`
-              : `🔒 Hoàn tất & Đã khóa (${status.completedCount}/${status.requiredCount} HS)`)
+            ? `🔒 Completed & Locked (${status.completedCount}/${status.requiredCount})`
+            : `🔒 Hoàn tất & Đã khóa (${status.completedCount}/${status.requiredCount} HS)`)
           : (isEnglish
-              ? `🔒 Locked >18h (Missing ${status.missingCount}/${status.requiredCount})`
-              : `🔒 Đã khóa >18h (Thiếu ${status.missingCount}/${status.requiredCount} HS)`);
+            ? `🔒 Locked >18h (Missing ${status.missingCount}/${status.requiredCount})`
+            : `🔒 Đã khóa >18h (Thiếu ${status.missingCount}/${status.requiredCount} HS)`);
       } else if (status.isComplete) {
         statusTag = isEnglish
           ? `✅ Completed (${status.completedCount}/${status.requiredCount}${status.avgStars ? ` • ${status.avgStars}⭐` : ''})`
@@ -1293,11 +1293,11 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
             <span style={{ fontWeight: 700 }}>
               {currentSessionEvalStatus.isComplete
                 ? (isEnglish
-                    ? `Session Evaluation Locked (>18h After Class) — Completed ${currentSessionEvalStatus.completedCount}/${currentSessionEvalStatus.requiredCount} present students`
-                    : `Đã Khóa Đánh Giá Sau 18 Tiếng — Đã hoàn tất ${currentSessionEvalStatus.completedCount}/${currentSessionEvalStatus.requiredCount} học sinh có mặt`)
+                  ? `Session Evaluation Locked (>18h After Class) — Completed ${currentSessionEvalStatus.completedCount}/${currentSessionEvalStatus.requiredCount} present students`
+                  : `Đã Khóa Đánh Giá Sau 18 Tiếng — Đã hoàn tất ${currentSessionEvalStatus.completedCount}/${currentSessionEvalStatus.requiredCount} học sinh có mặt`)
                 : (isEnglish
-                    ? `Locked (>18h After Class) — Missing feedback for ${currentSessionEvalStatus.missingCount}/${currentSessionEvalStatus.requiredCount} present students`
-                    : `Đã Khóa Đánh Giá (>18 Tiếng) — Còn thiếu nhận xét của ${currentSessionEvalStatus.missingCount}/${currentSessionEvalStatus.requiredCount} học sinh có mặt`)}
+                  ? `Locked (>18h After Class) — Missing feedback for ${currentSessionEvalStatus.missingCount}/${currentSessionEvalStatus.requiredCount} present students`
+                  : `Đã Khóa Đánh Giá (>18 Tiếng) — Còn thiếu nhận xét của ${currentSessionEvalStatus.missingCount}/${currentSessionEvalStatus.requiredCount} học sinh có mặt`)}
             </span>
           }
           description={
@@ -1329,11 +1329,11 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
                           setUnlockReason(
                             currentSessionEvalStatus.missingCount > 0
                               ? (isEnglish
-                                  ? `Need to complete remaining ${currentSessionEvalStatus.missingCount}/${currentSessionEvalStatus.requiredCount} student evaluations.`
-                                  : `Cần bổ sung nhận xét cho ${currentSessionEvalStatus.missingCount}/${currentSessionEvalStatus.requiredCount} học sinh còn thiếu.`)
+                                ? `Need to complete remaining ${currentSessionEvalStatus.missingCount}/${currentSessionEvalStatus.requiredCount} student evaluations.`
+                                : `Cần bổ sung nhận xét cho ${currentSessionEvalStatus.missingCount}/${currentSessionEvalStatus.requiredCount} học sinh còn thiếu.`)
                               : (isEnglish
-                                  ? 'Need to update student evaluation comments after reviewing classwork.'
-                                  : 'Cần cập nhật lại lời nhận xét học sinh sau khi chấm bài tập.')
+                                ? 'Need to update student evaluation comments after reviewing classwork.'
+                                : 'Cần cập nhật lại lời nhận xét học sinh sau khi chấm bài tập.')
                           );
                           setIsRequestUnlockModalOpen(true);
                         }}

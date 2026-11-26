@@ -42,6 +42,7 @@ export class PermissionService {
       curriculum: ['admin', 'director', 'academic', 'teacher'],
       curriculumManage: ['admin', 'director', 'academic'],
       schedules: ['admin', 'director', 'academic', 'teacher', 'student'],
+      zoomSync: ['admin', 'director', 'academic'],
       attendance: ['admin', 'director', 'academic', 'teacher', 'student'],
       contracts: ['admin', 'director', 'academic', 'teacher', 'accountant'],
       tuition: ['admin', 'director', 'academic', 'accountant', 'student'],
@@ -117,6 +118,7 @@ export class PermissionService {
       'lesson-qa': 'lessonQa',
       'pre-class-prep': 'preClassPrep',
       'zoom-schedules': 'schedules',
+      'zoom-sync': 'zoomSync',
       'class-attendance-evaluation': 'attendance',
       'contracts-payroll': 'contracts',
       'tuition-fees': 'tuition',
@@ -144,6 +146,20 @@ export class PermissionService {
   }
 
   static canManageCurriculum(role) {
+    return ['admin', 'director', 'academic'].includes(role);
+  }
+
+  /**
+   * Chỉ duy nhất IT Admin có quyền cấu hình Công tắc điều hướng môi trường Zoom (DEV <-> PROD) & cài đặt hệ thống Zoom
+   */
+  static canManageZoomRouterSettings(role) {
+    return role === 'admin';
+  }
+
+  /**
+   * Quyền Liên kết Lớp học với Phòng Zoom tại màn hình Chi Tiết Lớp Học: Admin, Giáo vụ, Giám đốc
+   */
+  static canLinkClassWithZoom(role) {
     return ['admin', 'director', 'academic'].includes(role);
   }
 

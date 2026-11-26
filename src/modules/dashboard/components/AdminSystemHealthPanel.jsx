@@ -26,6 +26,7 @@ import {
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { useIsMobile } from '../../../shared/hooks/useIsMobile';
+import { AdminZoomRouterConfigCard } from '../../../shared/components/AdminZoomRouterConfigCard';
 
 const { Text } = Typography;
 
@@ -401,6 +402,9 @@ export const AdminSystemHealthPanel = ({
           size="small"
         />
       </Card>
+
+      {/* Khối Điều Hướng 1 Tài Khoản Zoom (DEV <-> PROD • 1 File Drive Chung) — Độc quyền IT Admin */}
+      <AdminZoomRouterConfigCard />
     </div>
   );
 };

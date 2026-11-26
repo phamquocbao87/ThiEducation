@@ -3,6 +3,7 @@ import { Progress } from 'antd';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { ClassSessionTimer } from '../../dashboard/components/ClassSessionTimer';
 import { ClassAttendanceSummary } from '../../../shared/components/ClassAttendanceSummary';
+import { ZoomRoomLiveSection } from '../../../shared/components/ZoomRoomLiveSection';
 import { generateClassSessionDates } from '../../../shared/utils/classSessionUtils';
 
 /**
@@ -57,6 +58,9 @@ export const ClassLiveStatusStrip = ({
 
       {/* 2. Tóm tắt điểm danh tức thì (CHỈ hiển thị cho Giáo viên, Giáo vụ, Giám đốc, Admin — Ẩn với Học viên) */}
       {showAttendanceSummary && <ClassAttendanceSummary cls={cls} now={now} />}
+
+      {/* 2.5. Section Thông tin Live từ Phòng Zoom (Chỉ hiện khi lớp đã liên kết với Zoom) */}
+      <ZoomRoomLiveSection cls={cls} role={normalizedRole} />
 
       {/* 3. Thanh tiến độ số buổi đã học (Đồng bộ với ClassLiveCard trên Dashboard) */}
       <div

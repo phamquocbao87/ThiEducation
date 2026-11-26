@@ -211,9 +211,9 @@ export const CourseMaterialUploadModal = ({
         setUploadStatusText('');
         message.error(
           err?.message ||
-            (isEnglish
-              ? 'Failed to upload file to Google Drive.'
-              : 'Không thể tải tệp lên Google Drive. Vui lòng thử lại.')
+          (isEnglish
+            ? 'Failed to upload file to Google Drive.'
+            : 'Không thể tải tệp lên Google Drive. Vui lòng thử lại.')
         );
       }
       return;
@@ -250,7 +250,7 @@ export const CourseMaterialUploadModal = ({
       setUploading(false);
       message.error(
         err?.message ||
-          (isEnglish ? 'Failed to save material.' : 'Lỗi lưu học liệu vào Khóa học.')
+        (isEnglish ? 'Failed to save material.' : 'Lỗi lưu học liệu vào Khóa học.')
       );
     }
   };
@@ -290,7 +290,7 @@ export const CourseMaterialUploadModal = ({
             key="cancel"
             disabled={busy}
             onClick={onCancel}
-            style={{ minHeight: 40, borderRadius: 8, flex: isMobile ? 1 : undefined }}
+            style={{ height: 40, borderRadius: 8, flex: isMobile ? 1 : undefined }}
           >
             {isEnglish ? 'Cancel' : 'Hủy'}
           </Button>
@@ -299,7 +299,7 @@ export const CourseMaterialUploadModal = ({
             type="primary"
             loading={busy}
             style={{
-              minHeight: 40,
+              height: 40,
               borderRadius: 8,
               backgroundColor: '#722ed1',
               borderColor: '#722ed1',
@@ -314,12 +314,12 @@ export const CourseMaterialUploadModal = ({
                 ? `Uploading (${uploadProgress}%)...`
                 : `Đang tải lên (${uploadProgress}%)...`
               : uploadMode === 'FILE'
-              ? isEnglish
-                ? 'Upload & Sync to Course'
-                : 'Tải Lên & Đồng Bộ Khóa Học'
-              : isEnglish
-              ? 'Save Link to Course Vault'
-              : 'Lưu Vào Khóa Học (0ms)'}
+                ? isEnglish
+                  ? 'Upload & Sync to Course'
+                  : 'Tải Lên & Đồng Bộ Khóa Học'
+                : isEnglish
+                  ? 'Save Link to Course Vault'
+                  : 'Lưu Vào Khóa Học (0ms)'}
           </Button>
         </div>
       }
@@ -357,22 +357,14 @@ export const CourseMaterialUploadModal = ({
             {
               value: 'FILE',
               icon: <FolderOpenOutlined />,
-              label: isMobile
-                ? isEnglish
-                  ? 'Upload File'
-                  : 'Tải Tệp Lên'
-                : isEnglish
+              label: isEnglish
                 ? 'Upload File / Video (.mp4, .pdf)'
                 : 'Tải Tệp / Video Từ Máy',
             },
             {
               value: 'LINK',
               icon: <LinkOutlined />,
-              label: isMobile
-                ? isEnglish
-                  ? 'Paste Link'
-                  : 'Dán Link'
-                : isEnglish
+              label: isEnglish
                 ? 'Paste Drive / YouTube Link'
                 : 'Dán Link Drive / YouTube',
             },

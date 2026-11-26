@@ -1,0 +1,28 @@
+{
+  "name": "lak-zoom-sync-service",
+  "version": "1.0.0",
+  "description": "Isolated Zoom Cloud Recording, Smart Class Mapping & Realtime Webhook Service for LAK Education (Dual-Env DEV/PROD Router)",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "firebase": "^11.0.2",
+    "firebase-admin": "^12.1.0",
+    "firebase-functions": "^5.0.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.12.12",
+    "typescript": "^5.4.5"
+  },
+  "private": true
+}

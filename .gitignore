@@ -11,6 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
+*.local.md
+access.local.md
+zoom-sync-service/.env
+zoom-sync-service/node_modules
+zoom-sync-service/lib
 
 # Editor directories and files
 .vscode/*

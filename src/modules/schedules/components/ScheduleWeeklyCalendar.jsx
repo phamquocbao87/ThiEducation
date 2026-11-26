@@ -17,6 +17,8 @@ import { useLanguage } from '../../../core/context/LanguageContext';
 import { useAuth } from '../../../core/context/AuthContext';
 import { detectMeetingPlatform } from '../../../shared/utils/meetingPlatformUtils';
 import { TimetableSlotService } from '../services/TimetableSlotService';
+import { useZoomSyncJobs } from '../../../shared/hooks/useZoomSyncJobs';
+import { ZoomRoomLiveSection } from '../../../shared/components/ZoomRoomLiveSection';
 import { SessionSlotRecordingBox } from './SessionSlotRecordingBox';
 
 const { Text } = Typography;
@@ -36,6 +38,7 @@ export const ScheduleWeeklyCalendar = ({
   const { isEnglish } = useLanguage();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { activeJobsBySlotKey } = useZoomSyncJobs();
 
   // Học viên mở trước 10 phút, Giáo viên/Cán bộ mở trước 15 phút
   const isStudent = currentUser?.role === 'student';
@@ -444,12 +447,22 @@ export const ScheduleWeeklyCalendar = ({
                             </span>
                           </div>
 
+                          {/* 4.2. Thông tin Live từ phòng Zoom trên thẻ lịch Hôm nay / Đang học */}
+                          {(day.isToday || timeState.state === 'LIVE') && (
+                            <ZoomRoomLiveSection
+                              classId={item.classId}
+                              role={currentUser?.role || 'academic'}
+                              compact
+                            />
+                          )}
+
                           {/* 4.5. Video Ghi Hình Buổi Học (Session Recording — đúng ô khoanh đỏ trên thẻ lịch) */}
                           <SessionSlotRecordingBox
                             slotItem={item}
                             isoDate={day.isoDate}
                             timeState={timeState}
                             recordings={slotRecordingsMap?.get(`${item.classId}_${day.isoDate}`) || []}
+                            syncJob={activeJobsBySlotKey?.get(`${item.classId}_${day.isoDate}`) || null}
                             canManage={Boolean(canManageSlotRecording?.(item))}
                             compact={false}
                             onWatchRecording={onWatchRecording}

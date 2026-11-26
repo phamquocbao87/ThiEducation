@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
+  Alert,
   Drawer,
   Form,
   Input,
@@ -12,6 +13,7 @@ import {
   Button,
   Divider,
   Tag,
+  message,
 } from 'antd';
 import {
   UserOutlined,
@@ -23,6 +25,7 @@ import {
   MessageOutlined,
   TeamOutlined,
   HistoryOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { CLASS_OPERATION_STATUS } from '../models/courses.model';
 import { ClassService } from '../services/ClassService';
@@ -37,6 +40,7 @@ import {
 } from '../../../shared/components/controls';
 import { parseScheduleToStructured } from '../../../shared/utils/scheduleUtils';
 import { MeetingPlatformBadge, detectMeetingPlatform } from '../../../shared/utils/meetingPlatformUtils';
+import { ZoomBackendGateway } from '../../../shared/services/ZoomBackendGateway';
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -60,6 +64,9 @@ export const ClassFormDrawer = ({
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 768
   );
+  const [provisioningZoom, setProvisioningZoom] = useState(false);
+  const [provisionedZoomConfig, setProvisionedZoomConfig] = useState(null);
+  const [zoomHostOverlaps, setZoomHostOverlaps] = useState([]);
 
   // Live schedule state to drive real-time Teacher & Student conflict detection
   const [liveSchedule, setLiveSchedule] = useState('Thứ 2, Thứ 4 (19:00 - 21:00)');
@@ -120,6 +127,8 @@ export const ClassFormDrawer = ({
             editingClass.zaloGroupLink || 'https://zalo.me/g/lakeducation_class',
         });
       } else {
+        setProvisionedZoomConfig(null);
+        setZoomHostOverlaps([]);
         const defaultSched = 'Thứ 2, Thứ 4 (19:00 - 21:00)';
         setLiveSchedule(defaultSched);
         setLiveScheduleData(parseScheduleToStructured(defaultSched));
@@ -142,20 +151,94 @@ export const ClassFormDrawer = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editingClass]);
 
+  const handleAutoProvisionZoomRoom = async () => {
+    const className = form.getFieldValue('name') || 'LAK Education Online Class';
+    const startDateDmy = form.getFieldValue('startDate') || '';
+    const totalSessions = Number(form.getFieldValue('totalSessions')) || 12;
+    const passcode = form.getFieldValue('passcode') || '123456';
+    const courseId = form.getFieldValue('courseId');
+    const teacherId = form.getFieldValue('teacherId');
+    const foundCourse = (courses || []).find((c) => c.id === courseId);
+    const foundTeacher = (teachers || []).find((t) => t.id === teacherId || t.name === teacherId);
+
+    setProvisioningZoom(true);
+    try {
+      const created = await ZoomBackendGateway.provisionZoomRoomForNewClass(
+        {
+          className,
+          courseName: foundCourse?.name || '',
+          teacherName: foundTeacher?.name || '',
+          startDateDmy,
+          totalSessions,
+          scheduleData: liveScheduleData,
+          passcode,
+        },
+        currentUser?.id || 'ADM001'
+      );
+
+      form.setFieldsValue({
+        zoomHostLink: created.hostUrl,
+        zoomStudentLink: created.joinUrl,
+        meetingId: created.prettyMeetingId,
+        passcode: created.passcode,
+      });
+
+      setZoomHostOverlaps(Array.isArray(created.overlappingZoomRooms) ? created.overlappingZoomRooms : []);
+
+      setProvisionedZoomConfig({
+        isLinked: true,
+        zoomMeetingId: created.zoomMeetingId,
+        prettyMeetingId: created.prettyMeetingId,
+        topic: created.topic,
+        meetingType: 8,
+        hostEmail: created.hostEmail,
+        autoRecording: created.autoRecording || 'cloud',
+        weeklyDaysZoom: created.weeklyDaysZoom,
+        durationMinutes: created.durationMinutes,
+        occurrencesCount: created.occurrencesCount,
+        joinUrl: created.joinUrl,
+        passcode: created.passcode,
+        linkedAt: new Date().toISOString(),
+        linkedBy: currentUser?.id || 'ADM001',
+      });
+
+      message.success(
+        isEnglish
+          ? `Created recurring Zoom Cloud room (${created.prettyMeetingId}) with Cloud Recording ON!`
+          : `Đã tự tạo phòng Zoom định kỳ (${created.prettyMeetingId}) & bật sẵn tự động ghi Cloud!`
+      );
+    } catch (err) {
+      message.error(
+        err?.message ||
+        (isEnglish
+          ? 'Could not auto-create Zoom room.'
+          : 'Không thể khởi tạo tự động phòng học trên Zoom.')
+      );
+    } finally {
+      setProvisioningZoom(false);
+    }
+  };
+
   const handleFinish = (values) => {
     onSubmit({
       ...values,
       totalSessions: Number(values.totalSessions) || 12,
       meetingLink: values.zoomStudentLink || values.meetingLink,
       scheduleData: liveScheduleData,
+      ...(provisionedZoomConfig
+        ? { zoomConfig: provisionedZoomConfig }
+        : editingClass?.zoomConfig
+          ? { zoomConfig: editingClass.zoomConfig }
+          : {}),
     });
+    setProvisionedZoomConfig(null);
     form.resetFields();
   };
 
   const existingHistory = Array.isArray(editingClass?.scheduleHistory)
     ? editingClass.scheduleHistory
     : editingClass
-    ? [
+      ? [
         {
           version: 1,
           effectiveFrom: editingClass.startDate || '04/02/2026',
@@ -165,7 +248,7 @@ export const ClassFormDrawer = ({
           note: 'Lịch học khởi tạo từ ngày khai giảng lớp',
         },
       ]
-    : [];
+      : [];
 
   return (
     <Drawer
@@ -178,8 +261,8 @@ export const ClassFormDrawer = ({
                 ? `Edit Class & Roster: ${editingClass.id}`
                 : `Chỉnh Sửa Lớp Học: ${editingClass.id}`
               : isEnglish
-              ? 'Create New Class & Schedule'
-              : 'Khởi Tạo Lớp Học & Lịch Tuần Hoàn'}
+                ? 'Create New Class & Schedule'
+                : 'Khởi Tạo Lớp Học & Lịch Tuần Hoàn'}
           </Text>
         </Space>
       }
@@ -219,8 +302,8 @@ export const ClassFormDrawer = ({
                 ? 'Save Changes'
                 : 'Lưu Thay Đổi'
               : isEnglish
-              ? 'Create Class'
-              : 'Tạo Lớp Học'}
+                ? 'Create Class'
+                : 'Tạo Lớp Học'}
           </Button>
         </div>
       }
@@ -522,8 +605,8 @@ export const ClassFormDrawer = ({
                           ? 'Current'
                           : 'Đang áp dụng'
                         : isEnglish
-                        ? 'Archived'
-                        : 'Lịch sử đã lưu'}
+                          ? 'Archived'
+                          : 'Lịch sử đã lưu'}
                     </Tag>
                   </div>
                 ))}
@@ -595,18 +678,89 @@ export const ClassFormDrawer = ({
         <Divider style={{ margin: '8px 0 16px 0' }} />
 
         {/* KHỐI 4: 2 LINK PHÒNG HỌC (TEACHER HOST & STUDENT) + NHÓM CHAT ZALO */}
-        <div style={{ marginBottom: 4 }}>
-          <Text strong style={{ fontSize: 14, color: '#0f172a', display: 'block' }}>
-            {isEnglish
-              ? '4. Virtual Meeting Room URLs (Host & Student) & Zalo Group Chat'
-              : '4. Cấu Hình 2 Link Phòng Học (Host GV & Học Viên) & Nhóm Chat Zalo'}
-          </Text>
-          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
-            {isEnglish
-              ? 'Separate Host link for Teacher and Join link for Students (Google Meet, Zoom, Teams...), plus class Zalo group'
-              : 'Tách biệt đường dẫn mở phòng (Host) cho Giáo viên, đường dẫn vào học cho Học viên (tự động nhận diện Google Meet, Zoom...) và nhóm Zalo của lớp'}
-          </Text>
+        <div
+          style={{
+            marginBottom: 12,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            flexWrap: 'wrap',
+            gap: 10,
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <Text strong style={{ fontSize: 14, color: '#0f172a', display: 'block' }}>
+              {isEnglish
+                ? '4. Virtual Meeting Room URLs (Host & Student) & Zalo Group Chat'
+                : '4. Cấu Hình 2 Link Phòng Học (Host GV & Học Viên) & Nhóm Chat Zalo'}
+            </Text>
+            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
+              {isEnglish
+                ? 'Auto-create a recurring Zoom Cloud room in 1 click, or paste custom meeting URLs below.'
+                : 'Bấm tự tạo phòng định kỳ trên Zoom Cloud (bật sẵn ghi Cloud) hoặc dán link thủ công bên dưới.'}
+            </Text>
+          </div>
+
+          <Button
+            type="primary"
+            ghost
+            icon={<ThunderboltOutlined />}
+            loading={provisioningZoom}
+            data-testid="btn-auto-provision-zoom-room"
+            onClick={handleAutoProvisionZoomRoom}
+            style={{
+              minHeight: 38,
+              borderRadius: 8,
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {isEnglish ? 'Auto-Create Zoom Cloud Room' : 'Tự Tạo Phòng Trên Zoom Cloud'}
+          </Button>
         </div>
+
+        {/* Tóm tắt thông số đã đẩy lên Zoom + Cảnh báo nếu trùng khung giờ trên cùng 1 Host Zoom */}
+        {provisionedZoomConfig && (
+          <Alert
+            type="success"
+            showIcon
+            data-testid="alert-zoom-provisioned-summary"
+            style={{ marginBottom: 12, borderRadius: 8 }}
+            title={
+              isEnglish
+                ? `Synced to Zoom Cloud: ID ${provisionedZoomConfig.prettyMeetingId} • ${provisionedZoomConfig.durationMinutes} mins/session • ${provisionedZoomConfig.occurrencesCount} recurring sessions • Auto-Cloud Recording ON`
+                : `Đã tạo trên Zoom Cloud: ID ${provisionedZoomConfig.prettyMeetingId} • Thời lượng ${provisionedZoomConfig.durationMinutes} phút/buổi • Chuỗi ${provisionedZoomConfig.occurrencesCount} buổi định kỳ • Tự động ghi Cloud: BẬT`
+            }
+          />
+        )}
+
+        {zoomHostOverlaps.length > 0 && (
+          <Alert
+            type="warning"
+            showIcon
+            data-testid="alert-zoom-host-time-overlap"
+            style={{ marginBottom: 12, borderRadius: 8 }}
+            title={
+              isEnglish
+                ? 'Zoom Host Concurrency Warning (1 Licensed Host: lakvietnam@lakeducation.com)'
+                : 'Cảnh Báo Trùng Giờ Trên Cùng 1 Tài Khoản Host Zoom (lakvietnam@lakeducation.com)'
+            }
+            description={
+              <div style={{ fontSize: 12 }}>
+                <div>
+                  {isEnglish
+                    ? 'Zoom API allows scheduling overlapping rooms, BUT your Zoom account currently has 1 Licensed Host (concurrent_meeting = None). Starting 2 live rooms at the exact same time on the same Host will disconnect the first room:'
+                    : 'Zoom API vẫn cho phép lên lịch tạo mã phòng mới trùng giờ, NHƯNG tài khoản Zoom hiện chỉ có 1 giấy phép Host trả phí (concurrent_meeting = None). Nếu mở 2 phòng học cùng lúc trên cùng 1 Host sẽ làm văng phòng đang dạy:'}
+                </div>
+                {zoomHostOverlaps.map((ov) => (
+                  <div key={ov.id} style={{ fontWeight: 600, marginTop: 3, color: '#b45309' }}>
+                    • Phòng đang trùng lịch: {ov.id} — {ov.topic} ({ov.timeRange})
+                  </div>
+                ))}
+              </div>
+            }
+          />
+        )}
 
         {/* Hàng 4: Link Giáo Viên (Host) & Link Tham Gia (Học Viên) (50% / 50%) */}
         <Row gutter={16}>

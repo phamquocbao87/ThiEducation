@@ -26,7 +26,12 @@ import {
 } from '@ant-design/icons';
 import { useLanguage } from '../../core/context/LanguageContext';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useZoomSyncJobs } from '../hooks/useZoomSyncJobs';
 import { ClassRecordingsDirectoryService } from '../services/ClassRecordingsDirectoryService';
+import {
+  ZoomRecordingSourceBadge,
+  ZoomSlotSyncingBanner,
+} from './ZoomRecordingSourceBadge';
 
 const { Title, Text } = Typography;
 
@@ -48,6 +53,7 @@ export const ClassRecordingsDirectoryCard = ({
 }) => {
   const { isEnglish } = useLanguage();
   const isMobile = useIsMobile();
+  const { activeJobsBySlotKey } = useZoomSyncJobs();
   const [searchKeyword, setSearchKeyword] = useState('');
   const [includeMissing, setIncludeMissing] = useState(false);
 
@@ -144,22 +150,34 @@ export const ClassRecordingsDirectoryCard = ({
     {
       title: isEnglish ? 'Recording Title' : 'Video Ghi Hình Buổi Học',
       key: 'title',
-      render: (_, row) =>
-        row.hasRecording ? (
-          <div style={{ minWidth: 200 }}>
-            <Text strong style={{ fontSize: 13.5, color: '#1e1b4b', display: 'block' }}>
-              🎬 {row.title}
-            </Text>
-            <Text type="secondary" style={{ fontSize: 11.5 }}>
-              {isEnglish ? 'Uploaded by: ' : 'Người đăng: '}
-              {row.uploadedBy}
-            </Text>
-          </div>
-        ) : (
+      render: (_, row) => {
+        const activeJob = activeJobsBySlotKey?.get(`${activeClass?.id || ''}_${row.isoDate || ''}`);
+        if (row.hasRecording) {
+          return (
+            <div style={{ minWidth: 200, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <Text strong style={{ fontSize: 13.5, color: '#1e1b4b', display: 'block' }}>
+                🎬 {row.title}
+              </Text>
+              <Space size={6} wrap>
+                <ZoomRecordingSourceBadge recording={row.recording} />
+                <Text type="secondary" style={{ fontSize: 11.5 }}>
+                  {isEnglish ? 'By: ' : 'Nguồn: '}
+                  {row.uploadedBy}
+                </Text>
+              </Space>
+              {activeJob && <ZoomSlotSyncingBanner syncJob={activeJob} compact />}
+            </div>
+          );
+        }
+        if (activeJob) {
+          return <ZoomSlotSyncingBanner syncJob={activeJob} />;
+        }
+        return (
           <Tag color="warning" icon={<WarningOutlined />} style={{ fontWeight: 600, margin: 0 }}>
             {isEnglish ? 'No recording uploaded yet' : 'Chưa tải lên video buổi học'}
           </Tag>
-        ),
+        );
+      },
     },
     {
       title: isEnglish ? 'Actions' : 'Thao Tác',

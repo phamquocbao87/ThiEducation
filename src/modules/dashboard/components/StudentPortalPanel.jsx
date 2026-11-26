@@ -46,6 +46,7 @@ import {
 } from '../../lesson-reader';
 import { useClassTimer } from '../hooks/useClassTimer';
 import { ClassSessionTimer } from './ClassSessionTimer';
+import { ZoomRoomLiveSection } from '../../../shared/components/ZoomRoomLiveSection';
 import { findClassSession, getSessionTimer } from '../../../shared/utils/classSessionUtils';
 import {
   detectMeetingPlatform,
@@ -566,6 +567,7 @@ export const StudentPortalPanel = ({ portalData = {} }) => {
                         <span>📅 {cls.schedule || 'Chưa xếp lịch'}</span>
                         <span style={{ marginLeft: 10 }}>👨‍🏫 {cls.teacherName || 'Teacher Maj'}</span>
                       </div>
+                      <ZoomRoomLiveSection cls={cls} role="student" compact />
                     </div>
 
                     <Space size={6} wrap>

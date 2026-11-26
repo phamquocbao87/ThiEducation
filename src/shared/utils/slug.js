@@ -24,6 +24,7 @@ export const MODULE_SLUGS = {
   preClassPrep: 'pre-class-prep',
   curriculum: 'curriculum-levels',
   schedules: 'zoom-schedules',
+  zoomSync: 'zoom-sync',
   attendance: 'class-attendance-evaluation',
   contracts: 'contracts-payroll',
   tuition: 'tuition-fees',

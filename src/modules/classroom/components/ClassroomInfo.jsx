@@ -2,6 +2,7 @@ import { Button, Descriptions, Space } from 'antd';
 import { VideoCameraOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { formatTimerDuration, getSessionTimer } from '../../../shared/utils/classSessionUtils';
+import { ZoomRoomLiveSection } from '../../../shared/components/ZoomRoomLiveSection';
 
 export const ClassroomInfo = ({ cls, session, now, onOpenRoom, currentUser }) => {
   const { t, language } = useLanguage();
@@ -27,6 +28,7 @@ export const ClassroomInfo = ({ cls, session, now, onOpenRoom, currentUser }) =>
       {cls.meetingId && <Descriptions.Item label={t('classroom.roomCode')}>{cls.meetingId}</Descriptions.Item>}
       {cls.passcode && <Descriptions.Item label={t('classroom.roomPassword')}>{cls.passcode}</Descriptions.Item>}
     </Descriptions>
+    <ZoomRoomLiveSection cls={cls} role={currentUser?.role || 'academic'} style={{ marginTop: 12 }} />
     <Space wrap style={{ margin: '16px 0' }}>
       {timer && <span role="timer" aria-live="off">{timer.state === 'live'
         ? t('dashboard.classTimer.remaining', { duration: formatTimerDuration(timer.remaining, t) })

@@ -15,6 +15,7 @@ import { useClassTimer } from '../hooks/useClassTimer';
 import { ClassSessionTimer } from './ClassSessionTimer';
 import { ClassTimerService } from '../services/ClassTimerService';
 import { ClassAttendanceSummary } from '../../../shared/components/ClassAttendanceSummary';
+import { ZoomRoomLiveSection } from '../../../shared/components/ZoomRoomLiveSection';
 import { currentAttendance } from '../../../shared/models/classroom.model';
 import { generateClassSessionDates } from '../../../shared/utils/classSessionUtils';
 
@@ -133,6 +134,7 @@ export const ClassLiveCard = ({ cls, role = 'academic', excusedAbsences = [], on
 
         <ClassSessionTimer cls={cls} now={now} isUrgent={isUrgent} />
         <ClassAttendanceSummary cls={cls} now={now} />
+        <ZoomRoomLiveSection cls={cls} role={role} />
 
         {/* Hàng: Tiến độ số buổi đã học */}
         <div

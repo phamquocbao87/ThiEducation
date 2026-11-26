@@ -13,6 +13,7 @@ import { useLanguage } from '../../../core/context/LanguageContext';
 import { useAuth } from '../../../core/context/AuthContext';
 import { detectMeetingPlatform } from '../../../shared/utils/meetingPlatformUtils';
 import { TimetableSlotService } from '../services/TimetableSlotService';
+import { useZoomSyncJobs } from '../../../shared/hooks/useZoomSyncJobs';
 import { SessionSlotRecordingBox } from './SessionSlotRecordingBox';
 
 const { Text } = Typography;
@@ -30,6 +31,7 @@ export const ScheduleTable = ({
 }) => {
   const { isEnglish } = useLanguage();
   const { currentUser } = useAuth();
+  const { activeJobsBySlotKey } = useZoomSyncJobs();
 
   // Học viên mở trước 10 phút, Giáo viên/Cán bộ mở trước 15 phút
   const isStudent = currentUser?.role === 'student';
@@ -203,6 +205,7 @@ export const ScheduleTable = ({
               isoDate={isoDate}
               timeState={timeState}
               recordings={slotRecordingsMap?.get(`${record.classId}_${isoDate}`) || []}
+              syncJob={activeJobsBySlotKey?.get(`${record.classId}_${isoDate}`) || null}
               canManage={Boolean(canManageSlotRecording?.(record))}
               compact={true}
               onWatchRecording={onWatchRecording}

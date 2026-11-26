@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { message } from 'antd';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '../../../core/services/firebase';
 import { useAuth } from '../../../core/context/AuthContext';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { PermissionService } from '../../../core/services/PermissionService';
@@ -80,8 +82,30 @@ export const useScheduleController = () => {
     };
 
     fetchSchedulesData();
+
+    // Realtime 0ms sync cho Video Ghi Hình Buổi Học (tự động hiện ngay lập tức khi Zoom Cloud Sync tải xong #9/#10!)
+    let unsubRecordings = null;
+    if (db) {
+      const qRec = query(
+        collection(db, 'learning_materials'),
+        where('isSessionRecording', '==', true)
+      );
+      unsubRecordings = onSnapshot(
+        qRec,
+        (snap) => {
+          if (!isMounted) return;
+          const liveRecs = snap.docs
+            .map((d) => ({ ...d.data(), id: d.id }))
+            .filter((m) => m && !m.isDeleted && Boolean(m.isSessionRecording));
+          setSessionRecordings(liveRecs);
+        },
+        () => {}
+      );
+    }
+
     return () => {
       isMounted = false;
+      if (unsubRecordings) unsubRecordings();
     };
   }, []);
 

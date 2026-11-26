@@ -1,6 +1,6 @@
 import { collection, doc, getDoc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { db, storage, IS_FIREBASE_ENABLED } from '../../../core/services/firebase';
+import { db, storage, IS_FIREBASE_ENABLED, IS_DEVELOPMENT_FIREBASE } from '../../../core/services/firebase';
 import { BaseModuleService } from '../../../shared/services/BaseModuleService';
 import { CourseService } from '../../courses/services/CourseService';
 import { ClassService } from '../../courses/services/ClassService';
@@ -611,7 +611,9 @@ export class MaterialService extends BaseModuleService {
     }
 
     // 3. Chuyển tệp vật lý trên Google Drive vào Thùng rác (30 ngày tự xoá) nếu không còn bản ghi active nào tham chiếu
-    if (targetDriveFileId) {
+    // CHỐT BẢO VỆ SHARED-DRIVE (PROD + DEV): Trên môi trường DEV, tuyệt đối KHÔNG xóa vật lý file trên Google Drive
+    // để bảo vệ an toàn 100% đường dẫn file đang dùng chung với Production!
+    if (targetDriveFileId && !IS_DEVELOPMENT_FIREBASE) {
       try {
         let stillReferenced = false;
         if (IS_FIREBASE_ENABLED && db) {

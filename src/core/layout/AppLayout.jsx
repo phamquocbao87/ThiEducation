@@ -41,6 +41,7 @@ import {
   IdcardOutlined,
   QuestionCircleOutlined,
   ReadOutlined,
+  CloudSyncOutlined,
 } from '@ant-design/icons';
 import { useAuth, CORE_ROLE_USERS } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';

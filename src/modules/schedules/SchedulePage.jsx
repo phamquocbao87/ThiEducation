@@ -137,8 +137,8 @@ export const SchedulePage = () => {
                     ? 'Videos'
                     : 'Video'
                   : isEnglish
-                  ? 'Class Recordings'
-                  : 'Tổng Hợp Recording',
+                    ? 'Class Recordings'
+                    : 'Tổng Hợp Recording',
               },
             ]}
             style={{ borderRadius: 8, background: '#f1f5f9', width: isMobile ? '100%' : 'auto' }}

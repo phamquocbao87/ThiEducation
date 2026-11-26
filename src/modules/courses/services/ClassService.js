@@ -269,6 +269,7 @@ export class ClassService extends BaseModuleService {
       subject: newClass.subject?.trim() || selectedCourse?.name || 'English ELA',
       platform: 'Zoom Meeting',
       startDate,
+      totalSessions: Number(newClass.totalSessions) || 12,
       meetingLink: studentLink,
       zoomStudentLink: studentLink,
       zoomHostLink: hostLink,
@@ -276,6 +277,7 @@ export class ClassService extends BaseModuleService {
         newClass.zaloGroupLink?.trim() || 'https://zalo.me/g/lakeducation_class',
       meetingId: newClass.meetingId?.trim() || '888 999 111',
       passcode: newClass.passcode?.trim() || '123456',
+      ...(newClass.zoomConfig ? { zoomConfig: newClass.zoomConfig } : {}),
       totalStudents: Array.isArray(newClass.studentIds)
         ? newClass.studentIds.length
         : Number(newClass.totalStudents) || 0,
@@ -387,6 +389,9 @@ export class ClassService extends BaseModuleService {
           'https://zalo.me/g/lakeducation_class',
         meetingId: updatedData.meetingId?.trim() ?? cls.meetingId,
         passcode: updatedData.passcode?.trim() ?? cls.passcode,
+        ...(updatedData.zoomConfig || cls.zoomConfig
+          ? { zoomConfig: updatedData.zoomConfig || cls.zoomConfig }
+          : {}),
         studentIds,
         totalStudents: Array.isArray(updatedData.studentIds)
           ? updatedData.studentIds.length

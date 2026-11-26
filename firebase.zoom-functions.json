@@ -1,0 +1,13 @@
+{
+  "functions": [
+    {
+      "source": "zoom-sync-service",
+      "codebase": "lak-zoom-sync",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "src"
+      ]
+    }
+  ]
+}
