@@ -62,10 +62,20 @@ export class StudentGoalService extends BaseModuleService {
     }
 
     // Mặc định: Chuẩn McGraw-Hill Wonders ELA (Mỹ)
+    const cefrByGrade = lvl.includes('g6')
+      ? 'B2'
+      : lvl.includes('g5')
+      ? 'B1+'
+      : (lvl.includes('g3') || lvl.includes('g4'))
+      ? 'B1'
+      : lvl.includes('g2')
+      ? 'A2'
+      : 'A1';
+
     return {
       templateType: 'WONDERS_ELA',
       courseLevel: courseLevel || 'McGraw-Hill Wonders G1',
-      targetCefr: lvl.includes('g2') ? 'A2' : lvl.includes('g3') ? 'B1' : 'A1',
+      targetCefr: cefrByGrade,
       title: `Chinh Phục Toàn Diện McGraw-Hill ${courseLevel || 'Wonders G1'}`,
       description: 'Làm chủ Phonics ngữ âm, đọc hiểu câu chuyện và tự tin tương tác Breakout Rooms với Giáo viên bản xứ.',
       totalSessions,
@@ -85,12 +95,30 @@ export class StudentGoalService extends BaseModuleService {
     const classId = classObj.id || classObj.classId || 'DEFAULT_CLASS';
     const goalId = `GOAL_${studentId}_${classId}`;
 
+    const expectedLevel = classObj.courseLevel || classObj.level || '';
+
     if (IS_FIREBASE_ENABLED && db) {
       try {
         const goalRef = doc(db, 'student_goals', goalId);
         const snap = await getDoc(goalRef);
         if (snap.exists()) {
-          return { id: snap.id, ...snap.data() };
+          const existingGoal = { id: snap.id, ...snap.data() };
+          // Tự động sửa sai nếu mục tiêu cũ lưu nhầm cấp độ cũ (vd: WONDERS-G4 trong khi lớp thuộc WONDERS-G5)
+          if (expectedLevel && existingGoal.courseLevel && existingGoal.courseLevel !== expectedLevel) {
+            const tpl = this.getDefaultGoalTemplate(expectedLevel, classObj);
+            const healedGoal = {
+              ...existingGoal,
+              courseLevel: expectedLevel,
+              targetCefr: tpl.targetCefr,
+              title: String(existingGoal.title || '').includes(existingGoal.courseLevel)
+                ? String(existingGoal.title).replace(existingGoal.courseLevel, expectedLevel)
+                : tpl.title,
+              updatedAt: new Date().toISOString(),
+            };
+            await setDoc(goalRef, healedGoal, { merge: true });
+            return healedGoal;
+          }
+          return existingGoal;
         }
       } catch (e) {
         console.warn('[StudentGoalService] Lỗi đọc student_goals:', e);

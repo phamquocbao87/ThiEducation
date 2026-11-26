@@ -35,7 +35,22 @@ export class CourseService extends BaseModuleService {
   }
 
   /**
+   * Đọc thông tin chi tiết 1 Khóa học theo ID
+   */
+  static async getCourseById(courseId) {
+    if (!courseId || !IS_FIREBASE_ENABLED || !db) return null;
+    try {
+      const snap = await getDoc(doc(db, this.COLLECTION_NAME, courseId));
+      return snap.exists() ? { ...snap.data(), id: snap.id } : null;
+    } catch (err) {
+      console.warn(`[CourseService] Lỗi đọc khóa học ${courseId}:`, err.message);
+      return null;
+    }
+  }
+
+  /**
    * Lưu hoặc cập nhật một Khóa học vào Cloud Firestore
+   * Tự động đồng bộ cấp độ chuẩn (courseLevel) & tên khóa học xuống các Lớp con trực thuộc
    */
   static async saveCourse(courseData) {
     if (IS_FIREBASE_ENABLED && db && courseData?.id) {
@@ -48,6 +63,27 @@ export class CourseService extends BaseModuleService {
           deletedAt: courseData.isDeleted ? courseData.deletedAt || new Date().toISOString() : null,
         };
         await setDoc(docRef, sanitizedPayload, { merge: true });
+
+        if (!sanitizedPayload.isDeleted && sanitizedPayload.level) {
+          const classesSnap = await getDocs(collection(db, 'classes'));
+          for (const clsDoc of classesSnap.docs) {
+            const clsData = clsDoc.data();
+            if (clsData.isDeleted || clsData.status === 'Deleted') continue;
+            if (clsData.courseId === courseData.id) {
+              if (clsData.courseLevel !== sanitizedPayload.level || clsData.courseName !== sanitizedPayload.name) {
+                await setDoc(
+                  doc(db, 'classes', clsDoc.id),
+                  {
+                    courseLevel: sanitizedPayload.level,
+                    courseName: sanitizedPayload.name || clsData.courseName || '',
+                    updatedAt: new Date().toISOString(),
+                  },
+                  { merge: true }
+                );
+              }
+            }
+          }
+        }
       } catch (err) {
         console.error('[CourseService] Lỗi lưu khóa học vào Firestore:', err.message);
         throw err;
@@ -193,7 +229,8 @@ export class CourseService extends BaseModuleService {
   }
 
   /**
-   * Đọc kho tài liệu giáo trình (10 Drive links, PDF, Audio) của một Khóa học
+   * Đọc kho tài liệu giáo trình & video bài giảng chung của một Khóa học
+   * (Tự động lọc bỏ các bản đã xóa hoặc video ghi hình buổi học riêng của từng lớp lẻ)
    */
   static async getCourseMaterials(courseId) {
     if (!courseId) return [];
@@ -203,7 +240,10 @@ export class CourseService extends BaseModuleService {
         const snap = await getDoc(docRef);
         if (snap.exists()) {
           const data = snap.data();
-          return data.courseMaterials || data.curriculumVault || [];
+          const rawList = data.courseMaterials || data.curriculumVault || [];
+          return (Array.isArray(rawList) ? rawList : []).filter(
+            (m) => m && !m.isDeleted && !m.isSessionRecording
+          );
         }
       } catch (err) {
         console.warn(`[CourseService] Lỗi đọc tài liệu khóa học ${courseId}:`, err.message);

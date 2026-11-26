@@ -339,7 +339,15 @@ export class PermissionService {
   }
 
   static canEvaluateStudents(role) {
-    return ['teacher', 'academic'].includes(role);
+    return ['teacher', 'academic', 'director', 'admin'].includes(role);
+  }
+
+  static canUnlockSessionEvaluation(role) {
+    return ['academic', 'director', 'admin'].includes(role);
+  }
+
+  static canRequestEvaluationUnlock(role) {
+    return role === this.ROLES.TEACHER;
   }
 
   static canConfirmTuitionPayment(role) {

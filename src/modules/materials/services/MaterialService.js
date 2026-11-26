@@ -18,12 +18,13 @@ export class MaterialService extends BaseModuleService {
   static async getAllMaterials() {
     const materialsMap = new Map();
 
-    // 1. Quét tài liệu từ danh mục Khóa học thật (100% Real DB)
+    // 1. Quét tài liệu từ danh mục Khóa học thật (100% Real DB — loại trừ bản đã xóa & Session Recording lớp lẻ)
     try {
       const courses = await CourseService.getAllCourses();
       (courses || []).forEach((c) => {
         const cMaterials = c.courseMaterials || [];
         cMaterials.forEach((m, idx) => {
+          if (!m || m.isDeleted || m.isSessionRecording) return;
           const matId = m.id || `mat_${c.id}_${idx}`;
           const normalized = normalizeMaterialShares({
             ...m,
@@ -180,20 +181,30 @@ export class MaterialService extends BaseModuleService {
       await setDoc(docRef, payload, { merge: true });
     }
 
-    // 2. Nếu gán cho Khóa học cụ thể, đồng bộ ngay vào `courseMaterials` của Khóa học đó
-    if (materialData.courseId && materialData.courseId !== 'ALL') {
+    // 2. Nếu gán cho Khóa học cụ thể (VÀ KHÔNG PHẢI Session Recording / tài liệu riêng của lớp lẻ),
+    //    đồng bộ ngay vào `courseMaterials` (Course Program Vault) của Khóa học đó
+    const isClassOnlyMaterial =
+      Boolean(payload.isSessionRecording) ||
+      payload.targetType === 'class' ||
+      Boolean(payload.classId) ||
+      (Array.isArray(payload.sharedClassIds) &&
+        payload.sharedClassIds.length > 0 &&
+        (!Array.isArray(payload.sharedCourseIds) || payload.sharedCourseIds.length === 0));
+
+    if (materialData.courseId && materialData.courseId !== 'ALL' && !isClassOnlyMaterial) {
       try {
         const courses = await CourseService.getAllCourses();
         const targetCourse = courses.find((c) => c.id === materialData.courseId);
         if (targetCourse) {
-          const existingList = Array.isArray(targetCourse.courseMaterials)
+          const existingList = (Array.isArray(targetCourse.courseMaterials)
             ? [...targetCourse.courseMaterials]
-            : [];
+            : []
+          ).filter((m) => m && !m.isDeleted && !m.isSessionRecording);
           const existingIndex = existingList.findIndex((m) => m.id === materialId);
           if (existingIndex >= 0) {
             existingList[existingIndex] = { ...existingList[existingIndex], ...payload };
           } else {
-            existingList.push(payload);
+            existingList.unshift(payload);
           }
           await CourseService.updateCourseMaterials(targetCourse.id, existingList, actor);
         }
@@ -532,32 +543,96 @@ export class MaterialService extends BaseModuleService {
   }
 
   /**
-   * Xóa tài liệu học tập (Bảo toàn dữ liệu & Đồng bộ xóa khỏi Khóa học)
+   * Xóa tài liệu học tập / video ghi hình:
+   * 1. Xóa mềm trên `learning_materials` & gỡ khỏi `courses.courseMaterials` (F5 không bao giờ sống lại).
+   * 2. Nếu tệp được upload lên Google Drive thông qua dự án này (và không còn bản ghi hoạt động nào khác dùng chung `driveFileId`),
+   *    tự động chuyển tệp vào Thùng rác Google Drive (`trashed: true`) để Google Drive giữ an toàn 30 ngày rồi tự xoá vĩnh viễn.
    */
   static async deleteMaterial(materialId, courseId, actor) {
     if (!materialId) return false;
 
-    // 1. Đánh dấu xóa mềm trên collection `learning_materials`
+    let targetDriveFileId = '';
+    const deletedAtIso = new Date().toISOString();
+
+    // 1. Đọc thông tin tệp trước khi đánh dấu xóa mềm trên collection `learning_materials`
     if (IS_FIREBASE_ENABLED && db) {
       try {
         const docRef = doc(db, this.COLLECTION_NAME, materialId);
-        await setDoc(docRef, { isDeleted: true, deletedAt: new Date().toISOString(), deletedBy: actor?.id || '' }, { merge: true });
+        const existingSnap = await getDoc(docRef);
+        if (existingSnap.exists()) {
+          targetDriveFileId = DriveStorageService.extractDriveFileId(existingSnap.data());
+        }
+        await setDoc(
+          docRef,
+          {
+            isDeleted: true,
+            driveTrashed: Boolean(targetDriveFileId),
+            deletedAt: deletedAtIso,
+            deletedBy: actor?.id || actor?.code || '',
+          },
+          { merge: true }
+        );
       } catch (err) {
         console.warn('Could not soft delete from learning_materials:', err);
       }
     }
 
-    // 2. Xóa khỏi Khóa học tương ứng (nếu có)
-    if (courseId && courseId !== 'ALL') {
-      try {
-        const courses = await CourseService.getAllCourses();
-        const targetCourse = courses.find((c) => c.id === courseId);
-        if (targetCourse && Array.isArray(targetCourse.courseMaterials)) {
-          const updatedMaterials = targetCourse.courseMaterials.filter((m) => m.id !== materialId);
+    // 2. Xóa khỏi Khóa học tương ứng (Course Program Vault) để F5 không bao giờ sống lại
+    try {
+      const courses = await CourseService.getAllCourses();
+      const candidateCourses =
+        courseId && courseId !== 'ALL'
+          ? (courses || []).filter((c) => c.id === courseId)
+          : (courses || []).filter(
+              (c) =>
+                Array.isArray(c.courseMaterials) &&
+                c.courseMaterials.some((m) => m && m.id === materialId)
+            );
+
+      for (const targetCourse of candidateCourses) {
+        const currentRaw = Array.isArray(targetCourse.courseMaterials)
+          ? targetCourse.courseMaterials
+          : [];
+        if (!targetDriveFileId) {
+          const matchedInCourse = currentRaw.find((m) => m && m.id === materialId);
+          if (matchedInCourse) {
+            targetDriveFileId = DriveStorageService.extractDriveFileId(matchedInCourse);
+          }
+        }
+        const updatedMaterials = currentRaw.filter(
+          (m) => m && m.id !== materialId && !m.isDeleted && !m.isSessionRecording
+        );
+        if (updatedMaterials.length !== currentRaw.length) {
           await CourseService.updateCourseMaterials(targetCourse.id, updatedMaterials, actor);
         }
-      } catch (err) {
-        console.warn('Could not remove material from course:', err);
+      }
+    } catch (err) {
+      console.warn('Could not remove material from course:', err);
+    }
+
+    // 3. Chuyển tệp vật lý trên Google Drive vào Thùng rác (30 ngày tự xoá) nếu không còn bản ghi active nào tham chiếu
+    if (targetDriveFileId) {
+      try {
+        let stillReferenced = false;
+        if (IS_FIREBASE_ENABLED && db) {
+          const allSnap = await getDocs(collection(db, this.COLLECTION_NAME));
+          allSnap.forEach((d) => {
+            if (stillReferenced || d.id === materialId) return;
+            const data = d.data();
+            if (data && !data.isDeleted) {
+              const otherDriveId = DriveStorageService.extractDriveFileId(data);
+              if (otherDriveId && otherDriveId === targetDriveFileId) {
+                stillReferenced = true;
+              }
+            }
+          });
+        }
+
+        if (!stillReferenced) {
+          await DriveStorageService.moveFileToTrash(targetDriveFileId);
+        }
+      } catch (trashErr) {
+        console.warn('[MaterialService] Could not move Drive file to Trash:', trashErr);
       }
     }
 

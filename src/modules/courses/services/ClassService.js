@@ -1,6 +1,6 @@
 import { BaseModuleService } from '../../../shared/services/BaseModuleService';
 import { db, IS_FIREBASE_ENABLED } from '../../../core/services/firebase';
-import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { matchesMultiFields } from '../../../shared/utils/searchUtils';
 import {
   parseScheduleToStructured,
@@ -52,16 +52,29 @@ export class ClassService extends BaseModuleService {
   static async saveClass(classData) {
     if (IS_FIREBASE_ENABLED && db && classData?.id) {
       try {
+        let resolvedCourseLevel = classData.courseLevel || classData.level || '';
+        let resolvedCourseName = classData.courseName || '';
+        if (classData.courseId) {
+          const parentSnap = await getDoc(doc(db, 'courses', classData.courseId));
+          if (parentSnap.exists()) {
+            const pData = parentSnap.data();
+            if (pData?.level) resolvedCourseLevel = pData.level;
+            if (pData?.name) resolvedCourseName = pData.name;
+          }
+        }
+
         const docRef = doc(db, this.COLLECTION_NAME, classData.id);
         const sanitizedPayload = {
           ...classData,
+          ...(resolvedCourseLevel ? { courseLevel: resolvedCourseLevel } : {}),
+          ...(resolvedCourseName ? { courseName: resolvedCourseName } : {}),
           isDeleted: Boolean(classData.isDeleted),
           status: classData.isDeleted ? 'Deleted' : classData.status || 'Active',
           deletedAt: classData.isDeleted ? classData.deletedAt || new Date().toISOString() : null,
         };
         await setDoc(docRef, sanitizedPayload, { merge: true });
 
-        // [BIDIRECTIONAL CONSISTENCY]: Đồng bộ hai chiều với hồ sơ học viên trong Firestore users
+        // [BIDIRECTIONAL CONSISTENCY]: Đồng bộ hai chiều với hồ sơ học viên trong Firestore users (+ cấp độ khóa học chuẩn)
         if (Array.isArray(classData.studentIds)) {
           const targetStudentIds = classData.studentIds.map(String);
           const usersCol = collection(db, 'users');
@@ -86,11 +99,16 @@ export class ClassService extends BaseModuleService {
                 changed = true;
               }
 
-              if (changed) {
+              const needsLevelSync = Boolean(
+                isAssigned && resolvedCourseLevel && uData.level !== resolvedCourseLevel
+              );
+
+              if (changed || needsLevelSync) {
                 const nextEnrolled = Array.from(enrolledSet);
                 await setDoc(doc(db, 'users', uDoc.id), {
                   enrolledClassIds: nextEnrolled,
                   classesEnrolled: nextEnrolled,
+                  ...(needsLevelSync ? { level: resolvedCourseLevel } : {}),
                   updatedAt: new Date().toISOString(),
                 }, { merge: true });
               }

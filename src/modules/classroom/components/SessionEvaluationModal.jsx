@@ -29,16 +29,25 @@ import {
   LockOutlined,
   MessageOutlined,
   SaveOutlined,
+  SendOutlined,
   StarFilled,
   TeamOutlined,
   ThunderboltOutlined,
   TrophyOutlined,
+  UnlockOutlined,
   UserOutlined,
   VideoCameraOutlined,
-  WarningOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { useIsMobile } from '../../../shared/hooks/useIsMobile';
+import {
+  POST_SESSION_FEEDBACK_WINDOW_MS,
+  evaluateSessionFeedbackCompleteness,
+  formatFeedbackCountdown,
+  getSessionFeedbackWindowState,
+  mergeSessionEvaluationDocs,
+  normalizeSessionDateKey,
+} from '../../../shared/utils/classSessionUtils';
 import { ClassroomService } from '../services/ClassroomService';
 import { SimpleEvaluationEditor } from './SimpleEvaluationEditor';
 import { FormattedText } from '../../../shared/components/controls';
@@ -92,6 +101,9 @@ export const SessionEvaluationPanel = ({
   loading = false,
   onSaveEvaluation,
   onSaveAllEvaluations,
+  onRequestUnlock,
+  onUnlockSession,
+  onRelockSession,
   scheduleSessions = [],
   selectedSessionOverride = null,
   onSelectSession,
@@ -102,6 +114,9 @@ export const SessionEvaluationPanel = ({
   const [zaloPreview, setZaloPreview] = useState(null);
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
   const [isRecordingModalOpen, setIsRecordingModalOpen] = useState(false);
+  const [isRequestUnlockModalOpen, setIsRequestUnlockModalOpen] = useState(false);
+  const [unlockReason, setUnlockReason] = useState('');
+  const [isUnlockActionLoading, setIsUnlockActionLoading] = useState(false);
   const [historyDocs, setHistoryDocs] = useState([]);
   const localEditsRef = useRef({});
   const lastSessionKeyRef = useRef(null);
@@ -126,29 +141,59 @@ export const SessionEvaluationPanel = ({
     };
   }, [cls?.id, attendance?.id, attendance?.updatedAt]);
 
-  // 2. Xây dựng bản đồ trạng thái đánh giá cho từng buổi học
+  const rosterIds = useMemo(
+    () => (roster?.length ? roster.map((r) => r.id).filter(Boolean) : (cls?.studentIds || [])),
+    [roster, cls?.studentIds]
+  );
+
+  // 2. Xây dựng bản đồ trạng thái đánh giá cho từng buổi học (hợp nhất lịch sử + live attendance 0ms)
   const evaluatedSessionMap = useMemo(() => {
-    const map = {};
-    historyDocs.forEach((doc) => {
-      const evals = doc.studentEvaluations || {};
-      const evalEntries = Object.values(evals).filter((e) => e?.stars || e?.comment);
-      const evalCount = evalEntries.length;
-      const totalStars = evalEntries.reduce((sum, e) => sum + (Number(e.stars) || 5), 0);
-      const avgStars = evalCount > 0 ? (totalStars / evalCount).toFixed(1) : null;
+    const rawByStart = new Map();
+    const rawById = new Map();
+    const rawByDate = new Map();
 
-      const info = {
-        evalCount,
-        avgStars,
-        evaluatedAt: doc.updatedAt || doc.createdAt,
-        hasEvaluations: evalCount > 0,
-      };
+    const registerDoc = (doc) => {
+      if (!doc) return;
+      if (doc.sessionStart) {
+        const k = Number(doc.sessionStart);
+        rawByStart.set(k, mergeSessionEvaluationDocs(rawByStart.get(k), doc));
+      }
+      if (doc.id) {
+        const k = String(doc.id);
+        rawById.set(k, mergeSessionEvaluationDocs(rawById.get(k), doc));
+      }
+      const dKey = normalizeSessionDateKey(doc.date);
+      if (dKey) {
+        rawByDate.set(dKey, mergeSessionEvaluationDocs(rawByDate.get(dKey), doc));
+      }
+    };
 
-      if (doc.sessionStart) map[doc.sessionStart] = info;
-      if (doc.id) map[doc.id] = info;
-      if (doc.date) map[doc.date] = info;
-    });
-    return map;
-  }, [historyDocs]);
+    historyDocs.forEach(registerDoc);
+
+    if (session?.start && (attendance?.studentEvaluations || attendance?.presence || attendance?.unlockState)) {
+      registerDoc({
+        id: session.id || `LIVE_${cls?.id}_${session.start}`,
+        sessionStart: session.start,
+        date: session.date || attendance.date,
+        presence: attendance.presence || {},
+        studentEvaluations: attendance.studentEvaluations || {},
+        ...(attendance.unlockState ? { unlockState: attendance.unlockState } : {}),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    return { rawByStart, rawById, rawByDate };
+  }, [
+    historyDocs,
+    session?.id,
+    session?.start,
+    session?.date,
+    attendance?.date,
+    attendance?.presence,
+    attendance?.studentEvaluations,
+    attendance?.unlockState,
+    cls?.id,
+  ]);
 
   // Trạng thái buổi học hiện tại
   const isSessionUpcoming = isUpcomingProp !== undefined
@@ -162,19 +207,25 @@ export const SessionEvaluationPanel = ({
     : Boolean(session && (session.isEnded || now >= session.end));
   const isNoSession = !session;
 
+  const fallbackWindowState = useMemo(
+    () => getSessionFeedbackWindowState(session?.end, now, POST_SESSION_FEEDBACK_WINDOW_MS, attendance?.unlockState || null),
+    [session?.end, now, attendance?.unlockState]
+  );
+
   const canEvaluate = canEvaluateProp !== undefined
     ? Boolean(canEvaluateProp)
     : Boolean(
         (!isSessionUpcoming || Boolean(selectedSessionOverride)) &&
         !isNoSession &&
+        !fallbackWindowState.isLockedAfter18h &&
         (isTeacher || isAcademic)
       );
 
   const formattedSessionDate = session?.start
     ? new Intl.DateTimeFormat(isEnglish ? 'en-US' : 'vi-VN', {
-        dateStyle: 'medium',
-        timeZone: 'Asia/Ho_Chi_Minh',
-      }).format(session.start)
+      dateStyle: 'medium',
+      timeZone: 'Asia/Ho_Chi_Minh',
+    }).format(session.start)
     : attendance?.date || cls?.startDate || '';
 
   const formattedSessionTime = session?.start && session?.end
@@ -335,21 +386,54 @@ export const SessionEvaluationPanel = ({
     }
   };
 
-  // 4. Lựa chọn buổi học từ Dropdown (Retroactive Selector)
+  // 4. Lựa chọn buổi học từ Dropdown (Chuẩn Khóa >18h, Mở khóa 18h & Yêu cầu mở khóa)
   const getSessionEvalStatus = (s) => {
     const isFuture = s.dateMs > now;
     const isLive = s.dateMs <= now && now < s.endMs;
-    const sessionKey = s.dateMs;
     const docId = `LIVE_${cls?.id}_${s.dateMs}`;
-    const info = evaluatedSessionMap[sessionKey] || evaluatedSessionMap[docId] || evaluatedSessionMap[s.date];
+    const dKey = normalizeSessionDateKey(s.date || s.dateMs);
 
-    const hasEvaluations = Boolean(info?.hasEvaluations);
+    let mergedDoc = null;
+    if (evaluatedSessionMap.rawByStart?.has(Number(s.dateMs))) {
+      mergedDoc = mergeSessionEvaluationDocs(mergedDoc, evaluatedSessionMap.rawByStart.get(Number(s.dateMs)));
+    }
+    if (evaluatedSessionMap.rawById?.has(docId)) {
+      mergedDoc = mergeSessionEvaluationDocs(mergedDoc, evaluatedSessionMap.rawById.get(docId));
+    }
+    if (dKey && evaluatedSessionMap.rawByDate?.has(dKey)) {
+      mergedDoc = mergeSessionEvaluationDocs(mergedDoc, evaluatedSessionMap.rawByDate.get(dKey));
+    }
+
+    const comp = evaluateSessionFeedbackCompleteness(mergedDoc, rosterIds);
+    const win = getSessionFeedbackWindowState(
+      s.endMs,
+      now,
+      POST_SESSION_FEEDBACK_WINDOW_MS,
+      mergedDoc?.unlockState || null
+    );
+
     return {
       isFuture,
       isLive,
-      hasEvaluations,
-      evalCount: info?.evalCount || 0,
-      avgStars: info?.avgStars || null,
+      isEnded: win.isEnded,
+      isWithin18h: win.isWithinWindow,
+      isOverdue18h: win.isOverdue,
+      isLockedAfter18h: win.isLockedAfter18h,
+      isTemporarilyUnlocked: win.isTemporarilyUnlocked,
+      isUnlockRequested: win.isUnlockRequested,
+      unlockedUntilMs: win.unlockedUntilMs,
+      unlockRemainingMs: win.unlockRemainingMs,
+      unlockState: win.unlockState,
+      deadlineMs: win.deadlineMs,
+      remainingMs: win.remainingMs,
+      isComplete: comp.isComplete,
+      isPartial: comp.isPartial,
+      completedCount: comp.completedCount,
+      requiredCount: comp.requiredCount,
+      missingCount: comp.missingCount,
+      hasEvaluations: comp.isComplete,
+      evalCount: comp.completedCount,
+      avgStars: comp.avgStars || null,
     };
   };
 
@@ -360,19 +444,40 @@ export const SessionEvaluationPanel = ({
       let statusTag = '';
       if (status.isFuture) {
         statusTag = isEnglish ? '⏳ Upcoming' : '🔒 Chưa diễn ra';
-      } else if (status.hasEvaluations) {
-        statusTag = isEnglish ? `✅ Evaluated (${status.avgStars}⭐)` : `✅ Đã đánh giá (${status.avgStars}⭐)`;
       } else if (status.isLive) {
-        statusTag = isEnglish ? '🟢 Live now (Not evaluated)' : '🟢 Đang diễn ra (Chưa ĐG ⚠️)';
+        statusTag = status.completedCount > 0
+          ? (isEnglish
+            ? `🟢 Live (${status.completedCount}/${status.requiredCount} — ${status.missingCount} left)`
+            : `🟢 Đang học (${status.completedCount}/${status.requiredCount} — thiếu ${status.missingCount} HS)`)
+          : (isEnglish
+            ? `🟢 Live now (0/${status.requiredCount} feedback)`
+            : `🟢 Đang diễn ra (0/${status.requiredCount} HS)`);
+      } else if (status.isTemporarilyUnlocked) {
+        const ucd = formatFeedbackCountdown(status.unlockRemainingMs, isEnglish);
+        statusTag = isEnglish
+          ? `🔓 Unlocked (${ucd} left • ${status.completedCount}/${status.requiredCount})`
+          : `🔓 Đã mở khóa (còn ${ucd} • ${status.completedCount}/${status.requiredCount} HS)`;
+      } else if (status.isUnlockRequested) {
+        statusTag = isEnglish
+          ? `📨 Unlock Requested (${status.completedCount}/${status.requiredCount})`
+          : `📨 Chờ duyệt mở khóa (${status.completedCount}/${status.requiredCount} HS)`;
+      } else if (status.isLockedAfter18h) {
+        statusTag = status.isComplete
+          ? (isEnglish
+              ? `🔒 Completed & Locked (${status.completedCount}/${status.requiredCount})`
+              : `🔒 Hoàn tất & Đã khóa (${status.completedCount}/${status.requiredCount} HS)`)
+          : (isEnglish
+              ? `🔒 Locked >18h (Missing ${status.missingCount}/${status.requiredCount})`
+              : `🔒 Đã khóa >18h (Thiếu ${status.missingCount}/${status.requiredCount} HS)`);
+      } else if (status.isComplete) {
+        statusTag = isEnglish
+          ? `✅ Completed (${status.completedCount}/${status.requiredCount}${status.avgStars ? ` • ${status.avgStars}⭐` : ''})`
+          : `✅ Đã hoàn tất (${status.completedCount}/${status.requiredCount} HS${status.avgStars ? ` • ${status.avgStars}⭐` : ''})`;
       } else {
-        const isToday = s.dateMs <= now && now - s.endMs < 12 * 3600 * 1000;
-        statusTag = isToday
-          ? isEnglish
-            ? '⚠️ Today (Pending)'
-            : '⚠️ Hôm nay (Chưa ĐG)'
-          : isEnglish
-          ? '⚠️ Missed (Retroactive)'
-          : '⚠️ Quên đánh giá (Đánh giá bù)';
+        const countdown = formatFeedbackCountdown(status.remainingMs, isEnglish);
+        statusTag = isEnglish
+          ? `⏳ Due in ${countdown} (Missing ${status.missingCount}/${status.requiredCount})`
+          : `⏳ Hạn 18h: còn ${countdown} (Thiếu ${status.missingCount}/${status.requiredCount} HS)`;
       }
 
       const mainLabel = s.label ? s.label.split('—')[0].trim() : `Buổi ${s.sessionIndex} (${s.date})`;
@@ -384,7 +489,7 @@ export const SessionEvaluationPanel = ({
         status,
       };
     });
-  }, [scheduleSessions, evaluatedSessionMap, now, isEnglish]);
+  }, [scheduleSessions, evaluatedSessionMap, rosterIds, now, isEnglish]);
 
   const handleSelectSession = (sessionDateMs) => {
     const targetMs = Number(sessionDateMs);
@@ -404,19 +509,36 @@ export const SessionEvaluationPanel = ({
 
   const totalCompletedSessions = useMemo(() => {
     if (!scheduleSessions.length) return 0;
-    return scheduleSessions.filter((s) => getSessionEvalStatus(s).hasEvaluations).length;
-  }, [scheduleSessions, evaluatedSessionMap]);
+    return scheduleSessions.filter((s) => s.endMs <= now && getSessionEvalStatus(s).isComplete).length;
+  }, [scheduleSessions, evaluatedSessionMap, rosterIds, now]);
 
   const pastSessionsCount = useMemo(() => {
     if (!scheduleSessions.length) return 0;
     return scheduleSessions.filter((s) => s.endMs <= now).length;
   }, [scheduleSessions, now]);
 
-  const currentSessionEvalStatus = session ? getSessionEvalStatus({ dateMs: session.start, endMs: session.end }) : null;
-  const isRetroactiveEditMode = Boolean(selectedSessionOverride && session && currentSessionEvalStatus?.hasEvaluations);
-  const isRetroactiveNewMode = Boolean(selectedSessionOverride && session && session.end < now && !currentSessionEvalStatus?.hasEvaluations);
+  const currentSessionEvalStatus = session
+    ? getSessionEvalStatus({ dateMs: session.start, endMs: session.end, date: session.date || attendance?.date })
+    : null;
 
-  const totalEvaluated = Object.values(evaluations).filter((e) => e?.comment || e?.stars).length;
+  const liveSessionCompleteness = useMemo(
+    () => evaluateSessionFeedbackCompleteness(
+      { presence: attendance?.presence, studentEvaluations: evaluations },
+      rosterIds
+    ),
+    [attendance?.presence, evaluations, rosterIds]
+  );
+
+  const formattedFeedbackDeadline = currentSessionEvalStatus?.deadlineMs
+    ? new Intl.DateTimeFormat(isEnglish ? 'en-US' : 'vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'Asia/Ho_Chi_Minh',
+    }).format(currentSessionEvalStatus.deadlineMs)
+    : '';
 
   const openZaloPreview = (student, evalData) => {
     const cleanPhone = String(student.parentPhone || student.phone || '').trim().replace(/[\s\-().]/g, '');
@@ -722,8 +844,8 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
                   {isOnline
                     ? (isEnglish ? '✓ Present in room' : '✓ Đã vào phòng học')
                     : isOffline
-                    ? (isEnglish ? '✕ Absent today' : '✕ Vắng mặt buổi học')
-                    : (isEnglish ? '• Unchecked' : '• Chưa kiểm tra')}
+                      ? (isEnglish ? '✕ Absent today' : '✕ Vắng mặt buổi học')
+                      : (isEnglish ? '• Unchecked' : '• Chưa kiểm tra')}
                 </Text>
               </div>
 
@@ -766,12 +888,12 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
         const ratingLabel = stars === 5
           ? (isEnglish ? 'Excellent' : 'Xuất sắc')
           : stars === 4
-          ? (isEnglish ? 'Very Good' : 'Rất tốt')
-          : stars === 3
-          ? (isEnglish ? 'Average' : 'Cần cố gắng')
-          : stars === 2
-          ? (isEnglish ? 'Weak' : 'Còn yếu')
-          : (isEnglish ? 'Absent' : 'Vắng học');
+            ? (isEnglish ? 'Very Good' : 'Rất tốt')
+            : stars === 3
+              ? (isEnglish ? 'Average' : 'Cần cố gắng')
+              : stars === 2
+                ? (isEnglish ? 'Weak' : 'Còn yếu')
+                : (isEnglish ? 'Absent' : 'Vắng học');
 
         const skillItem = (label, icon, val, keyField) => (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
@@ -859,8 +981,8 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
         const placeholderText = isSessionUpcoming
           ? (isEnglish ? 'Post-session evaluation will unlock when this session starts...' : 'Đánh giá sau giờ sẽ mở khi buổi học bắt đầu...')
           : isOffline
-          ? (isEnglish ? 'Absent from class today...' : 'Vắng mặt buổi học hôm nay...')
-          : (isEnglish
+            ? (isEnglish ? 'Absent from class today...' : 'Vắng mặt buổi học hôm nay...')
+            : (isEnglish
               ? 'Actively participated in class, pronunciation was very clear and completed homework well...'
               : 'Tham gia học tích cực, phát âm rất chuẩn và làm bài tập xuất sắc hôm nay...');
 
@@ -984,6 +1106,7 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
               style={{
                 borderRadius: 8,
                 fontWeight: 600,
+                minHeight: isMobile ? 40 : undefined,
                 borderColor: '#d8b4fe',
                 color: '#7c3aed',
                 backgroundColor: '#faf5ff',
@@ -1000,7 +1123,7 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
               icon={<SaveOutlined />}
               loading={loading}
               disabled={!canEvaluate}
-              style={{ borderRadius: 8, fontWeight: 600, whiteSpace: 'nowrap' }}
+              style={{ borderRadius: 8, fontWeight: 600, minHeight: isMobile ? 40 : undefined, whiteSpace: 'nowrap' }}
               onClick={handleSaveAll}
               data-testid="btn-save-all-evaluations"
             >
@@ -1026,7 +1149,7 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
           gap: 12,
         }}
       >
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: 8, flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: 8, flex: 1, minWidth: 0 }}>
           <Text strong style={{ fontSize: 13, color: '#334155', whiteSpace: 'nowrap' }}>
             📅 {isEnglish ? 'Select Session to Evaluate:' : 'Chọn Buổi Học Cần Đánh Giá:'}
           </Text>
@@ -1034,21 +1157,30 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
             value={session?.start || scheduleSessions[0]?.dateMs}
             onChange={handleSelectSession}
             options={sessionOptions}
-            style={{ width: isMobile ? '100%' : 440, height: 38 }}
+            style={{ width: isMobile ? '100%' : 470, maxWidth: '100%', height: isMobile ? 40 : 38 }}
             data-testid="select-retroactive-session"
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: isMobile ? 'space-between' : 'flex-end' }}>
-          <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-            {isEnglish
-              ? `Session progress: ${totalEvaluated}/${roster.length} students`
-              : `Buổi này: ${totalEvaluated}/${roster.length} học viên`}
-          </Text>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, justifyContent: isMobile ? 'space-between' : 'flex-end' }}>
+          <Space size={6} wrap>
+            <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }} data-testid="session-feedback-progress-text">
+              {isEnglish
+                ? `Feedback: ${liveSessionCompleteness.completedCount}/${liveSessionCompleteness.requiredCount} present`
+                : `Đã nhận xét: ${liveSessionCompleteness.completedCount}/${liveSessionCompleteness.requiredCount} HS có mặt`}
+            </Text>
+            {liveSessionCompleteness.missingCount > 0 && !isStudent && (
+              <Tag color="warning" style={{ margin: 0, fontWeight: 600, whiteSpace: 'nowrap' }} data-testid="session-feedback-missing-tag">
+                {isEnglish
+                  ? `Missing ${liveSessionCompleteness.missingCount}/${liveSessionCompleteness.requiredCount}`
+                  : `Thiếu ${liveSessionCompleteness.missingCount}/${liveSessionCompleteness.requiredCount} HS`}
+              </Tag>
+            )}
+          </Space>
           <Button
             icon={<HistoryOutlined />}
             onClick={() => setIsHistoryDrawerOpen(true)}
-            style={{ borderRadius: 6, fontWeight: 600, fontSize: 12, borderColor: '#91caff', color: '#096dd9', whiteSpace: 'nowrap' }}
+            style={{ borderRadius: 6, fontWeight: 600, fontSize: 12, minHeight: isMobile ? 38 : undefined, borderColor: '#91caff', color: '#096dd9', whiteSpace: 'nowrap' }}
             data-testid="btn-open-evaluation-history"
           >
             {isEnglish ? 'Past History' : 'Lịch Sử'}
@@ -1102,52 +1234,223 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
         </Space>
       </div>
 
-      {/* 4. Trạng Thái Buổi Học Đang Chọn Banner */}
-      {isRetroactiveNewMode && (
+      {/* 4. Trạng Thái Buổi Học Đang Chọn Banner (Khóa Cứng >18h + Mở Khóa 18h + Yêu Cầu Mở Khóa) */}
+      {!isStudent && isSessionEnded && currentSessionEvalStatus?.isTemporarilyUnlocked && (
         <Alert
-          type="warning"
+          type="success"
           showIcon
-          icon={<WarningOutlined style={{ color: '#fa8c16' }} />}
-          message={
+          icon={<UnlockOutlined style={{ color: '#52c41a' }} />}
+          title={
             <span style={{ fontWeight: 700 }}>
               {isEnglish
-                ? `Retroactive Evaluation: Session ${sessionIndex} (${formattedSessionDate})`
-                : `Đang Đánh Giá Bù Cho: Buổi ${sessionIndex} (${formattedSessionDate})`}
+                ? `Unlocked for Re-Evaluation (18h) — ${formatFeedbackCountdown(currentSessionEvalStatus.unlockRemainingMs, true)} remaining`
+                : `Đã Mở Khóa Đánh Giá Lại (18 Tiếng) — Còn ${formatFeedbackCountdown(currentSessionEvalStatus.unlockRemainingMs, false)}`}
             </span>
           }
           description={
-            <div style={{ marginTop: 2, fontSize: 12, lineHeight: '18px' }}>
-              {isEnglish
-                ? 'This past session was missed. Your ratings and comments will be saved directly into the student academic records.'
-                : 'Buổi học này đã kết thúc trước đây nhưng chưa có đánh giá. Điểm số và nhận xét sẽ tự động lưu vào học bạ của các em.'}
+            <div style={{ marginTop: 4, fontSize: 12, lineHeight: '18px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div>
+                {isEnglish
+                  ? `Unlocked by ${currentSessionEvalStatus.unlockState?.unlockedByName || 'Academic'} (${currentSessionEvalStatus.completedCount}/${currentSessionEvalStatus.requiredCount} present students completed). Editing will automatically re-lock when the 18h window expires.`
+                  : `Được mở khóa bởi ${currentSessionEvalStatus.unlockState?.unlockedByName || 'Giáo vụ'} (đã nhận xét ${currentSessionEvalStatus.completedCount}/${currentSessionEvalStatus.requiredCount} học sinh có mặt). Hệ thống sẽ tự động khóa lại sau khi hết 18 tiếng.`}
+              </div>
+              {isAcademic && onRelockSession && (
+                <Button
+                  size="middle"
+                  danger
+                  icon={<LockOutlined />}
+                  loading={isUnlockActionLoading}
+                  style={{ borderRadius: 8, fontWeight: 600, minHeight: 38, whiteSpace: 'nowrap', width: isMobile ? '100%' : 'auto' }}
+                  onClick={async () => {
+                    setIsUnlockActionLoading(true);
+                    try {
+                      await onRelockSession();
+                      message.success(isEnglish ? 'Session evaluation locked immediately.' : 'Đã khóa lại đánh giá buổi học ngay lập tức.');
+                    } catch (err) {
+                      message.error(err.message || (isEnglish ? 'Failed to lock session' : 'Lỗi khóa buổi học'));
+                    } finally {
+                      setIsUnlockActionLoading(false);
+                    }
+                  }}
+                  data-testid="btn-relock-eval-now"
+                >
+                  {isEnglish ? 'Lock Now' : 'Khóa Lại Ngay'}
+                </Button>
+              )}
             </div>
           }
           style={{ borderRadius: 10, marginBottom: 16 }}
-          data-testid="banner-retroactive-evaluation"
+          data-testid="banner-feedback-unlocked-18h"
         />
       )}
 
-      {isRetroactiveEditMode && (
+      {!isStudent && isSessionEnded && currentSessionEvalStatus?.isLockedAfter18h && (
+        <Alert
+          type={currentSessionEvalStatus.isComplete ? 'warning' : 'error'}
+          showIcon
+          icon={<LockOutlined style={{ color: currentSessionEvalStatus.isComplete ? '#d46b08' : '#cf1322' }} />}
+          title={
+            <span style={{ fontWeight: 700 }}>
+              {currentSessionEvalStatus.isComplete
+                ? (isEnglish
+                    ? `Session Evaluation Locked (>18h After Class) — Completed ${currentSessionEvalStatus.completedCount}/${currentSessionEvalStatus.requiredCount} present students`
+                    : `Đã Khóa Đánh Giá Sau 18 Tiếng — Đã hoàn tất ${currentSessionEvalStatus.completedCount}/${currentSessionEvalStatus.requiredCount} học sinh có mặt`)
+                : (isEnglish
+                    ? `Locked (>18h After Class) — Missing feedback for ${currentSessionEvalStatus.missingCount}/${currentSessionEvalStatus.requiredCount} present students`
+                    : `Đã Khóa Đánh Giá (>18 Tiếng) — Còn thiếu nhận xét của ${currentSessionEvalStatus.missingCount}/${currentSessionEvalStatus.requiredCount} học sinh có mặt`)}
+            </span>
+          }
+          description={
+            <div style={{ marginTop: 4, fontSize: 12, lineHeight: '18px' }}>
+              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: 10 }}>
+                <div>
+                  {isEnglish
+                    ? `The 18-hour post-session window (${formattedFeedbackDeadline}) has closed and editing is locked. ${isTeacher ? 'Please request Academic staff to unlock this session if you need to add or update student evaluations.' : 'Click Unlock below to open a new 18-hour re-evaluation window.'}`
+                    : `Đã hết thời hạn 18 tiếng sau giờ học (${formattedFeedbackDeadline}), chức năng chỉnh sửa đánh giá đã tự động khóa. ${isTeacher ? 'Vui lòng gửi yêu cầu để Giáo vụ mở khóa nếu cần bổ sung hoặc cập nhật nhận xét.' : 'Bấm Mở Khóa bên dưới để cấp thêm 18 tiếng đánh giá lại cho buổi học này.'}`}
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'stretch' : 'flex-end' }}>
+                  {isTeacher && (
+                    currentSessionEvalStatus.isUnlockRequested ? (
+                      <Tag
+                        color="purple"
+                        icon={<ClockCircleOutlined />}
+                        style={{ margin: 0, padding: '6px 12px', fontSize: 12, fontWeight: 700, borderRadius: 8, whiteSpace: isMobile ? 'normal' : 'nowrap', width: isMobile ? '100%' : 'auto', textAlign: 'center' }}
+                        data-testid="tag-unlock-requested-pending"
+                      >
+                        {isEnglish ? '⏳ Unlock Requested — Waiting for Academic Approval' : '⏳ Đã gửi yêu cầu — Chờ Giáo vụ duyệt mở khóa'}
+                      </Tag>
+                    ) : (
+                      <Button
+                        type="primary"
+                        icon={<SendOutlined />}
+                        style={{ borderRadius: 8, fontWeight: 700, minHeight: 38, whiteSpace: 'nowrap', width: isMobile ? '100%' : 'auto' }}
+                        onClick={() => {
+                          setUnlockReason(
+                            currentSessionEvalStatus.missingCount > 0
+                              ? (isEnglish
+                                  ? `Need to complete remaining ${currentSessionEvalStatus.missingCount}/${currentSessionEvalStatus.requiredCount} student evaluations.`
+                                  : `Cần bổ sung nhận xét cho ${currentSessionEvalStatus.missingCount}/${currentSessionEvalStatus.requiredCount} học sinh còn thiếu.`)
+                              : (isEnglish
+                                  ? 'Need to update student evaluation comments after reviewing classwork.'
+                                  : 'Cần cập nhật lại lời nhận xét học sinh sau khi chấm bài tập.')
+                          );
+                          setIsRequestUnlockModalOpen(true);
+                        }}
+                        data-testid="btn-request-eval-unlock"
+                      >
+                        {isEnglish ? 'Request Unlock' : 'Yêu Cầu Mở Khóa'}
+                      </Button>
+                    )
+                  )}
+
+                  {isAcademic && onUnlockSession && (
+                    <Button
+                      type="primary"
+                      icon={<UnlockOutlined />}
+                      loading={isUnlockActionLoading}
+                      style={{
+                        borderRadius: 8,
+                        fontWeight: 700,
+                        minHeight: 38,
+                        backgroundColor: '#52c41a',
+                        borderColor: '#52c41a',
+                        whiteSpace: 'nowrap',
+                        width: isMobile ? '100%' : 'auto',
+                      }}
+                      onClick={async () => {
+                        setIsUnlockActionLoading(true);
+                        try {
+                          await onUnlockSession();
+                          message.success(
+                            isEnglish
+                              ? 'Unlocked session evaluation for 18 hours!'
+                              : 'Đã mở khóa đánh giá buổi học trong 18 tiếng!'
+                          );
+                        } catch (err) {
+                          message.error(err.message || (isEnglish ? 'Failed to unlock session' : 'Lỗi mở khóa buổi học'));
+                        } finally {
+                          setIsUnlockActionLoading(false);
+                        }
+                      }}
+                      data-testid="btn-unlock-eval-18h"
+                    >
+                      {currentSessionEvalStatus.isUnlockRequested
+                        ? (isEnglish ? 'Approve & Unlock (18h)' : 'Duyệt Mở Khóa (18h)')
+                        : (isEnglish ? 'Unlock Evaluation (18h)' : 'Mở Khóa Đánh Giá Lại (18h)')}
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {currentSessionEvalStatus.isUnlockRequested && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: '6px 10px',
+                    backgroundColor: '#f9f0ff',
+                    border: '1px solid #d3adf7',
+                    borderRadius: 6,
+                    color: '#531dab',
+                  }}
+                  data-testid="box-unlock-request-detail"
+                >
+                  📨 <strong>{currentSessionEvalStatus.unlockState?.requestedByName || 'Teacher'}:</strong>{' '}
+                  {currentSessionEvalStatus.unlockState?.requestReason || (isEnglish ? 'Requested evaluation unlock.' : 'Yêu cầu mở khóa đánh giá buổi học.')}
+                </div>
+              )}
+            </div>
+          }
+          style={{ borderRadius: 10, marginBottom: 16 }}
+          data-testid="banner-feedback-overdue-18h"
+        />
+      )}
+
+      {!isStudent && isSessionEnded && currentSessionEvalStatus?.isWithin18h && currentSessionEvalStatus?.isComplete && (
         <Alert
           type="success"
           showIcon
           icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-          message={
+          title={
             <span style={{ fontWeight: 700 }}>
               {isEnglish
-                ? `Session ${sessionIndex} (${formattedSessionDate}) — Already Evaluated`
-                : `Buổi ${sessionIndex} (${formattedSessionDate}) — Đã Hoàn Tất Đánh Giá`}
+                ? `Session ${sessionIndex} (${formattedSessionDate}) — All ${currentSessionEvalStatus.completedCount}/${currentSessionEvalStatus.requiredCount} Present Students Evaluated`
+                : `Buổi ${sessionIndex} (${formattedSessionDate}) — Đã Hoàn Tất Nhận Xét (${currentSessionEvalStatus.completedCount}/${currentSessionEvalStatus.requiredCount} học sinh có mặt)`}
             </span>
           }
           description={
             <div style={{ marginTop: 2, fontSize: 12, lineHeight: '18px' }}>
               {isEnglish
-                ? 'This session has been evaluated. You can review, update ratings or notes, and save changes at any time.'
-                : 'Buổi học này đã hoàn tất đánh giá. Bạn có thể xem lại, cập nhật điểm sao hoặc lời nhận xét và lưu lại bất cứ lúc nào.'}
+                ? `Every present student in this session has received written pedagogical feedback. You can still edit until ${formattedFeedbackDeadline} (${formatFeedbackCountdown(currentSessionEvalStatus.remainingMs, true)} left).`
+                : `Tất cả học sinh có mặt đều đã có nhận xét sư phạm đầy đủ. Bạn vẫn có thể chỉnh sửa trước khi khóa lúc ${formattedFeedbackDeadline} (còn ${formatFeedbackCountdown(currentSessionEvalStatus.remainingMs, false)}).`}
             </div>
           }
           style={{ borderRadius: 10, marginBottom: 16 }}
           data-testid="banner-evaluated-session"
+        />
+      )}
+
+      {!isStudent && isSessionEnded && currentSessionEvalStatus && !currentSessionEvalStatus.isComplete && currentSessionEvalStatus.isWithin18h && (
+        <Alert
+          type="info"
+          showIcon
+          icon={<ClockCircleOutlined style={{ color: '#1677ff' }} />}
+          title={
+            <span style={{ fontWeight: 700 }}>
+              {isEnglish
+                ? `18-Hour Feedback Window — ${formatFeedbackCountdown(currentSessionEvalStatus.remainingMs, true)} remaining (Missing ${currentSessionEvalStatus.missingCount}/${currentSessionEvalStatus.requiredCount} students)`
+                : `Thời Hạn Nộp Nhận Xét 18 Tiếng — Còn ${formatFeedbackCountdown(currentSessionEvalStatus.remainingMs, false)} (Còn thiếu ${currentSessionEvalStatus.missingCount}/${currentSessionEvalStatus.requiredCount} học sinh)`}
+            </span>
+          }
+          description={
+            <div style={{ marginTop: 2, fontSize: 12, lineHeight: '18px' }}>
+              {isEnglish
+                ? `Auto-locks at ${formattedFeedbackDeadline} (18h after class ended). Written comments are required for all ${currentSessionEvalStatus.requiredCount} present students (${currentSessionEvalStatus.completedCount}/${currentSessionEvalStatus.requiredCount} saved).`
+                : `Tự động khóa lúc ${formattedFeedbackDeadline} (18 tiếng sau giờ tan lớp). Bắt buộc nhập nhận xét cho đủ ${currentSessionEvalStatus.requiredCount} học sinh có mặt (đã lưu ${currentSessionEvalStatus.completedCount}/${currentSessionEvalStatus.requiredCount} học sinh).`}
+            </div>
+          }
+          style={{ borderRadius: 10, marginBottom: 16 }}
+          data-testid="banner-feedback-window-18h"
         />
       )}
 
@@ -1199,8 +1502,8 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
             const placeholderText = isSessionUpcoming && !selectedSessionOverride
               ? (isEnglish ? 'Post-session evaluation will unlock when this session starts...' : 'Đánh giá sau giờ sẽ mở khi buổi học bắt đầu...')
               : isOffline
-              ? (isEnglish ? 'Absent from class today...' : 'Vắng mặt buổi học hôm nay...')
-              : (isEnglish
+                ? (isEnglish ? 'Absent from class today...' : 'Vắng mặt buổi học hôm nay...')
+                : (isEnglish
                   ? 'Actively participated in class, pronunciation was very clear and completed homework well...'
                   : 'Tham gia học tích cực, phát âm rất chuẩn và làm bài tập xuất sắc hôm nay...');
 
@@ -1432,10 +1735,16 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
             >
               <div>
                 <Text strong style={{ fontSize: 13, display: 'block', color: '#1e293b', whiteSpace: 'nowrap' }}>
-                  {isEnglish ? `Evaluated: ${totalEvaluated}/${roster.length}` : `Đã nhận xét: ${totalEvaluated}/${roster.length} em`}
+                  {isEnglish
+                    ? `Feedback: ${liveSessionCompleteness.completedCount}/${liveSessionCompleteness.requiredCount} present`
+                    : `Đã nhận xét: ${liveSessionCompleteness.completedCount}/${liveSessionCompleteness.requiredCount} HS`}
                 </Text>
                 <Text type="secondary" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>
-                  {isEnglish ? `Session ${sessionIndex}` : `Buổi ${sessionIndex}`}
+                  {liveSessionCompleteness.missingCount > 0
+                    ? (isEnglish
+                      ? `Session ${sessionIndex} • Missing ${liveSessionCompleteness.missingCount}`
+                      : `Buổi ${sessionIndex} • Thiếu ${liveSessionCompleteness.missingCount} HS`)
+                    : (isEnglish ? `Session ${sessionIndex} • Complete` : `Buổi ${sessionIndex} • Đủ 100%`)}
                 </Text>
               </div>
               <Button
@@ -1445,7 +1754,7 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
                 disabled={!canEvaluate}
                 onClick={handleSaveAll}
                 style={{
-                  height: 40,
+                  minHeight: 40,
                   borderRadius: 8,
                   fontWeight: 700,
                   fontSize: 13,
@@ -1540,6 +1849,78 @@ Cảm ơn Quý Phụ Huynh đã đồng hành cùng con!`;
           message.success(isEnglish ? 'Recording uploaded and shared to class!' : 'Đã tải lên video bài giảng cho lớp!');
         }}
       />
+
+      {/* Modal Giáo viên gửi yêu cầu mở khóa đánh giá buổi học quá hạn 18h */}
+      <Modal
+        open={isRequestUnlockModalOpen}
+        onCancel={() => setIsRequestUnlockModalOpen(false)}
+        width={isMobile ? '94%' : 500}
+        title={
+          <Space size={8}>
+            <SendOutlined style={{ color: '#1677ff' }} />
+            <span>
+              {isEnglish
+                ? `Request Evaluation Unlock — Session ${sessionIndex}`
+                : `Yêu Cầu Giáo Vụ Mở Khóa Đánh Giá — Buổi ${sessionIndex}`}
+            </span>
+          </Space>
+        }
+        footer={[
+          <Button
+            key="cancel"
+            style={{ minHeight: 38, borderRadius: 8 }}
+            onClick={() => setIsRequestUnlockModalOpen(false)}
+          >
+            {isEnglish ? 'Cancel' : 'Hủy'}
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            icon={<SendOutlined />}
+            loading={isUnlockActionLoading}
+            style={{ minHeight: 38, borderRadius: 8, fontWeight: 700 }}
+            onClick={async () => {
+              if (!onRequestUnlock) return;
+              setIsUnlockActionLoading(true);
+              try {
+                await onRequestUnlock(unlockReason);
+                setIsRequestUnlockModalOpen(false);
+                message.success(
+                  isEnglish
+                    ? 'Unlock request sent to Academic staff!'
+                    : 'Đã gửi yêu cầu mở khóa tới bộ phận Giáo vụ!'
+                );
+              } catch (err) {
+                message.error(err.message || (isEnglish ? 'Failed to send request' : 'Lỗi gửi yêu cầu mở khóa'));
+              } finally {
+                setIsUnlockActionLoading(false);
+              }
+            }}
+            data-testid="btn-submit-unlock-request"
+          >
+            {isEnglish ? 'Send Unlock Request' : 'Gửi Yêu Cầu Mở Khóa'}
+          </Button>,
+        ]}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="modal-request-eval-unlock">
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {isEnglish
+              ? `Class: ${cls?.name || ''} • Date: ${formattedSessionDate}. Once approved by Academic / Director / IT, you will receive an 18-hour window to complete or update student evaluations.`
+              : `Lớp: ${cls?.name || ''} • Ngày học: ${formattedSessionDate}. Ngay khi Giáo vụ / Giám đốc / IT duyệt, buổi học sẽ được mở khóa thêm 18 tiếng để cập nhật đánh giá.`}
+          </Text>
+          <Input.TextArea
+            rows={3}
+            value={unlockReason}
+            onChange={(e) => setUnlockReason(e.target.value)}
+            placeholder={
+              isEnglish
+                ? 'Brief reason for requesting unlock...'
+                : 'Nhập lý do cần mở khóa đánh giá buổi học...'
+            }
+            data-testid="input-unlock-reason"
+          />
+        </div>
+      </Modal>
     </Card>
   );
 };

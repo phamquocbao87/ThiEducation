@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
   Form,
@@ -18,12 +18,10 @@ import {
   CloudUploadOutlined,
   CheckCircleOutlined,
   LinkOutlined,
-  FolderOpenOutlined,
-  CloseCircleOutlined,
-  PlayCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useLanguage } from '../../../core/context/LanguageContext';
+import { useIsMobile } from '../../../shared/hooks/useIsMobile';
 import { DriveStorageService } from '../../../core/services/DriveStorageService';
 import { MaterialService } from '../services/MaterialService';
 
@@ -41,11 +39,13 @@ const formatFileSize = (bytes = 0) => {
 export const SessionRecordingUploadModal = ({
   open,
   classData = {},
+  initialSessionDate = null,
   currentUser = null,
   onClose,
   onSuccess,
 }) => {
   const { isEnglish } = useLanguage();
+  const isMobile = useIsMobile();
   const [form] = Form.useForm();
 
   const [mode, setMode] = useState('DIRECT_FILE'); // 'DIRECT_FILE' | 'URL'
@@ -55,6 +55,30 @@ export const SessionRecordingUploadModal = ({
   const [uploadStageText, setUploadStageText] = useState('');
   const [uploadError, setUploadError] = useState(null);
   const [uploadedResult, setUploadedResult] = useState(null);
+
+  useEffect(() => {
+    if (open) {
+      const targetDate = initialSessionDate ? dayjs(initialSessionDate) : dayjs();
+      const validDate = targetDate.isValid() ? targetDate : dayjs();
+      const dateStr = validDate.format('DD/MM/YYYY');
+      setMode('DIRECT_FILE');
+      setSelectedFile(null);
+      setUploading(false);
+      setUploadProgress(0);
+      setUploadStageText('');
+      setUploadError(null);
+      setUploadedResult(null);
+      form.resetFields();
+      form.setFieldsValue({
+        sessionDate: validDate,
+        title: isEnglish
+          ? `Session Recording - ${classData?.name || 'Class'} (${dateStr})`
+          : `Video Buổi Học: ${classData?.name || 'Lớp Học'} (${dateStr})`,
+        recordingUrl: '',
+        description: '',
+      });
+    }
+  }, [open, initialSessionDate, classData?.id, classData?.name, isEnglish, form]);
 
   const resetState = () => {
     setSelectedFile(null);
@@ -169,9 +193,11 @@ export const SessionRecordingUploadModal = ({
           },
         });
 
-        finalVideoUrl = uploadResult.webViewLink || uploadResult.downloadUrl || '';
-        downloadUrl = uploadResult.downloadUrl || finalVideoUrl;
         driveFileId = uploadResult.fileId || uploadResult.id || '';
+        finalVideoUrl = driveFileId
+          ? `https://drive.google.com/file/d/${driveFileId}/view`
+          : uploadResult.webViewLink || uploadResult.downloadUrl || '';
+        downloadUrl = uploadResult.downloadUrl || finalVideoUrl;
         finalFileSize = formatFileSize(selectedFile.size);
         setUploadedResult(uploadResult);
       } else {
@@ -277,24 +303,45 @@ export const SessionRecordingUploadModal = ({
         </Space>
       }
       onCancel={handleModalClose}
-      footer={[
-        <Button key="cancel" onClick={handleModalClose} disabled={uploading}>
-          {isEnglish ? 'Cancel' : 'Hủy'}
-        </Button>,
-        <Button
-          key="submit"
-          type="primary"
-          icon={<CloudUploadOutlined />}
-          loading={uploading}
-          onClick={handleUploadAndSave}
-          style={{ backgroundColor: '#7c3aed', borderColor: '#7c3aed', borderRadius: 8, fontWeight: 600 }}
-          data-testid="btn-submit-session-recording"
-        >
-          {isEnglish ? 'Upload & Share to Class' : 'Tải Lên Google Drive & Chia Sẻ Cho Lớp'}
-        </Button>,
-      ]}
-      width={640}
-      destroyOnClose
+      footer={
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <Button
+            key="cancel"
+            onClick={handleModalClose}
+            disabled={uploading}
+            style={{ minHeight: 40, borderRadius: 8, flex: isMobile ? 1 : undefined }}
+          >
+            {isEnglish ? 'Cancel' : 'Hủy'}
+          </Button>
+          <Button
+            key="submit"
+            type="primary"
+            icon={<CloudUploadOutlined />}
+            loading={uploading}
+            onClick={handleUploadAndSave}
+            style={{
+              minHeight: 40,
+              backgroundColor: '#7c3aed',
+              borderColor: '#7c3aed',
+              borderRadius: 8,
+              fontWeight: 600,
+              flex: isMobile ? 1 : undefined,
+            }}
+            data-testid="btn-submit-session-recording"
+          >
+            {isMobile
+              ? isEnglish
+                ? 'Upload & Share'
+                : 'Tải Lên & Chia Sẻ'
+              : isEnglish
+              ? 'Upload & Share to Class'
+              : 'Tải Lên Google Drive & Chia Sẻ Cho Lớp'}
+          </Button>
+        </div>
+      }
+      width={isMobile ? 'calc(100vw - 24px)' : 640}
+      style={isMobile ? { top: 12, maxWidth: 'calc(100vw - 24px)', margin: '0 auto' } : undefined}
+      destroyOnHidden
     >
       <div style={{ marginTop: 12 }}>
         {/* Banner Giải thích & Lớp học đích */}
@@ -383,6 +430,7 @@ export const SessionRecordingUploadModal = ({
             rules={[{ required: true, message: isEnglish ? 'Please enter a title' : 'Vui lòng nhập tiêu đề bài giảng' }]}
           >
             <Input
+              data-testid="input-session-recording-title"
               placeholder={isEnglish ? 'e.g. Unit 3: Friends & Family - Live Class Recording' : 'Ví dụ: Unit 3: Friends & Family - Video Buổi Học'}
               style={{ height: 40, borderRadius: 8 }}
             />
@@ -401,12 +449,24 @@ export const SessionRecordingUploadModal = ({
               data-testid="recording-upload-mode-radio"
             >
               <Radio.Button value="DIRECT_FILE" style={{ width: '50%', textAlign: 'center', height: 38, lineHeight: '36px' }}>
-                <CloudUploadOutlined style={{ marginRight: 6 }} />
-                {isEnglish ? 'Upload Video File (.mp4)' : 'Tải File Video (.mp4 / .mov)'}
+                <CloudUploadOutlined style={{ marginRight: 5 }} />
+                {isMobile
+                  ? isEnglish
+                    ? 'Upload .mp4'
+                    : 'Tải .mp4'
+                  : isEnglish
+                  ? 'Upload Video File (.mp4)'
+                  : 'Tải File Video (.mp4 / .mov)'}
               </Radio.Button>
               <Radio.Button value="URL" style={{ width: '50%', textAlign: 'center', height: 38, lineHeight: '36px' }}>
-                <LinkOutlined style={{ marginRight: 6 }} />
-                {isEnglish ? 'Paste Drive / Cloud Link' : 'Dán Link Drive / Cloud'}
+                <LinkOutlined style={{ marginRight: 5 }} />
+                {isMobile
+                  ? isEnglish
+                    ? 'Paste Link'
+                    : 'Dán Link'
+                  : isEnglish
+                  ? 'Paste Drive / Cloud Link'
+                  : 'Dán Link Drive / Cloud'}
               </Radio.Button>
             </Radio.Group>
           </div>
@@ -430,6 +490,7 @@ export const SessionRecordingUploadModal = ({
               >
                 <input
                   id="recording-file-input"
+                  data-testid="input-session-recording-file"
                   type="file"
                   accept="video/mp4,video/quicktime,video/webm,video/x-matroska,.mp4,.mov,.webm,.mkv"
                   style={{ display: 'none' }}

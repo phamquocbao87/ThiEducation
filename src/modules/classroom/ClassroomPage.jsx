@@ -58,13 +58,14 @@ export default function ClassroomPage() {
     quickNotes: c.quickNotes,
     studentEvaluations: c.studentEvaluations,
     attentionFlags: c.attentionFlags,
+    unlockState: c.record?.unlockState || null,
     date: sessionStart
       ? new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'vi-VN', {
           dateStyle: 'medium',
           timeZone: 'Asia/Ho_Chi_Minh',
         }).format(sessionStart)
       : sessionDate || undefined,
-  }), [c.presence, c.quickNotes, c.studentEvaluations, c.attentionFlags, sessionStart, sessionDate, language]);
+  }), [c.presence, c.quickNotes, c.studentEvaluations, c.attentionFlags, c.record?.unlockState, sessionStart, sessionDate, language]);
 
   const userRole = currentUser?.role || 'student';
   const currentStudentId = userRole === 'student' ? currentUser?.id : null;
@@ -75,7 +76,9 @@ export default function ClassroomPage() {
   );
 
   const scheduleSessions = useMemo(() => {
-    return c.cls ? generateClassSessionDates(c.cls, 60, language === 'en') : [];
+    if (!c.cls) return [];
+    const totalCount = Number(c.cls.totalSessions) || Number(c.cls.courseTotalSessions) || 24;
+    return generateClassSessionDates(c.cls, totalCount, language === 'en');
   }, [c.cls, language]);
 
   const activeSessionIndex = useMemo(() => {
@@ -161,11 +164,29 @@ export default function ClassroomPage() {
     try {
       await c.saveCourseMaterial(matData);
       setCourseUploadModalOpen(false);
-      message.success('Đã đồng bộ học liệu vào Khóa học (0ms)!');
+      message.success(
+        isEnglish
+          ? 'Synced material to Course Program Vault!'
+          : 'Đã đồng bộ học liệu / video vào Khóa học (0ms)!'
+      );
     } catch (err) {
-      message.error(err.message || 'Lỗi lưu học liệu');
+      message.error(err.message || (isEnglish ? 'Failed to save material' : 'Lỗi lưu học liệu'));
+      throw err;
     } finally {
       setIsSavingCourseMat(false);
+    }
+  };
+
+  const handleDeleteCourseMaterial = async (materialId) => {
+    try {
+      await c.deleteCourseMaterial(materialId);
+      message.success(
+        isEnglish
+          ? 'Removed item from Course Program Vault!'
+          : 'Đã xoá học liệu khỏi Kho Khóa Học!'
+      );
+    } catch (err) {
+      message.error(err.message || (isEnglish ? 'Failed to delete material' : 'Lỗi xoá học liệu'));
     }
   };
 
@@ -254,7 +275,7 @@ export default function ClassroomPage() {
               setSelectedStudentForNote(student);
               setQuickNoteModalOpen(true);
             }}
-            onRateStudent={(studentId, stars) => {
+            onRateStudent={c.canEvaluate ? (studentId, stars) => {
               const prevEval = c.studentEvaluations[studentId] || {};
               const note = c.quickNotes[studentId];
               const fallbackComment = note?.text || (note?.tags?.length ? note.tags.join(', ') : '');
@@ -264,7 +285,7 @@ export default function ClassroomPage() {
                 comment: prevEval.comment || fallbackComment || '',
                 tags: prevEval.tags || note?.tags || [],
               });
-            }}
+            } : undefined}
             onConfirmTeacherCheckIn={c.markTeacherCheckIn}
             loading={c.rosterLoading}
             teacherName={c.cls?.teacherName}
@@ -307,11 +328,16 @@ export default function ClassroomPage() {
             userRole={userRole}
             currentUser={currentUser}
             courseMaterials={c.courseMaterials}
+            parentCourseLevel={c.resolvedCourseLevel}
+            classRecordings={c.classRecordings}
+            onClassRecordingUploaded={c.addClassRecording}
+            onDeleteClassRecording={c.deleteClassRecording}
             onOpenEditor={(plan) => {
               setEditingPlan(plan);
               setLessonPlanModalOpen(true);
             }}
             onOpenCourseUpload={() => setCourseUploadModalOpen(true)}
+            onDeleteCourseMaterial={handleDeleteCourseMaterial}
           />
         </div>
       ),
@@ -358,6 +384,9 @@ export default function ClassroomPage() {
             currentStudentId={currentStudentId}
             onSaveEvaluation={c.saveStudentEvaluation}
             onSaveAllEvaluations={c.saveAllEvaluations}
+            onRequestUnlock={c.requestEvaluationUnlock}
+            onUnlockSession={c.unlockEvaluation}
+            onRelockSession={c.relockEvaluation}
             scheduleSessions={scheduleSessions}
             selectedSessionOverride={c.selectedSessionOverride}
             onSelectSession={c.setSelectedSession}

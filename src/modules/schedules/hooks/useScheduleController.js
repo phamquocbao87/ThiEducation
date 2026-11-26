@@ -1,12 +1,14 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { message } from 'antd';
 import { useAuth } from '../../../core/context/AuthContext';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { PermissionService } from '../../../core/services/PermissionService';
 import { CourseService } from '../../courses/services/CourseService';
 import { ClassService } from '../../courses/services/ClassService';
+import { MaterialService } from '../../materials/services/MaterialService';
 import { TimetableSlotService } from '../services/TimetableSlotService';
 import { TeacherCheckInService } from '../services/TeacherCheckInService';
+import { ScheduleRecordingService } from '../services/ScheduleRecordingService';
 
 export const useScheduleController = () => {
   const { currentUser, allSystemUsers } = useAuth();
@@ -16,6 +18,8 @@ export const useScheduleController = () => {
   const [systemClasses, setSystemClasses] = useState([]);
   const [courses, setCourses] = useState([]);
   const [timetable, setTimetable] = useState([]);
+  const [sessionRecordings, setSessionRecordings] = useState([]);
+  const [weekOffset, setWeekOffset] = useState(0);
 
   // Lấy danh sách Giáo viên Bản Xứ thực tế từ Firestore
   const teachers = useMemo(() => {
@@ -44,13 +48,17 @@ export const useScheduleController = () => {
     let isMounted = true;
     const fetchSchedulesData = async () => {
       try {
-        const [cList, clsList] = await Promise.all([
+        const [cList, clsList, matList] = await Promise.all([
           CourseService.getAllCourses(),
           ClassService.getAllClasses(),
+          MaterialService.getAllMaterials().catch(() => []),
         ]);
         if (isMounted) {
           setCourses(cList);
           setSystemClasses(clsList);
+          setSessionRecordings(
+            (matList || []).filter((m) => m && !m.isDeleted && Boolean(m.isSessionRecording))
+          );
 
           // Xóa triệt để các ca học rác cũ lưu trong localStorage ("Súng Bắn Ốc, Vặn Vít", "erw", "a223")
           try {
@@ -112,6 +120,54 @@ export const useScheduleController = () => {
     message.success(isEnglish ? 'New class schedule created successfully!' : 'Đã xếp lịch lớp học trực tuyến mới thành công!');
   };
 
+  const weekDays = useMemo(() => {
+    return TimetableSlotService.getWeekDays(weekOffset);
+  }, [weekOffset]);
+
+  const slotRecordingsMap = useMemo(
+    () => ScheduleRecordingService.buildSlotRecordingsMap(sessionRecordings, currentUser),
+    [sessionRecordings, currentUser]
+  );
+
+  const canManageSlotRecording = useCallback(
+    (slotItem) => ScheduleRecordingService.canManageSlotRecording(currentUser, slotItem),
+    [currentUser]
+  );
+
+  const handleRecordingUploaded = useCallback((newRecording) => {
+    if (!newRecording) return;
+    // 0ms Optimistic State Update
+    setSessionRecordings((prev) => [
+      newRecording,
+      ...(prev || []).filter((r) => r && r.id !== newRecording.id && !r.isDeleted),
+    ]);
+  }, []);
+
+  const handleDeleteSlotRecording = useCallback(
+    async (recording) => {
+      if (!recording?.id) return;
+      const prevList = sessionRecordings;
+      // 0ms Optimistic Removal
+      setSessionRecordings((prev) => (prev || []).filter((r) => r && r.id !== recording.id));
+      try {
+        await MaterialService.deleteMaterial(recording.id, recording.courseId, currentUser);
+        message.success(
+          isEnglish
+            ? 'Session recording deleted!'
+            : 'Đã xoá video ghi hình buổi học!'
+        );
+      } catch (err) {
+        setSessionRecordings(prevList);
+        message.error(
+          isEnglish
+            ? 'Failed to delete recording: ' + err.message
+            : 'Lỗi xoá video ghi hình: ' + err.message
+        );
+      }
+    },
+    [sessionRecordings, currentUser, isEnglish]
+  );
+
   const handleCheckInSession = (slotId) => {
     setTimetable((prev) => {
       const next = TeacherCheckInService.checkInSession(prev, slotId);
@@ -126,6 +182,14 @@ export const useScheduleController = () => {
     classes: systemClasses,
     teachers,
     scopedTimetable,
+    weekOffset,
+    setWeekOffset,
+    weekDays,
+    sessionRecordings,
+    slotRecordingsMap,
+    canManageSlotRecording,
+    handleRecordingUploaded,
+    handleDeleteSlotRecording,
     selectedDayFilter,
     setSelectedDayFilter,
     permissions,

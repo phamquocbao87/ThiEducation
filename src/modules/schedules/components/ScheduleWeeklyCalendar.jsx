@@ -17,10 +17,22 @@ import { useLanguage } from '../../../core/context/LanguageContext';
 import { useAuth } from '../../../core/context/AuthContext';
 import { detectMeetingPlatform } from '../../../shared/utils/meetingPlatformUtils';
 import { TimetableSlotService } from '../services/TimetableSlotService';
+import { SessionSlotRecordingBox } from './SessionSlotRecordingBox';
 
 const { Text } = Typography;
 
-export const ScheduleWeeklyCalendar = ({ timetable, canCheckIn, onCheckIn }) => {
+export const ScheduleWeeklyCalendar = ({
+  timetable,
+  canCheckIn,
+  onCheckIn,
+  weekOffset: controlledWeekOffset,
+  onChangeWeekOffset,
+  slotRecordingsMap,
+  canManageSlotRecording,
+  onWatchRecording,
+  onOpenUploadRecording,
+  onDeleteRecording,
+}) => {
   const { isEnglish } = useLanguage();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
@@ -29,8 +41,10 @@ export const ScheduleWeeklyCalendar = ({ timetable, canCheckIn, onCheckIn }) => 
   const isStudent = currentUser?.role === 'student';
   const leadMinutes = isStudent ? 10 : 15;
 
-  // 1. Quản lý trạng thái tuần (offset = 0: Tuần hiện tại)
-  const [weekOffset, setWeekOffset] = useState(0);
+  // 1. Quản lý trạng thái tuần (hỗ trợ cả controlled lẫn fallback nội bộ)
+  const [internalWeekOffset, setInternalWeekOffset] = useState(0);
+  const weekOffset = controlledWeekOffset !== undefined ? controlledWeekOffset : internalWeekOffset;
+  const setWeekOffset = onChangeWeekOffset || setInternalWeekOffset;
 
   // 2. Đồng hồ ticking mỗi 15 giây để tự động cập nhật trạng thái mở khóa 15 phút thời gian thực
   const [now, setNow] = useState(new Date());
@@ -114,6 +128,7 @@ export const ScheduleWeeklyCalendar = ({ timetable, canCheckIn, onCheckIn }) => 
           <Button
             size="middle"
             icon={<LeftOutlined />}
+            data-testid="btn-schedule-prev-week"
             onClick={() => setWeekOffset((prev) => prev - 1)}
             style={{ borderRadius: 8 }}
           >
@@ -123,6 +138,7 @@ export const ScheduleWeeklyCalendar = ({ timetable, canCheckIn, onCheckIn }) => 
           <Button
             size="middle"
             type={weekOffset === 0 ? 'primary' : 'default'}
+            data-testid="btn-schedule-current-week"
             onClick={() => setWeekOffset(0)}
             style={{ borderRadius: 8, fontWeight: weekOffset === 0 ? 600 : 400 }}
           >
@@ -131,6 +147,7 @@ export const ScheduleWeeklyCalendar = ({ timetable, canCheckIn, onCheckIn }) => 
 
           <Button
             size="middle"
+            data-testid="btn-schedule-next-week"
             onClick={() => setWeekOffset((prev) => prev + 1)}
             style={{ borderRadius: 8 }}
           >
@@ -426,6 +443,19 @@ export const ScheduleWeeklyCalendar = ({ timetable, canCheckIn, onCheckIn }) => 
                               {item.teacherName}
                             </span>
                           </div>
+
+                          {/* 4.5. Video Ghi Hình Buổi Học (Session Recording — đúng ô khoanh đỏ trên thẻ lịch) */}
+                          <SessionSlotRecordingBox
+                            slotItem={item}
+                            isoDate={day.isoDate}
+                            timeState={timeState}
+                            recordings={slotRecordingsMap?.get(`${item.classId}_${day.isoDate}`) || []}
+                            canManage={Boolean(canManageSlotRecording?.(item))}
+                            compact={false}
+                            onWatchRecording={onWatchRecording}
+                            onOpenUpload={onOpenUploadRecording}
+                            onDeleteRecording={onDeleteRecording}
+                          />
 
                           {/* 5. Nút Thao tác: Khóa 15 phút Meet & Điểm danh theo quy định */}
                           <div

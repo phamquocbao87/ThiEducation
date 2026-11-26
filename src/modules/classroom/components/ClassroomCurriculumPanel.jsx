@@ -3,18 +3,22 @@ import {
   Button,
   Card,
   Col,
+  Popconfirm,
   Progress,
   Row,
   Segmented,
   Select,
   Space,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import {
   BookOutlined,
   ClockCircleOutlined,
   CustomerServiceOutlined,
+  DeleteOutlined,
+  DesktopOutlined,
   EditOutlined,
   ExpandOutlined,
   EyeOutlined,
@@ -22,17 +26,22 @@ import {
   FolderOpenOutlined,
   LeftOutlined,
   LinkOutlined,
+  PlayCircleOutlined,
   PlusOutlined,
   ReadOutlined,
   RightOutlined,
+  SafetyCertificateOutlined,
   UploadOutlined,
+  VideoCameraOutlined,
 } from '@ant-design/icons';
 import { useLanguage } from '../../../core/context/LanguageContext';
 import { useIsMobile } from '../../../shared/hooks/useIsMobile';
 import { FormattedText } from '../../../shared/components/controls';
+import { ClassRecordingsDirectoryCard } from '../../../shared/components/ClassRecordingsDirectoryCard';
 import { LESSON_PLAN_STATUS } from '../../../shared/models/classroom.model';
 import { generateClassSessionDates } from '../../../shared/utils/classSessionUtils';
 import { MaterialPreviewModal } from '../../materials/components/MaterialPreviewModal';
+import { SessionRecordingUploadModal } from '../../materials/components/SessionRecordingUploadModal';
 import { StudentDashboardService } from '../../dashboard/services/StudentDashboardService';
 import {
   LessonBookReaderModal,
@@ -52,11 +61,17 @@ export const ClassroomCurriculumPanel = ({
   userRole = 'teacher',
   currentUser = null,
   courseMaterials = [],
+  parentCourseLevel = '',
+  classRecordings = [],
+  onClassRecordingUploaded,
+  onDeleteClassRecording,
   onOpenEditor,
   onOpenCourseUpload,
+  onDeleteCourseMaterial,
 }) => {
   const { t, isEnglish } = useLanguage();
   const isMobile = useIsMobile();
+  const [recordingUploadTarget, setRecordingUploadTarget] = useState(null);
 
   // 1. Tự động tính toán các buổi học thực tế của lớp theo thời khóa biểu (hỗ trợ nhập động số buổi hoặc mặc định 12 buổi)
   const totalSessionsCount = useMemo(() => {
@@ -173,27 +188,83 @@ export const ClassroomCurriculumPanel = ({
     if (hasNext) handleSelectSession(allSessionIndices[currentPos + 1]);
   };
 
-  // 3. 100% Real Database: Duyệt danh sách tài liệu thực tế của khóa học (loại bỏ hoàn toàn link dummy)
+  const canManageCourseVault = ['academic', 'admin', 'director'].includes(userRole);
+
+  // 3. 100% Real Database: Duyệt danh sách giáo trình & video chung của khóa học
+  //    - Tách sạch 100% Session Recording của lớp lẻ (isSessionRecording) & mục đã xóa
+  //    - Bảo mật RBAC: Học viên tuyệt đối không nhìn thấy sách đáp án Giáo viên (TEACHER_ONLY / STAFF_ONLY / TEACHER_GUIDE)
   const allMaterials = useMemo(() => {
     const seen = new Set();
     const unique = [];
     (courseMaterials || []).forEach((m, idx) => {
-      const key = `${m.title}_${m.url}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        unique.push({
-          id: m.id || `mat-${idx}`,
-          title: m.title || (isEnglish ? 'Course Document' : 'Tài Liệu Khóa Học'),
-          type: m.type || 'PDF',
-          url: m.url || '#',
-          icon: m.type === 'AUDIO' ? <CustomerServiceOutlined /> : <FilePdfOutlined />,
-          uploadedAt: m.uploadedAt,
-          visibility: m.visibility,
-        });
+      if (!m || m.isDeleted || m.isSessionRecording) return;
+
+      const normalizedType = String(m.type || 'PDF').toUpperCase();
+      const isStaffConfidential =
+        m.visibility === 'TEACHER_ONLY' ||
+        m.visibility === 'TEACHERS_ONLY' ||
+        m.shareScope === 'STAFF_ONLY' ||
+        normalizedType === 'TEACHER_GUIDE' ||
+        normalizedType === 'TEACHER';
+
+      if (isStudent && isStaffConfidential) return;
+
+      const dedupKey = m.id ? String(m.id) : `${m.title}_${m.url}`;
+      if (seen.has(dedupKey)) return;
+      seen.add(dedupKey);
+
+      let iconNode = <FilePdfOutlined />;
+      let accentColor = '#722ed1';
+      let badgeColor = 'purple';
+      let badgeLabel = normalizedType;
+
+      if (normalizedType === 'VIDEO') {
+        iconNode = <VideoCameraOutlined />;
+        accentColor = '#7c3aed';
+        badgeColor = 'purple';
+        badgeLabel = 'VIDEO';
+      } else if (normalizedType === 'AUDIO') {
+        iconNode = <CustomerServiceOutlined />;
+        accentColor = '#fa8c16';
+        badgeColor = 'orange';
+        badgeLabel = 'AUDIO';
+      } else if (normalizedType === 'SLIDES') {
+        iconNode = <DesktopOutlined />;
+        accentColor = '#16a34a';
+        badgeColor = 'green';
+        badgeLabel = 'SLIDES';
+      } else if (normalizedType === 'PRACTICE') {
+        iconNode = <BookOutlined />;
+        accentColor = '#0891b2';
+        badgeColor = 'cyan';
+        badgeLabel = isEnglish ? 'PRACTICE' : 'BÀI TẬP';
+      } else if (normalizedType === 'TEACHER_GUIDE' || normalizedType === 'TEACHER') {
+        iconNode = <SafetyCertificateOutlined />;
+        accentColor = '#be185d';
+        badgeColor = 'magenta';
+        badgeLabel = isEnglish ? 'TEACHER' : 'NỘI BỘ GV';
+      } else {
+        iconNode = <FilePdfOutlined />;
+        accentColor = '#2563eb';
+        badgeColor = 'blue';
+        badgeLabel = 'PDF';
       }
+
+      unique.push({
+        ...m,
+        id: m.id || `mat-${idx}`,
+        title: m.title || (isEnglish ? 'Course Material' : 'Tài Liệu Khóa Học'),
+        type: normalizedType === 'TEACHER' ? 'TEACHER_GUIDE' : normalizedType,
+        url: m.url || '#',
+        icon: iconNode,
+        accentColor,
+        badgeColor,
+        badgeLabel,
+        isStaffConfidential,
+      });
     });
     return unique;
-  }, [courseMaterials, isEnglish]);
+  }, [courseMaterials, isEnglish, isStudent]);
 
   // 4. Lấy dữ liệu giáo án THỰC TẾ của buổi đang chọn (TUYỆT ĐỐI KHÔNG FAKE DỮ LIỆU)
   const realPlan = visibleLessonPlans[selectedSession] || null;
@@ -739,7 +810,7 @@ export const ClassroomCurriculumPanel = ({
                               </Tag>
                               <button
                                 type="button"
-                                onClick={() => setPreviewMaterial({ ...mat, courseName: cls?.name || cls?.courseName || '' })}
+                                onClick={() => setPreviewMaterial({ ...mat, courseName: cls?.name || cls?.courseName || '', _enableSessionTracking: true })}
                                 data-testid={`btn-classroom-preview-material-${mat.id || idx}`}
                                 style={{
                                   background: 'none',
@@ -794,7 +865,7 @@ export const ClassroomCurriculumPanel = ({
                                 type="primary"
                                 ghost
                                 icon={<EyeOutlined />}
-                                onClick={() => setPreviewMaterial({ ...mat, courseName: cls?.name || cls?.courseName || '' })}
+                                onClick={() => setPreviewMaterial({ ...mat, courseName: cls?.name || cls?.courseName || '', _enableSessionTracking: true })}
                                 data-testid={`btn-classroom-preview-btn-${mat.id || idx}`}
                                 style={{
                                   borderColor: '#7e22ce',
@@ -895,8 +966,8 @@ export const ClassroomCurriculumPanel = ({
               <Title level={5} style={{ margin: 0, fontWeight: 700 }}>
                 📁 {isEnglish ? 'Course Program Vault' : 'Kho Giáo Trình Gốc Của Khóa Học'}
               </Title>
-              <Tag color="purple" style={{ borderRadius: 6, fontWeight: 700 }}>
-                {cls?.courseLevel || cls?.level || 'Wonders G5'}
+              <Tag color="purple" style={{ borderRadius: 6, fontWeight: 700, whiteSpace: 'nowrap' }} data-testid="course-vault-level-tag">
+                {parentCourseLevel || cls?.courseLevel || cls?.level || 'WONDERS-G5'}
               </Tag>
             </Space>
             <Paragraph type="secondary" style={{ margin: '4px 0 0 0', fontSize: 12 }}>
@@ -913,15 +984,28 @@ export const ClassroomCurriculumPanel = ({
             </div>
           </div>
 
-          {['academic', 'admin', 'director'].includes(userRole) && (
+          {canManageCourseVault && (
             <Button
               type="primary"
               icon={<UploadOutlined />}
-              style={{ backgroundColor: '#722ed1', borderColor: '#722ed1', borderRadius: 8, fontWeight: 600 }}
+              style={{
+                backgroundColor: '#722ed1',
+                borderColor: '#722ed1',
+                borderRadius: 8,
+                fontWeight: 600,
+                minHeight: 40,
+                width: isMobile ? '100%' : 'auto',
+              }}
               onClick={onOpenCourseUpload}
               data-testid="btn-academic-upload-course-vault"
             >
-              {t('classroom.uploadToCourse', isEnglish ? 'Upload to Course Vault' : 'Tải Lên Giáo Trình Cho Khóa Học') || (isEnglish ? 'Upload to Course Vault' : 'Tải Lên Giáo Trình Cho Khóa Học')}
+              {isMobile
+                ? isEnglish
+                  ? 'Upload Video / Material'
+                  : 'Tải Lên Video / Học Liệu'
+                : isEnglish
+                ? 'Upload Video / Course Material'
+                : 'Tải Lên Video / Giáo Trình Khóa Học'}
             </Button>
           )}
         </div>
@@ -930,51 +1014,213 @@ export const ClassroomCurriculumPanel = ({
           <div style={{ padding: '32px 16px', textAlign: 'center', backgroundColor: '#fafafa', borderRadius: 12, border: '1px dashed #d9d9d9' }} data-testid="empty-course-vault">
             <FolderOpenOutlined style={{ fontSize: 36, color: '#bfbfbf', marginBottom: 8 }} />
             <div style={{ fontWeight: 600, fontSize: 13, color: '#475569', marginBottom: 4 }}>
-              {isEnglish ? 'No digital course materials uploaded yet' : 'Chưa có tệp giáo trình số hoặc link Drive nào được tải lên cho Khóa học'}
+              {isEnglish ? 'No digital course materials or videos uploaded yet' : 'Chưa có tệp giáo trình số hoặc video bài giảng nào được tải lên cho Khóa học'}
             </div>
             <div style={{ fontSize: 12, color: '#94a3b8', maxWidth: 440, margin: '0 auto' }}>
               {isEnglish
-                ? 'Academic coordinators can upload course materials, Google Slides, or audio files using the button above.'
-                : 'Giáo vụ có thể nhấn nút "Tải Lên Giáo Trình Cho Khóa Học" bên trên để đồng bộ tài liệu vào toàn bộ các lớp.'}
+                ? 'Academic coordinators can upload instructional videos, PDF textbooks, slides, or audio files using the button above.'
+                : 'Giáo vụ có thể nhấn nút "Tải Lên Video / Giáo Trình Khóa Học" bên trên để đồng bộ tài liệu vào toàn bộ các lớp.'}
             </div>
           </div>
         ) : (
           <Row gutter={[12, 12]}>
             {allMaterials.map((item) => (
               <Col xs={24} sm={12} md={8} key={item.id}>
-                <a
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <div
+                  role="button"
+                  tabIndex={0}
+                  data-testid={`course-vault-card-${item.id}`}
+                  onClick={() =>
+                    setPreviewMaterial({
+                      ...item,
+                      courseName: cls?.courseName || cls?.name || '',
+                      _enableSessionTracking: false,
+                    })
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setPreviewMaterial({
+                        ...item,
+                        courseName: cls?.courseName || cls?.name || '',
+                        _enableSessionTracking: false,
+                      });
+                    }
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '12px 14px',
+                    gap: 8,
+                    padding: '10px 12px',
                     borderRadius: 10,
-                    border: '1px solid #d3adf7',
-                    backgroundColor: '#f9f0ff',
+                    border: item.type === 'VIDEO' ? '1px solid #c4b5fd' : '1px solid #d3adf7',
+                    backgroundColor: item.type === 'VIDEO' ? '#f5f3ff' : '#f9f0ff',
                     color: '#262626',
                     transition: 'all 0.2s ease',
-                    textDecoration: 'none',
+                    cursor: 'pointer',
+                    minHeight: 52,
                   }}
                   className="curriculum-drive-link-card"
                 >
-                  <Space orientation="horizontal" size="middle" style={{ overflow: 'hidden' }}>
-                    <span style={{ fontSize: 18, color: item.type === 'AUDIO' ? '#fa8c16' : '#722ed1' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      minWidth: 0,
+                      flex: 1,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 18,
+                        color: item.accentColor || '#722ed1',
+                        flexShrink: 0,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                      }}
+                    >
                       {item.icon}
                     </span>
-                    <Text strong style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.title}
-                    </Text>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <Text
+                        strong
+                        title={item.title}
+                        style={{
+                          fontSize: 12.5,
+                          display: 'block',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {item.title}
+                      </Text>
+                      <Space size={4} style={{ marginTop: 2 }}>
+                        <Tag
+                          color={item.badgeColor || 'purple'}
+                          style={{ margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 5px', fontWeight: 700 }}
+                        >
+                          {item.badgeLabel}
+                        </Tag>
+                        {item.fileSize && (
+                          <Text type="secondary" style={{ fontSize: 10.5, whiteSpace: 'nowrap' }}>
+                            {item.fileSize}
+                          </Text>
+                        )}
+                      </Space>
+                    </div>
+                  </div>
+
+                  <Space size={4} style={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                    <Tooltip title={isEnglish ? 'Preview Full-Screen' : 'Xem trực tiếp trong App'}>
+                      <Button
+                        size="small"
+                        type="text"
+                        icon={item.type === 'VIDEO' ? <PlayCircleOutlined /> : <EyeOutlined />}
+                        data-testid={`btn-preview-course-material-${item.id}`}
+                        onClick={() =>
+                          setPreviewMaterial({
+                            ...item,
+                            courseName: cls?.courseName || cls?.name || '',
+                            _enableSessionTracking: false,
+                          })
+                        }
+                        style={{
+                          color: item.accentColor || '#722ed1',
+                          minWidth: 32,
+                          minHeight: 32,
+                          borderRadius: 6,
+                        }}
+                      />
+                    </Tooltip>
+
+                    {canManageCourseVault && typeof onDeleteCourseMaterial === 'function' && (
+                      <Popconfirm
+                        title={
+                          isEnglish
+                            ? 'Remove from Course Program Vault?'
+                            : 'Xoá học liệu này khỏi Kho Khóa Học?'
+                        }
+                        description={
+                          isEnglish
+                            ? 'This will remove the item from all classes sharing this course.'
+                            : 'Học liệu sẽ được gỡ đồng bộ khỏi tất cả các lớp thuộc khóa học này.'
+                        }
+                        okText={isEnglish ? 'Delete' : 'Xoá ngay'}
+                        cancelText={isEnglish ? 'Cancel' : 'Hủy'}
+                        okButtonProps={{ danger: true, 'data-testid': `btn-confirm-delete-course-material-${item.id}` }}
+                        onConfirm={() => onDeleteCourseMaterial(item.id)}
+                      >
+                        <Tooltip title={isEnglish ? 'Delete' : 'Xoá khỏi khóa học'}>
+                          <Button
+                            size="small"
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined />}
+                            data-testid={`btn-delete-course-material-${item.id}`}
+                            style={{
+                              minWidth: 32,
+                              minHeight: 32,
+                              borderRadius: 6,
+                            }}
+                          />
+                        </Tooltip>
+                      </Popconfirm>
+                    )}
                   </Space>
-                  <LinkOutlined style={{ color: '#8c8c8c', fontSize: 12, marginLeft: 8 }} />
-                </a>
+                </div>
               </Col>
             ))}
           </Row>
         )}
       </Card>
+
+      {/* 3. Danh Sách Tổng Hợp Recording Riêng Của Lớp Học Này (Cô lập 100% theo cls.id) */}
+      <div style={{ marginTop: 16 }}>
+        <ClassRecordingsDirectoryCard
+          fixedClass={{
+            ...cls,
+            courseLevel: parentCourseLevel || cls?.courseLevel || cls?.level || '',
+          }}
+          allRecordings={classRecordings}
+          currentUser={currentUser}
+          onWatchRecording={(rec) =>
+            setPreviewMaterial({
+              ...rec,
+              courseName: cls?.courseName || cls?.name || '',
+              _enableSessionTracking: false,
+            })
+          }
+          onOpenUploadRecording={(clsObj, isoDate) =>
+            setRecordingUploadTarget({ clsObj, isoDate: isoDate || '' })
+          }
+          onDeleteRecording={onDeleteClassRecording}
+          testIdPrefix="classroom-recordings-dir"
+        />
+      </div>
+
+      {/* Modal Upload Recording trực tiếp cho Lớp học hiện tại */}
+      <SessionRecordingUploadModal
+        open={Boolean(recordingUploadTarget)}
+        classData={{
+          id: cls?.id,
+          name: cls?.name,
+          courseId: cls?.courseId || 'ALL',
+          courseName: cls?.courseName || '',
+          courseLevel: parentCourseLevel || cls?.courseLevel || cls?.level || '',
+          teacherId: cls?.teacherId || '',
+          teacherName: cls?.teacherName || '',
+        }}
+        initialSessionDate={recordingUploadTarget?.isoDate || ''}
+        currentUser={currentUser || { role: userRole }}
+        onClose={() => setRecordingUploadTarget(null)}
+        onSuccess={(savedRec) => {
+          onClassRecordingUploaded?.(savedRec);
+          setRecordingUploadTarget(null);
+        }}
+      />
 
       {/* Modal Xem Trước Tài Liệu Đính Kèm Trực Tiếp Trong Ứng Dụng */}
       <MaterialPreviewModal
@@ -983,7 +1229,7 @@ export const ClassroomCurriculumPanel = ({
         onClose={() => setPreviewMaterial(null)}
         zIndex={1200}
         trackingContext={
-          isStudent && previewMaterial && formattedReaderLessonPrep && currentUser
+          isStudent && previewMaterial?._enableSessionTracking && formattedReaderLessonPrep && currentUser
             ? {
                 enabled: true,
                 classItem: cls,

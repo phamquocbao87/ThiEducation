@@ -19,6 +19,11 @@ export const StudentClassMaterialsCard = ({ materials = [], myClasses = [], cour
   const { isEnglish } = useLanguage();
   const [previewMaterial, setPreviewMaterial] = useState(null);
 
+  // Tách sạch Session Recording ra khỏi Class Learning Materials (chuyển sang Live Class Schedules)
+  const visibleMaterials = (materials || []).filter(
+    (item) => item && !item.isDeleted && !item.isSessionRecording && item.targetType !== 'session_recording'
+  );
+
   const getFormatMeta = (type = '') => {
     const t = type.toUpperCase();
     if (t === 'PDF') {
@@ -81,7 +86,7 @@ export const StudentClassMaterialsCard = ({ materials = [], myClasses = [], cour
         </div>
 
         {/* Danh Sách Tài Liệu Học Tập */}
-        {materials.length === 0 ? (
+        {visibleMaterials.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={isEnglish ? 'No class materials available yet' : 'Chưa có tài liệu cho lớp này'}
@@ -89,7 +94,7 @@ export const StudentClassMaterialsCard = ({ materials = [], myClasses = [], cour
           />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {materials.map((item) => {
+            {visibleMaterials.map((item) => {
               const meta = getFormatMeta(item.type);
               return (
                 <div

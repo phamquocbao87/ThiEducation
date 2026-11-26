@@ -1,4 +1,9 @@
-import { findClassSession } from '../utils/classSessionUtils.js';
+import {
+  POST_SESSION_FEEDBACK_WINDOW_MS,
+  findClassSession,
+  getSessionFeedbackWindowState,
+  resolveSessionEndMs,
+} from '../utils/classSessionUtils.js';
 
 export const PRESENCE = Object.freeze({ ONLINE: 'ONLINE', OFFLINE: 'OFFLINE', UNMARKED: 'UNMARKED' });
 export const ATTENTION_STATUS = Object.freeze({ FOCUSED: 'FOCUSED', DISTRACTED: 'DISTRACTED' });
@@ -265,6 +270,27 @@ export const buildStudentEvaluation = (cls, old = {}, studentId, evalData = {}, 
   if (session && sessionId === classroomSessionId(cls.id, session) && now < session.start) {
     throw new Error('SESSION_NOT_STARTED');
   }
+
+  const resolvedEndMs = resolveSessionEndMs(
+    cls,
+    {
+      sessionStart: old.sessionStart || evalData.sessionStart || session?.start,
+      sessionEnd: old.sessionEnd || evalData.sessionEnd || session?.end,
+    },
+    sessionId
+  );
+  if (!evalData.bypassWindowLock && resolvedEndMs) {
+    const win = getSessionFeedbackWindowState(
+      resolvedEndMs,
+      now,
+      POST_SESSION_FEEDBACK_WINDOW_MS,
+      old.unlockState
+    );
+    if (win.isLockedAfter18h) {
+      throw new Error('EVALUATION_WINDOW_LOCKED');
+    }
+  }
+
   const ids = [...new Set(cls.studentIds || [])];
   if (!ids.includes(studentId)) throw new Error('INVALID_ROSTER');
 
@@ -274,7 +300,12 @@ export const buildStudentEvaluation = (cls, old = {}, studentId, evalData = {}, 
   const studentEvaluations = {
     ...previousEvals,
     [studentId]: {
+      ...(previousEvals[studentId] || {}),
       stars,
+      ...(evalData.listeningScore !== undefined ? { listeningScore: Number(evalData.listeningScore) || stars } : {}),
+      ...(evalData.speakingScore !== undefined ? { speakingScore: Number(evalData.speakingScore) || stars } : {}),
+      ...(evalData.readingScore !== undefined ? { readingScore: Number(evalData.readingScore) || stars } : {}),
+      ...(evalData.writingScore !== undefined ? { writingScore: Number(evalData.writingScore) || stars } : {}),
       comment: String(evalData.comment || '').trim(),
       tags: Array.isArray(evalData.tags) ? evalData.tags.map((t) => String(t).trim()).filter(Boolean) : [],
       evaluatedAt: new Date(now).toISOString(),
@@ -289,7 +320,7 @@ export const buildStudentEvaluation = (cls, old = {}, studentId, evalData = {}, 
     sessionId,
     classId: cls.id,
     sessionStart: old.sessionStart || evalData.sessionStart || session?.start,
-    sessionEnd: old.sessionEnd || evalData.sessionEnd || session?.end,
+    sessionEnd: old.sessionEnd || evalData.sessionEnd || resolvedEndMs || session?.end,
     date: old.date || evalData.date || (session?.start ? classroomDate(session.start) : classroomDate(now)),
     studentEvaluations,
     updatedAt: new Date(now).toISOString(),
@@ -300,6 +331,86 @@ export const buildStudentEvaluation = (cls, old = {}, studentId, evalData = {}, 
       action: 'STUDENT_EVALUATION_SAVED',
       studentId,
       createdAt: new Date(now).toISOString(),
+    },
+  };
+};
+
+export const buildEvaluationUnlockState = (
+  cls,
+  old = {},
+  mode = 'REQUEST',
+  payload = {},
+  actor = {},
+  now = Date.now()
+) => {
+  const sessionId = payload.sessionId || old.sessionId;
+  if (!sessionId) throw new Error('SESSION_NOT_FOUND');
+  const nowIso = new Date(now).toISOString();
+  const prevUnlock = old.unlockState || {};
+  const resolvedStart = old.sessionStart || payload.sessionStart || null;
+  const resolvedEnd = resolveSessionEndMs(cls, { ...old, ...payload }, sessionId);
+
+  let nextUnlockState;
+  let auditAction;
+
+  if (mode === 'REQUEST') {
+    nextUnlockState = {
+      ...prevUnlock,
+      status: 'REQUESTED',
+      requestedAt: nowIso,
+      requestedAtMs: now,
+      requestedBy: actor.id,
+      requestedByName: actor.name || cls.teacherName || 'Teacher',
+      requestReason: String(payload.reason || '').trim(),
+    };
+    auditAction = 'EVALUATION_UNLOCK_REQUESTED';
+  } else if (mode === 'UNLOCK') {
+    const durationMs = Number(payload.durationMs) || POST_SESSION_FEEDBACK_WINDOW_MS;
+    nextUnlockState = {
+      ...prevUnlock,
+      status: 'UNLOCKED',
+      unlockedAt: nowIso,
+      unlockedAtMs: now,
+      unlockedUntilMs: now + durationMs,
+      unlockedBy: actor.id,
+      unlockedByName: actor.name || actor.role || 'Academic',
+      unlockedByRole: actor.role || 'academic',
+      relockedAt: null,
+      relockedBy: null,
+      relockedByName: null,
+    };
+    auditAction = 'EVALUATION_UNLOCK_APPROVED';
+  } else {
+    nextUnlockState = {
+      ...prevUnlock,
+      status: 'LOCKED',
+      unlockedUntilMs: now - 1,
+      relockedAt: nowIso,
+      relockedBy: actor.id,
+      relockedByName: actor.name || actor.role || 'Academic',
+    };
+    auditAction = 'EVALUATION_RELOCKED';
+  }
+
+  return {
+    ...old,
+    id: sessionId,
+    sessionId,
+    classId: cls.id,
+    className: cls.name || cls.id,
+    teacherId: cls.teacherId || old.teacherId || '',
+    teacherName: cls.teacherName || old.teacherName || '',
+    ...(resolvedStart ? { sessionStart: resolvedStart } : {}),
+    ...(resolvedEnd ? { sessionEnd: resolvedEnd } : {}),
+    date: old.date || payload.date || (resolvedStart ? classroomDate(resolvedStart) : classroomDate(now)),
+    unlockState: nextUnlockState,
+    updatedAt: nowIso,
+    auditTrail: {
+      actorId: actor.id,
+      actorName: actor.name || '',
+      actorRole: actor.role,
+      action: auditAction,
+      createdAt: nowIso,
     },
   };
 };

@@ -1,10 +1,12 @@
-import { collection, doc, getDoc, getDocs, onSnapshot, query, runTransaction, setDoc, where } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query, runTransaction, setDoc, where } from 'firebase/firestore';
 import { auth, db } from '../../core/services/firebase';
 import { PermissionService } from '../../core/services/PermissionService';
+import { NOTIFICATION_TYPES, NotificationService } from '../../core/services/NotificationService';
 import { BaseModuleService } from './BaseModuleService';
 import {
   buildAttendance,
   buildAttention,
+  buildEvaluationUnlockState,
   buildTeacherCheckIn,
   buildQuickNote,
   buildLessonPlan,
@@ -338,6 +340,179 @@ export class ClassroomRealtimeService extends BaseModuleService {
 
       return currentRecord;
     });
+  }
+
+  /**
+   * Giáo viên gửi yêu cầu mở khóa đánh giá cho một buổi học đã quá hạn 18 tiếng
+   */
+  static async requestSessionEvaluationUnlock(classId, expectedSessionId, payload = {}, user) {
+    if (!user?.id || !PermissionService.canRequestEvaluationUnlock(user.role)) {
+      throw new Error('UNLOCK_REQUEST_FORBIDDEN');
+    }
+    const { updatedRecord, cls } = await runTransaction(db, async (transaction) => {
+      const classRef = doc(db, 'classes', classId);
+      const snapshot = await transaction.get(classRef);
+      if (!snapshot.exists()) throw new Error('CLASS_NOT_FOUND');
+      const classDoc = { ...snapshot.data(), id: snapshot.id };
+      if (classDoc.teacherId !== user.id) throw new Error('UNLOCK_REQUEST_FORBIDDEN');
+
+      const sessionRef = doc(db, 'session_evaluations', expectedSessionId);
+      const previous = await transaction.get(sessionRef);
+      const old = previous.exists() ? previous.data() : {};
+      const now = Date.now();
+
+      const nextRecord = buildEvaluationUnlockState(
+        classDoc,
+        old,
+        'REQUEST',
+        { ...payload, sessionId: expectedSessionId },
+        user,
+        now
+      );
+
+      transaction.set(sessionRef, nextRecord, { merge: true });
+      return { updatedRecord: nextRecord, cls: classDoc };
+    });
+
+    const targetStartMs = updatedRecord.sessionStart || payload.sessionStart || '';
+    const dateLabel = payload.date || updatedRecord.date || '';
+    const reasonText = updatedRecord.unlockState?.requestReason || '';
+
+    try {
+      await NotificationService.sendNotification({
+        recipientRole: 'academic',
+        type: NOTIFICATION_TYPES.EVALUATION_UNLOCK_REQUESTED,
+        title: `📨 Yêu cầu mở khóa đánh giá — ${cls.name || classId}`,
+        message: `Giáo viên ${user.name || cls.teacherName || 'GV'} yêu cầu mở khóa đánh giá buổi học ${dateLabel} (quá hạn 18h).${reasonText ? ` Lý do: ${reasonText}` : ''}`,
+        actionUrl: `/classroom/${encodeURIComponent(classId)}?tab=evaluation${targetStartMs ? `&sessionDateMs=${targetStartMs}` : ''}`,
+        metadata: {
+          classId,
+          className: cls.name || classId,
+          sessionId: expectedSessionId,
+          sessionStart: targetStartMs,
+          sessionDate: dateLabel,
+          reason: reasonText,
+        },
+        createdBy: user.id,
+        createdByName: user.name || cls.teacherName || 'Teacher',
+        createdByRole: user.role,
+      });
+    } catch (err) {
+      console.warn('[ClassroomRealtimeService] Notification error on unlock request:', err);
+    }
+
+    return updatedRecord;
+  }
+
+  /**
+   * Giáo vụ / IT / Giám đốc mở khóa đánh giá lại buổi học quá hạn (mở thêm 18 tiếng)
+   */
+  static async unlockSessionEvaluation(classId, expectedSessionId, payload = {}, user) {
+    if (!user?.id || !PermissionService.canUnlockSessionEvaluation(user.role)) {
+      throw new Error('EVALUATION_UNLOCK_FORBIDDEN');
+    }
+    const { updatedRecord, cls } = await runTransaction(db, async (transaction) => {
+      const classRef = doc(db, 'classes', classId);
+      const snapshot = await transaction.get(classRef);
+      if (!snapshot.exists()) throw new Error('CLASS_NOT_FOUND');
+      const classDoc = { ...snapshot.data(), id: snapshot.id };
+
+      const sessionRef = doc(db, 'session_evaluations', expectedSessionId);
+      const previous = await transaction.get(sessionRef);
+      const old = previous.exists() ? previous.data() : {};
+      const now = Date.now();
+
+      const nextRecord = buildEvaluationUnlockState(
+        classDoc,
+        old,
+        'UNLOCK',
+        { ...payload, sessionId: expectedSessionId },
+        user,
+        now
+      );
+
+      transaction.set(sessionRef, nextRecord, { merge: true });
+      return { updatedRecord: nextRecord, cls: classDoc };
+    });
+
+    const targetStartMs = updatedRecord.sessionStart || payload.sessionStart || '';
+    const dateLabel = payload.date || updatedRecord.date || '';
+
+    if (cls.teacherId) {
+      try {
+        await NotificationService.sendNotification({
+          recipientId: cls.teacherId,
+          recipientRole: 'teacher',
+          type: NOTIFICATION_TYPES.EVALUATION_UNLOCK_APPROVED,
+          title: `🔓 Session Evaluation Unlocked (18h) — ${cls.name || classId}`,
+          message: `${user.name || 'Academic'} unlocked session ${dateLabel} (${cls.name || classId}) for 18 hours. You may now complete or update student feedback.`,
+          actionUrl: `/classroom/${encodeURIComponent(classId)}?tab=evaluation${targetStartMs ? `&sessionDateMs=${targetStartMs}` : ''}`,
+          metadata: {
+            classId,
+            className: cls.name || classId,
+            sessionId: expectedSessionId,
+            sessionStart: targetStartMs,
+            sessionDate: dateLabel,
+            unlockedUntilMs: updatedRecord.unlockState?.unlockedUntilMs,
+          },
+          createdBy: user.id,
+          createdByName: user.name || 'Academic',
+          createdByRole: user.role,
+        });
+      } catch (err) {
+        console.warn('[ClassroomRealtimeService] Notification error on unlock approval:', err);
+      }
+    }
+
+    return updatedRecord;
+  }
+
+  /**
+   * Giáo vụ / IT / Giám đốc khóa lại ngay buổi học đang mở khóa tạm thời
+   */
+  static async relockSessionEvaluation(classId, expectedSessionId, payload = {}, user) {
+    if (!user?.id || !PermissionService.canUnlockSessionEvaluation(user.role)) {
+      throw new Error('EVALUATION_UNLOCK_FORBIDDEN');
+    }
+    return runTransaction(db, async (transaction) => {
+      const classRef = doc(db, 'classes', classId);
+      const snapshot = await transaction.get(classRef);
+      if (!snapshot.exists()) throw new Error('CLASS_NOT_FOUND');
+      const classDoc = { ...snapshot.data(), id: snapshot.id };
+
+      const sessionRef = doc(db, 'session_evaluations', expectedSessionId);
+      const previous = await transaction.get(sessionRef);
+      const old = previous.exists() ? previous.data() : {};
+      const now = Date.now();
+
+      const nextRecord = buildEvaluationUnlockState(
+        classDoc,
+        old,
+        'RELOCK',
+        { ...payload, sessionId: expectedSessionId },
+        user,
+        now
+      );
+
+      transaction.set(sessionRef, nextRecord, { merge: true });
+      return nextRecord;
+    });
+  }
+
+  /**
+   * Khôi phục nguyên trạng bản ghi đánh giá buổi học (phục vụ Quản trị / QC Teardown không để lại dữ liệu rác)
+   */
+  static async restoreSessionEvaluationSnapshot(sessionId, snapshotData = null, existsBefore = false, user = null) {
+    if (!user?.id || !PermissionService.canUnlockSessionEvaluation(user.role)) {
+      throw new Error('EVALUATION_UNLOCK_FORBIDDEN');
+    }
+    const sessionRef = doc(db, 'session_evaluations', sessionId);
+    if (existsBefore && snapshotData) {
+      await setDoc(sessionRef, snapshotData);
+    } else {
+      await deleteDoc(sessionRef);
+    }
+    return true;
   }
 
   /**

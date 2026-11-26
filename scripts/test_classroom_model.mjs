@@ -10,6 +10,7 @@ import {
   buildQuickNote,
   buildLessonPlan,
   buildStudentEvaluation,
+  buildEvaluationUnlockState,
   classroomSessionId,
   currentAttendance,
 } from '../src/shared/models/classroom.model.js';
@@ -174,6 +175,67 @@ const clampedLowEval = buildStudentEvaluation(cls, clampedEval, 'S2', { stars: -
 assert.equal(clampedLowEval.studentEvaluations.S2.stars, 1);
 assert.throws(() => buildStudentEvaluation(cls, evalRecord, 'stranger', { stars: 5 }, teacher, now));
 assert.throws(() => buildStudentEvaluation(cls, evalRecord, 'S1', { stars: 5 }, teacher, now - 1), /SESSION_NOT_STARTED/);
+
+// 18-Hour Post-Session Hard-Lock, Request Unlock & 18h Temporary Unlock Lifecycle
+const sessionEndMs = Date.parse('2026-11-13T12:00:00Z'); // 19:00 GMT+7
+// Within 18h (+17h after end): still OPEN
+const within18hEval = buildStudentEvaluation(
+  cls,
+  { ...evalRecord, sessionEnd: sessionEndMs },
+  'S1',
+  { stars: 5, comment: 'Updated within 18h window' },
+  teacher,
+  sessionEndMs + 17 * 3600 * 1000
+);
+assert.equal(within18hEval.studentEvaluations.S1.comment, 'Updated within 18h window');
+
+// Past 18h (+18.5h after end): HARD LOCKED
+const past18hTime = sessionEndMs + 18.5 * 3600 * 1000;
+assert.throws(
+  () => buildStudentEvaluation(cls, within18hEval, 'S1', { stars: 5, comment: 'Too late' }, teacher, past18hTime),
+  /EVALUATION_WINDOW_LOCKED/
+);
+
+// Teacher requests unlock -> status REQUESTED (still locked until Academic/Director/Admin approves!)
+const requestedDoc = buildEvaluationUnlockState(
+  cls,
+  within18hEval,
+  'REQUEST',
+  { reason: 'Need to update S2 comment' },
+  teacher,
+  past18hTime
+);
+assert.equal(requestedDoc.unlockState.status, 'REQUESTED');
+assert.throws(
+  () => buildStudentEvaluation(cls, requestedDoc, 'S2', { stars: 5, comment: 'Still locked' }, teacher, past18hTime + 1000),
+  /EVALUATION_WINDOW_LOCKED/
+);
+
+// Academic approves unlock -> unlocked for 18h!
+const unlockedDoc = buildEvaluationUnlockState(cls, requestedDoc, 'UNLOCK', {}, academic, past18hTime + 2000);
+assert.equal(unlockedDoc.unlockState.status, 'UNLOCKED');
+const reEvalSuccess = buildStudentEvaluation(
+  cls,
+  unlockedDoc,
+  'S2',
+  { stars: 5, comment: 'Graded during 18h unlock window' },
+  teacher,
+  past18hTime + 5 * 3600 * 1000
+);
+assert.equal(reEvalSuccess.studentEvaluations.S2.comment, 'Graded during 18h unlock window');
+
+// After 18h unlock expires (+18.1h after unlock): AUTO-RELOCKS!
+assert.throws(
+  () => buildStudentEvaluation(cls, reEvalSuccess, 'S2', { stars: 4, comment: 'Unlock expired' }, teacher, past18hTime + 2000 + 18.1 * 3600 * 1000),
+  /EVALUATION_WINDOW_LOCKED/
+);
+
+// Manual Relock Now by Academic: immediately locks even inside 18h window!
+const relockedDoc = buildEvaluationUnlockState(cls, unlockedDoc, 'RELOCK', {}, academic, past18hTime + 3600 * 1000);
+assert.throws(
+  () => buildStudentEvaluation(cls, relockedDoc, 'S2', { stars: 4, comment: 'Relocked manually' }, teacher, past18hTime + 3600 * 1000 + 5000),
+  /EVALUATION_WINDOW_LOCKED/
+);
 
 assert.throws(() => buildAttendance(cls, record, { stranger: 'ONLINE' }, teacher, now));
 assert.throws(() => buildAttendance(cls, record, { S1: 'WRONG' }, teacher, now));

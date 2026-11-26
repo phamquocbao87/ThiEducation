@@ -13,10 +13,21 @@ import { useLanguage } from '../../../core/context/LanguageContext';
 import { useAuth } from '../../../core/context/AuthContext';
 import { detectMeetingPlatform } from '../../../shared/utils/meetingPlatformUtils';
 import { TimetableSlotService } from '../services/TimetableSlotService';
+import { SessionSlotRecordingBox } from './SessionSlotRecordingBox';
 
 const { Text } = Typography;
 
-export const ScheduleTable = ({ timetable, canCheckIn, onCheckIn }) => {
+export const ScheduleTable = ({
+  timetable,
+  canCheckIn,
+  onCheckIn,
+  weekOffset = 0,
+  slotRecordingsMap,
+  canManageSlotRecording,
+  onWatchRecording,
+  onOpenUploadRecording,
+  onDeleteRecording,
+}) => {
   const { isEnglish } = useLanguage();
   const { currentUser } = useAuth();
 
@@ -33,10 +44,10 @@ export const ScheduleTable = ({ timetable, canCheckIn, onCheckIn }) => {
     return () => clearInterval(timer);
   }, []);
 
-  // 2. Tính danh sách ngày trong tuần hiện tại
+  // 2. Tính danh sách ngày theo tuần đang chọn (đồng bộ với Weekly Calendar)
   const currentWeekDays = useMemo(() => {
-    return TimetableSlotService.getWeekDays(0);
-  }, []);
+    return TimetableSlotService.getWeekDays(weekOffset);
+  }, [weekOffset]);
 
   const columns = useMemo(
     () => [
@@ -74,10 +85,11 @@ export const ScheduleTable = ({ timetable, canCheckIn, onCheckIn }) => {
         title: isEnglish ? 'Time Slot' : 'Khung Giờ',
         dataIndex: 'timeSlot',
         key: 'timeSlot',
+        width: 140,
         render: (timeSlot) => (
-          <Space>
+          <Space size={6} style={{ whiteSpace: 'nowrap' }}>
             <ClockCircleOutlined style={{ color: '#1890ff' }} />
-            <Text strong>{timeSlot}</Text>
+            <Text strong style={{ whiteSpace: 'nowrap' }}>{timeSlot}</Text>
           </Space>
         ),
       },
@@ -85,21 +97,24 @@ export const ScheduleTable = ({ timetable, canCheckIn, onCheckIn }) => {
         title: isEnglish ? 'Online Class' : 'Lớp Học Trực Tuyến',
         dataIndex: 'className',
         key: 'className',
+        width: 210,
         render: (text) => <Text strong style={{ color: '#722ed1' }}>{text}</Text>,
       },
       {
         title: isEnglish ? 'Subject / Skills' : 'Môn Học / Kỹ Năng',
         dataIndex: 'subject',
         key: 'subject',
+        width: 165,
       },
       {
         title: isEnglish ? 'Teacher in Charge' : 'Giáo Viên Phụ Trách',
         dataIndex: 'teacherName',
         key: 'teacherName',
+        width: 145,
         render: (text) => (
-          <Space>
+          <Space size={6} style={{ whiteSpace: 'nowrap' }}>
             <UserOutlined />
-            <Text>{text}</Text>
+            <Text style={{ whiteSpace: 'nowrap' }}>{text}</Text>
           </Space>
         ),
       },
@@ -107,10 +122,11 @@ export const ScheduleTable = ({ timetable, canCheckIn, onCheckIn }) => {
         title: isEnglish ? 'Platform' : 'Nền Tảng',
         dataIndex: 'platform',
         key: 'platform',
+        width: 170,
         render: (platform) => (
-          <Space>
+          <Space size={6} style={{ whiteSpace: 'nowrap' }}>
             <VideoCameraOutlined style={{ color: '#722ed1' }} />
-            <Tag color="purple">{platform}</Tag>
+            <Tag color="purple" style={{ margin: 0, whiteSpace: 'nowrap' }}>{platform}</Tag>
           </Space>
         ),
       },
@@ -118,6 +134,7 @@ export const ScheduleTable = ({ timetable, canCheckIn, onCheckIn }) => {
         title: isEnglish ? 'Session Timing Status' : 'Trạng Thái Ca Học',
         dataIndex: 'status',
         key: 'status',
+        width: 135,
         render: (status, record) => {
           const matchedDay = currentWeekDays.find((d) => d.dayKey === record.day);
           const timeState = TimetableSlotService.getSessionTimingState(
@@ -129,7 +146,7 @@ export const ScheduleTable = ({ timetable, canCheckIn, onCheckIn }) => {
 
           if (record.status === SESSION_STATUS.CHECKED_IN) {
             return (
-              <Tag color="success" icon={<CheckCircleOutlined />}>
+              <Tag color="success" icon={<CheckCircleOutlined />} style={{ whiteSpace: 'nowrap' }}>
                 {isEnglish ? 'Checked In' : 'Đã điểm danh'}
               </Tag>
             );
@@ -137,7 +154,7 @@ export const ScheduleTable = ({ timetable, canCheckIn, onCheckIn }) => {
 
           if (timeState.state === 'LIVE') {
             return (
-              <Tag color="error" style={{ fontWeight: 700 }}>
+              <Tag color="error" style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
                 🔴 {isEnglish ? 'LIVE NOW' : 'ĐANG HỌC'}
               </Tag>
             );
@@ -145,7 +162,7 @@ export const ScheduleTable = ({ timetable, canCheckIn, onCheckIn }) => {
 
           if (timeState.state === 'STARTING_SOON') {
             return (
-              <Tag color="warning" style={{ fontWeight: 600 }}>
+              <Tag color="warning" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
                 ⏳ {isEnglish ? `In ${timeState.startsInMins}m` : `Còn ${timeState.startsInMins}p`}
               </Tag>
             );
@@ -153,16 +170,45 @@ export const ScheduleTable = ({ timetable, canCheckIn, onCheckIn }) => {
 
           if (timeState.state === 'FINISHED') {
             return (
-              <Tag color="default">
+              <Tag color="default" style={{ whiteSpace: 'nowrap' }}>
                 {isEnglish ? 'Finished' : 'Đã kết thúc'}
               </Tag>
             );
           }
 
           return (
-            <Tag color="blue">
+            <Tag color="blue" style={{ whiteSpace: 'nowrap' }}>
               {isEnglish ? 'Upcoming' : 'Sắp tới'}
             </Tag>
+          );
+        },
+      },
+      {
+        title: isEnglish ? 'Session Recording' : 'Video Buổi Học',
+        key: 'recording',
+        width: 200,
+        render: (_, record) => {
+          const matchedDay = currentWeekDays.find((d) => d.dayKey === record.day);
+          const isoDate = matchedDay?.isoDate || '';
+          const timeState = TimetableSlotService.getSessionTimingState(
+            matchedDay?.dateObj,
+            record.startTime,
+            record.endTime,
+            now,
+            leadMinutes
+          );
+          return (
+            <SessionSlotRecordingBox
+              slotItem={record}
+              isoDate={isoDate}
+              timeState={timeState}
+              recordings={slotRecordingsMap?.get(`${record.classId}_${isoDate}`) || []}
+              canManage={Boolean(canManageSlotRecording?.(record))}
+              compact={true}
+              onWatchRecording={onWatchRecording}
+              onOpenUpload={onOpenUploadRecording}
+              onDeleteRecording={onDeleteRecording}
+            />
           );
         },
       },
@@ -344,7 +390,19 @@ export const ScheduleTable = ({ timetable, canCheckIn, onCheckIn }) => {
         },
       },
     ],
-    [isEnglish, canCheckIn, onCheckIn, currentWeekDays, now]
+    [
+      isEnglish,
+      canCheckIn,
+      onCheckIn,
+      currentWeekDays,
+      now,
+      leadMinutes,
+      slotRecordingsMap,
+      canManageSlotRecording,
+      onWatchRecording,
+      onOpenUploadRecording,
+      onDeleteRecording,
+    ]
   );
 
   return (
@@ -352,9 +410,9 @@ export const ScheduleTable = ({ timetable, canCheckIn, onCheckIn }) => {
       columns={columns}
       dataSource={timetable}
       rowKey="id"
-      scroll={{ x: 900 }}
+      scroll={{ x: 1180 }}
       pagination={{
-        pageSize: 6,
+        pageSize: 20,
         showTotal: (total) =>
           isEnglish ? `Total ${total} sessions` : `Tổng cộng ${total} ca học`,
       }}

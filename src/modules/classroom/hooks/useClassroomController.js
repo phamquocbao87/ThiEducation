@@ -2,10 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../../core/context/AuthContext';
 import { useClassroomClock } from '../../../shared/hooks/useClassroomClock';
-import { findClassSession } from '../../../shared/utils/classSessionUtils';
+import {
+  POST_SESSION_FEEDBACK_WINDOW_MS,
+  findClassSession,
+  getSessionFeedbackWindowState,
+} from '../../../shared/utils/classSessionUtils';
 import { classroomSessionId } from '../models/classroom.model';
 import { ClassroomService } from '../services/ClassroomService';
 import { CourseService } from '../../courses/services/CourseService';
+import { MaterialService } from '../../materials/services/MaterialService';
 
 export const useClassroomController = () => {
   const { classId } = useParams();
@@ -90,11 +95,23 @@ export const useClassroomController = () => {
   const isSessionUpcoming = Boolean(session && !selectedSessionOverride && !session.isEnded && now < session.start);
   const isSessionLive = Boolean(session && now >= session.start && now < session.end);
   const isSessionEnded = Boolean(session && (session.isEnded || now >= session.end));
+
+  const sessionWindowState = useMemo(
+    () => getSessionFeedbackWindowState(
+      session?.end,
+      now,
+      POST_SESSION_FEEDBACK_WINDOW_MS,
+      record?.unlockState || null
+    ),
+    [session?.end, now, record?.unlockState]
+  );
+
   const canEvaluate = Boolean(
     allowed
     && (role === 'teacher' ? cls?.teacherId === userId : ['admin', 'director', 'academic'].includes(role))
     && session
     && (now >= session.start || session.isEnded || Boolean(selectedSessionOverride))
+    && !sessionWindowState.isLockedAfter18h
   );
 
   const presence = useMemo(() => {
@@ -199,20 +216,66 @@ export const useClassroomController = () => {
   );
 
   const [courseMaterials, setCourseMaterials] = useState([]);
+  const [parentCourse, setParentCourse] = useState(null);
+  const [classRecordings, setClassRecordings] = useState([]);
 
   useEffect(() => {
     let active = true;
     if (cls?.courseId) {
-      CourseService.getCourseMaterials(cls.courseId)
-        .then((materials) => {
-          if (active) setCourseMaterials(materials || []);
+      Promise.all([
+        CourseService.getCourseMaterials(cls.courseId),
+        CourseService.getCourseById(cls.courseId),
+      ])
+        .then(([materials, cDoc]) => {
+          if (active) {
+            setCourseMaterials(materials || []);
+            setParentCourse(cDoc || null);
+          }
         })
         .catch((err) => {
           console.warn('[useClassroomController] getCourseMaterials error:', err);
         });
+    } else {
+      setParentCourse(null);
     }
     return () => { active = false; };
   }, [cls?.courseId]);
+
+  useEffect(() => {
+    let active = true;
+    if (cls?.id) {
+      MaterialService.getAllMaterials()
+        .then((allMats) => {
+          if (!active) return;
+          const recs = (allMats || []).filter((m) => m && !m.isDeleted && Boolean(m.isSessionRecording));
+          setClassRecordings(recs);
+        })
+        .catch(() => {});
+    }
+    return () => { active = false; };
+  }, [cls?.id]);
+
+  const resolvedCourseLevel = parentCourse?.level || cls?.courseLevel || cls?.level || '';
+
+  const addClassRecording = useCallback((newRec) => {
+    if (!newRec) return;
+    setClassRecordings((prev) => [
+      newRec,
+      ...(prev || []).filter((r) => r && r.id !== newRec.id && !r.isDeleted),
+    ]);
+  }, []);
+
+  const deleteClassRecording = useCallback(async (rec) => {
+    if (!rec?.id) return;
+    const prevList = classRecordings;
+    setClassRecordings((prev) => (prev || []).filter((r) => r && r.id !== rec.id));
+    try {
+      await MaterialService.deleteMaterial(rec.id, rec.courseId || cls?.courseId, currentUser);
+    } catch (err) {
+      setClassRecordings(prevList);
+      throw err;
+    }
+  }, [classRecordings, cls?.courseId, currentUser]);
 
   const saveQuickNote = useCallback(async (studentId, noteData) => {
     if (!cls || !sessionId || !studentId) return;
@@ -235,6 +298,9 @@ export const useClassroomController = () => {
       setWriteError('sessionNotStartedError');
       throw new Error('SESSION_NOT_STARTED');
     }
+    if (sessionWindowState.isLockedAfter18h) {
+      throw new Error('EVALUATION_WINDOW_LOCKED');
+    }
     setWriteError('');
     try {
       const payload = {
@@ -251,7 +317,7 @@ export const useClassroomController = () => {
       setWriteError(err.message === 'SESSION_NOT_STARTED' ? 'sessionNotStartedError' : 'saveError');
       throw err;
     }
-  }, [cls, sessionId, classId, currentUser, session, now, selectedSessionOverride]);
+  }, [cls, sessionId, classId, currentUser, session, now, selectedSessionOverride, sessionWindowState.isLockedAfter18h]);
 
   const saveAllEvaluations = useCallback(async (evaluationsMap) => {
     if (!cls || !sessionId || !evaluationsMap) return;
@@ -259,6 +325,9 @@ export const useClassroomController = () => {
       console.warn('[useClassroomController] saveAllEvaluations rejected: session not started');
       setWriteError('sessionNotStartedError');
       throw new Error('SESSION_NOT_STARTED');
+    }
+    if (sessionWindowState.isLockedAfter18h) {
+      throw new Error('EVALUATION_WINDOW_LOCKED');
     }
     setWriteError('');
     try {
@@ -279,7 +348,90 @@ export const useClassroomController = () => {
       setWriteError(err.message === 'SESSION_NOT_STARTED' ? 'sessionNotStartedError' : 'saveError');
       throw err;
     }
-  }, [cls, sessionId, classId, currentUser, session, now, selectedSessionOverride]);
+  }, [cls, sessionId, classId, currentUser, session, now, selectedSessionOverride, sessionWindowState.isLockedAfter18h]);
+
+  const requestEvaluationUnlock = useCallback(async (reason = '') => {
+    if (!cls || !sessionId || !session) return null;
+    const nowTs = Date.now();
+    const optimisticUnlock = {
+      ...(record?.unlockState || {}),
+      status: 'REQUESTED',
+      requestedAt: new Date(nowTs).toISOString(),
+      requestedAtMs: nowTs,
+      requestedBy: currentUser?.id,
+      requestedByName: currentUser?.name || cls?.teacherName || 'Teacher',
+      requestReason: String(reason || '').trim(),
+    };
+    setRecordState((prev) => (
+      prev.key === sessionId
+        ? { ...prev, record: { ...(prev.record || {}), id: sessionId, sessionId, unlockState: optimisticUnlock } }
+        : prev
+    ));
+    const saved = await ClassroomService.requestSessionEvaluationUnlock(
+      classId,
+      sessionId,
+      { reason, sessionStart: session.start, sessionEnd: session.end, date: session.date },
+      currentUser
+    );
+    setRecordState((prev) => (prev.key === sessionId ? { ...prev, record: { ...(prev.record || {}), ...saved } } : prev));
+    return saved;
+  }, [cls, sessionId, session, record?.unlockState, currentUser, classId]);
+
+  const unlockEvaluation = useCallback(async () => {
+    if (!cls || !sessionId || !session) return null;
+    const nowTs = Date.now();
+    const optimisticUnlock = {
+      ...(record?.unlockState || {}),
+      status: 'UNLOCKED',
+      unlockedAt: new Date(nowTs).toISOString(),
+      unlockedAtMs: nowTs,
+      unlockedUntilMs: nowTs + POST_SESSION_FEEDBACK_WINDOW_MS,
+      unlockedBy: currentUser?.id,
+      unlockedByName: currentUser?.name || currentUser?.role || 'Academic',
+      unlockedByRole: currentUser?.role || 'academic',
+      relockedAt: null,
+      relockedBy: null,
+    };
+    setRecordState((prev) => (
+      prev.key === sessionId
+        ? { ...prev, record: { ...(prev.record || {}), id: sessionId, sessionId, unlockState: optimisticUnlock } }
+        : prev
+    ));
+    const saved = await ClassroomService.unlockSessionEvaluation(
+      classId,
+      sessionId,
+      { sessionStart: session.start, sessionEnd: session.end, date: session.date },
+      currentUser
+    );
+    setRecordState((prev) => (prev.key === sessionId ? { ...prev, record: { ...(prev.record || {}), ...saved } } : prev));
+    return saved;
+  }, [cls, sessionId, session, record?.unlockState, currentUser, classId]);
+
+  const relockEvaluation = useCallback(async () => {
+    if (!cls || !sessionId || !session) return null;
+    const nowTs = Date.now();
+    const optimisticUnlock = {
+      ...(record?.unlockState || {}),
+      status: 'LOCKED',
+      unlockedUntilMs: nowTs - 1,
+      relockedAt: new Date(nowTs).toISOString(),
+      relockedBy: currentUser?.id,
+      relockedByName: currentUser?.name || currentUser?.role || 'Academic',
+    };
+    setRecordState((prev) => (
+      prev.key === sessionId
+        ? { ...prev, record: { ...(prev.record || {}), id: sessionId, sessionId, unlockState: optimisticUnlock } }
+        : prev
+    ));
+    const saved = await ClassroomService.relockSessionEvaluation(
+      classId,
+      sessionId,
+      { sessionStart: session.start, sessionEnd: session.end, date: session.date },
+      currentUser
+    );
+    setRecordState((prev) => (prev.key === sessionId ? { ...prev, record: { ...(prev.record || {}), ...saved } } : prev));
+    return saved;
+  }, [cls, sessionId, session, record?.unlockState, currentUser, classId]);
 
   const saveLessonPlan = useCallback(async (sessionIndex, planData) => {
     if (!cls || !sessionIndex) return;
@@ -307,14 +459,62 @@ export const useClassroomController = () => {
   const courseId = cls?.courseId;
   const saveCourseMaterial = useCallback(async (newMaterial) => {
     if (!courseId || !newMaterial) return;
+    const prevList = courseMaterials || [];
+    const isStaffOnly =
+      newMaterial.visibility === 'TEACHER_ONLY' ||
+      newMaterial.visibility === 'TEACHERS_ONLY' ||
+      newMaterial.shareScope === 'STAFF_ONLY' ||
+      newMaterial.type === 'TEACHER_GUIDE' ||
+      newMaterial.type === 'TEACHER';
+
+    const normalizedNew = {
+      ...newMaterial,
+      id: newMaterial.id || `mat_${Date.now()}`,
+      courseId,
+      courseName: cls?.courseName || cls?.name || '',
+      courseLevel: cls?.courseLevel || cls?.level || '',
+      visibility: isStaffOnly ? 'TEACHERS_ONLY' : 'ALL',
+      shareScope: isStaffOnly ? 'STAFF_ONLY' : 'CUSTOM',
+      sharedCourseIds: [courseId],
+      isSessionRecording: false,
+      uploadedAt: newMaterial.uploadedAt || new Date().toISOString(),
+    };
+
+    // 0ms Optimistic State Update
+    const optimisticList = [
+      normalizedNew,
+      ...prevList.filter((m) => m && m.id !== normalizedNew.id && !m.isDeleted && !m.isSessionRecording),
+    ];
+    setCourseMaterials(optimisticList);
+
     try {
-      const currentList = courseMaterials || [];
-      const updated = [newMaterial, ...currentList.filter((m) => m.id !== newMaterial.id)];
-      await CourseService.updateCourseMaterials(courseId, updated, currentUser);
-      setCourseMaterials(updated);
-      return updated;
+      const saved = await MaterialService.saveMaterial(normalizedNew, currentUser);
+      const syncedList = [
+        saved,
+        ...prevList.filter((m) => m && m.id !== saved.id && !m.isDeleted && !m.isSessionRecording),
+      ];
+      setCourseMaterials(syncedList);
+      return syncedList;
     } catch (err) {
+      setCourseMaterials(prevList);
       console.warn('[useClassroomController] saveCourseMaterial error:', err);
+      throw err;
+    }
+  }, [courseId, courseMaterials, cls?.courseName, cls?.name, cls?.courseLevel, cls?.level, currentUser]);
+
+  const deleteCourseMaterial = useCallback(async (materialId) => {
+    if (!materialId) return;
+    const prevList = courseMaterials || [];
+    // 0ms Optimistic State Removal
+    const updatedList = prevList.filter((m) => m && m.id !== materialId);
+    setCourseMaterials(updatedList);
+
+    try {
+      await MaterialService.deleteMaterial(materialId, courseId, currentUser);
+      return updatedList;
+    } catch (err) {
+      setCourseMaterials(prevList);
+      console.warn('[useClassroomController] deleteCourseMaterial error:', err);
       throw err;
     }
   }, [courseId, courseMaterials, currentUser]);
@@ -331,6 +531,11 @@ export const useClassroomController = () => {
     studentEvaluations: record?.studentEvaluations || {},
     lessonPlans: cls?.lessonPlans || {},
     courseMaterials,
+    parentCourse,
+    resolvedCourseLevel,
+    classRecordings,
+    addClassRecording,
+    deleteClassRecording,
     teacherCheckIn: record?.teacherCheckIn || null,
     isCheckInPending,
     session,
@@ -340,6 +545,7 @@ export const useClassroomController = () => {
     isSessionUpcoming,
     isSessionLive,
     isSessionEnded,
+    sessionWindowState,
     canEvaluate,
     selectedSessionOverride,
     setSelectedSession: setSelectedSessionOverride,
@@ -359,7 +565,11 @@ export const useClassroomController = () => {
     saveQuickNote,
     saveStudentEvaluation,
     saveAllEvaluations,
+    requestEvaluationUnlock,
+    unlockEvaluation,
+    relockEvaluation,
     saveLessonPlan,
     saveCourseMaterial,
+    deleteCourseMaterial,
   };
 };

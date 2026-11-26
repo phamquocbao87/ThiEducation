@@ -245,4 +245,119 @@ export class DriveStorageService {
     if (!fileId) return '';
     return `https://drive.google.com/uc?export=download&id=${fileId}`;
   }
+
+  /**
+   * Trích xuất Google Drive fileId từ bản ghi học liệu hoặc đường dẫn Drive
+   */
+  static extractDriveFileId(input) {
+    if (!input) return '';
+    if (typeof input === 'object') {
+      if (input.driveFileId && String(input.driveFileId).trim()) {
+        return String(input.driveFileId).trim();
+      }
+      // Chỉ trích xuất từ URL đối với các bản ghi được đánh dấu tải lên qua hệ thống
+      const isManagedUpload =
+        Boolean(input.isGoogleDrive) ||
+        Boolean(input.isSessionRecording) ||
+        Boolean(input.storagePath) ||
+        Boolean(input.firebaseFolder);
+      if (!isManagedUpload) return '';
+      return this.extractDriveFileId(input.url || input.downloadUrl || '');
+    }
+
+    const str = String(input).trim();
+    if (!str) return '';
+    const matchFile = str.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (matchFile && matchFile[1]) return matchFile[1];
+    const matchUc = str.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (matchUc && matchUc[1]) return matchUc[1];
+    if (str.includes('googleusercontent.com/d/')) {
+      const rawId = str.split('/d/')[1]?.split(/[=?/]/)[0];
+      if (rawId) return rawId;
+    }
+    return '';
+  }
+
+  /**
+   * Chuyển tệp đã upload thông qua dự án `lakeducation_com` vào Thùng rác Google Drive (`trashed: true`).
+   * - Bảo vệ 100% quyền sở hữu dự án: xác minh tệp thuộc `lakeducation_com` trên Hosting-Store trước khi thao tác.
+   * - Không xoá vĩnh viễn ngay: tệp nằm trong Thùng rác Google Drive 30 ngày để phòng xoá nhầm, sau 30 ngày Google tự xoá sạch.
+   */
+  static async moveFileToTrash(fileId) {
+    const cleanId = String(fileId || '').trim();
+    if (!cleanId) return { skipped: true, reason: 'EMPTY_FILE_ID' };
+
+    // Ưu tiên 1: Gọi endpoint chuyên biệt POST /storage/files/:id/trash trên Hosting-Store
+    try {
+      const trashRes = await fetch(
+        `${this.CONFIG.API_BASE}/storage/files/${encodeURIComponent(cleanId)}/trash`,
+        {
+          method: 'POST',
+          headers: this.getHeaders(),
+        }
+      );
+      if (trashRes.ok) {
+        const trashData = await trashRes.json().catch(() => ({}));
+        if (trashData?.success) {
+          return { success: true, trashed: true, via: 'hosting_store_trash_api' };
+        }
+      } else if (trashRes.status === 403) {
+        // Không thuộc sở hữu của dự án lakeducation_com -> dừng an toàn
+        return { skipped: true, reason: 'NOT_OWNED_BY_APP' };
+      }
+    } catch {
+      // Chuyển sang bước xác minh + gọi trực tiếp Google Drive REST API v3 bên dưới
+    }
+
+    // Ưu tiên 2 (Zero-Egress Direct Google Drive v3 Trash):
+    // Bước 2.1: Kiểm tra tệp có thực sự được upload qua dự án `lakeducation_com` không
+    const metaRes = await fetch(
+      `${this.CONFIG.API_BASE}/storage/files/${encodeURIComponent(cleanId)}`,
+      {
+        method: 'GET',
+        headers: this.getHeaders(),
+      }
+    );
+    if (!metaRes.ok) {
+      return { skipped: true, reason: `FILE_NOT_REGISTERED_${metaRes.status}` };
+    }
+    const metaJson = await metaRes.json().catch(() => ({}));
+    if (!metaJson?.success || metaJson?.data?.project !== this.CONFIG.APP_ID) {
+      return { skipped: true, reason: 'NOT_OWNED_BY_LAKEDUCATION' };
+    }
+
+    // Bước 2.2: Xin OAuth2 Access Token tạm thời và đặt cờ `trashed: true` trực tiếp trên Google Drive v3
+    const tokenRes = await fetch(`${this.CONFIG.API_BASE}/credentials/drive-token`, {
+      method: 'GET',
+      headers: this.getHeaders(),
+    });
+    const tokenJson = await tokenRes.json().catch(() => ({}));
+    const accessToken = tokenJson?.data?.accessToken;
+    if (!tokenRes.ok || !accessToken) {
+      throw new Error('Không lấy được token xác thực Google Drive để chuyển tệp vào Thùng rác.');
+    }
+
+    const isLocalProxy =
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const driveApiBase = isLocalProxy ? '/google-upload' : 'https://www.googleapis.com';
+
+    const patchRes = await fetch(
+      `${driveApiBase}/drive/v3/files/${encodeURIComponent(cleanId)}?fields=id,name,trashed`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ trashed: true }),
+      }
+    );
+
+    if (!patchRes.ok && patchRes.status !== 404) {
+      throw new Error(`Chuyển tệp vào Thùng rác Google Drive thất bại: HTTP ${patchRes.status}`);
+    }
+
+    return { success: true, trashed: true, via: 'google_drive_v3_patch' };
+  }
 }

@@ -401,7 +401,9 @@ export class StudentDashboardService extends BaseModuleService {
     try {
       const allMaterials = await MaterialService.getAllMaterials();
       const userToFilter = currentUser || { role: 'student', enrolledClassIds: (myClasses || []).map((c) => c.id) };
-      const matched = MaterialService.getMaterialsForUser(allMaterials, userToFilter, myClasses);
+      const matched = MaterialService.getMaterialsForUser(allMaterials, userToFilter, myClasses).filter(
+        (m) => m && !m.isDeleted && !m.isSessionRecording && m.targetType !== 'session_recording'
+      );
 
       if (matched.length > 0) {
         return matched.slice(0, 10);

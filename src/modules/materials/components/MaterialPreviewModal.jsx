@@ -977,7 +977,7 @@ export const MaterialPreviewModal = ({
           height: '100dvh',
           maxWidth: '100vw',
           maxHeight: '100dvh',
-          zIndex,
+          zIndex: Math.max(2100, Number(zIndex) || 2100),
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
